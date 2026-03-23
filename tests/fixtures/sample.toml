@@ -1,0 +1,14 @@
+name = "sigil-test"
+version = "1.0.0"
+
+[settings]
+debug = false
+tags = ["fast", "structural"]
+
+[settings.theme]
+color = "dark"
+font_size = 14
+
+[dependencies]
+serde = "1.0"
+blake3 = "1.0"

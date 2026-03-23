@@ -2,6 +2,8 @@
 name = "sigil"
 version = "0.1.1"
 edition = "2021"
+description = "Structural code fingerprinting and diffing CLI"
+repository = "https://github.com/gauravverma/sigil"
 
 [dependencies]
 codeix = { git = "https://github.com/montanetech/codeix", tag = "v0.5.0" }
@@ -14,3 +16,9 @@ serde_json = { version = "1", features = ["preserve_order"] }
 serde_yaml = "0.9"
 ignore = "0.4"
 similar = "2"
+toml = "0.8"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"

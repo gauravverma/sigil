@@ -35,32 +35,21 @@ git show HEAD:file.py   ──→ tree-sitter parse ──→ entities + hashes 
 
 ## Install
 
-### Pre-built binaries (recommended)
+### Installer script (recommended)
 
-Download the latest release from [GitHub Releases](https://github.com/gauravverma/sigil/releases):
-
-**macOS (Apple Silicon):**
+**macOS / Linux:**
 ```bash
-curl -L https://github.com/gauravverma/sigil/releases/latest/download/sigil-macos-aarch64.tar.gz | tar xz
-sudo mv sigil /usr/local/bin/
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gauravverma/sigil/releases/latest/download/sigil-installer.sh | sh
 ```
 
-**macOS (Intel):**
-```bash
-curl -L https://github.com/gauravverma/sigil/releases/latest/download/sigil-macos-x86_64.tar.gz | tar xz
-sudo mv sigil /usr/local/bin/
+**Windows (PowerShell):**
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/gauravverma/sigil/releases/latest/download/sigil-installer.ps1 | iex"
 ```
 
-**Linux (x86_64):**
+This installs sigil and a `sigil-update` binary for self-updates. To update later:
 ```bash
-curl -L https://github.com/gauravverma/sigil/releases/latest/download/sigil-linux-x86_64.tar.gz | tar xz
-sudo mv sigil /usr/local/bin/
-```
-
-**Linux (aarch64):**
-```bash
-curl -L https://github.com/gauravverma/sigil/releases/latest/download/sigil-linux-aarch64.tar.gz | tar xz
-sudo mv sigil /usr/local/bin/
+sigil-update
 ```
 
 ### Install via Cargo
@@ -287,6 +276,7 @@ Tree-sitter grammars via [codeix](https://github.com/montanetech/codeix):
 | Markdown | `.md` `.markdown` |
 | JSON | `.json` (built-in parser) |
 | YAML | `.yaml` `.yml` (built-in parser) |
+| TOML | `.toml` (built-in parser) |
 
 ## Git Hook Setup
 

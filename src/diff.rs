@@ -45,6 +45,8 @@ pub fn compute_diff(
             "json"
         } else if ext == "yaml" || ext == "yml" {
             "yaml"
+        } else if ext == "toml" {
+            "toml"
         } else {
             match codeix::parser::languages::detect_language(ext) {
                 Some(l) => l,
