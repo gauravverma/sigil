@@ -101,6 +101,10 @@ enum Cli {
         /// Disable ANSI color output
         #[arg(long)]
         no_color: bool,
+
+        /// Skip caller analysis for breaking changes
+        #[arg(long)]
+        no_callers: bool,
     },
     /// Explore project structure: files grouped by directory
     Explore {
@@ -240,7 +244,7 @@ fn main() {
                 }
             }
         }
-        Cli::Diff { ref_spec, files, root, json, pretty, verbose, lines, context, markdown, no_emoji, no_color } => {
+        Cli::Diff { ref_spec, files, root, json, pretty, verbose, lines, context, markdown, no_emoji, no_color, no_callers } => {
             // Handle --no-color
             if no_color {
                 colored::control::set_override(false);
@@ -263,7 +267,36 @@ fn main() {
             };
 
             // Build DiffOutput
-            let output = output::DiffOutput::from_result(&result, include_context, context_lines);
+            let mut output = output::DiffOutput::from_result(&result, include_context, context_lines);
+
+            // Caller analysis for breaking changes
+            if !no_callers && output.summary.has_breaking {
+                // Collect files touched by the diff
+                let diff_files: std::collections::HashSet<String> = output.files.iter()
+                    .map(|f| f.file.clone())
+                    .collect();
+
+                // Try to load index for caller queries
+                match query::load_index(&root) {
+                    Ok((_mt, db)) => {
+                        let db = db.lock().unwrap();
+                        let callers_fn = |name: &str| -> Vec<(String, u32, String)> {
+                            db.get_callers(name, None, None, None, 100, 0)
+                                .unwrap_or_default()
+                                .into_iter()
+                                .map(|r| (r.file.clone(), r.line[0] as u32, r.caller.clone().unwrap_or_default()))
+                                .collect()
+                        };
+                        output::enrich_breaking_with_callers(&mut output.breaking, &callers_fn, &diff_files);
+                    }
+                    Err(_) => {
+                        // Index not available — skip caller analysis silently
+                        if verbose {
+                            eprintln!("note: run `sigil index` to enable caller impact analysis");
+                        }
+                    }
+                }
+            }
 
             // Dispatch to formatter
             if json {

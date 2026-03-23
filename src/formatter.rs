@@ -460,19 +460,38 @@ fn render_breaking(out: &mut String, output: &DiffOutput) {
         return;
     }
 
-    let entries: Vec<String> = output
-        .breaking
-        .iter()
-        .map(|b| format!("{} ({})", b.entity, b.reason))
-        .collect();
+    for b in &output.breaking {
+        out.push_str(&format!(
+            "  {} {}  {} ({})\n",
+            GLYPH_BREAKING.red(),
+            "breaking:".red().bold(),
+            b.entity,
+            b.reason,
+        ));
 
-    let joined = entries.join(&format!("  {}  ", GLYPH_FORMAT));
-    out.push_str(&format!(
-        "  {} {}  {}\n",
-        GLYPH_BREAKING.red(),
-        "breaking:".red().bold(),
-        joined,
-    ));
+        // Caller impact
+        if let Some(ref callers) = b.external_callers {
+            if callers.is_empty() {
+                let in_diff = b.callers_in_diff.unwrap_or(0);
+                if in_diff > 0 {
+                    out.push_str(&format!("     {}\n",
+                        format!("0 callers outside this diff ({} in diff, safe)", in_diff).dimmed()));
+                } else {
+                    out.push_str(&format!("     {}\n",
+                        "0 callers found (safe)".dimmed()));
+                }
+            } else {
+                out.push_str(&format!("     {} callers outside this diff:\n", callers.len()));
+                for c in callers.iter().take(5) {
+                    out.push_str(&format!("       {}:{}  {}\n",
+                        c.file.dimmed(), c.line, c.name));
+                }
+                if callers.len() > 5 {
+                    out.push_str(&format!("       +{} more\n", callers.len() - 5));
+                }
+            }
+        }
+    }
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -585,6 +604,8 @@ mod tests {
             file: "src/payments.py".to_string(),
             line: 47,
             reason: "public signature changed".to_string(),
+            external_callers: None,
+            callers_in_diff: None,
         }];
         output.files = vec![FileSection {
             file: "src/payments.py".to_string(),
@@ -817,6 +838,8 @@ mod tests {
             file: "src/new.py".to_string(),
             line: 20,
             reason: "public entity moved".to_string(),
+            external_callers: None,
+            callers_in_diff: None,
         }];
         let text = format_terminal_v2(&output, &default_opts());
         assert!(text.contains("moves"));
@@ -845,6 +868,8 @@ mod tests {
                 file: "src/payments.py".to_string(),
                 line: 47,
                 reason: "sig changed".to_string(),
+                external_callers: None,
+                callers_in_diff: None,
             },
             BreakingEntry {
                 entity: "old_handler".to_string(),
@@ -852,6 +877,8 @@ mod tests {
                 file: "src/payments.py".to_string(),
                 line: 100,
                 reason: "removed".to_string(),
+                external_callers: None,
+                callers_in_diff: None,
             },
         ];
         let text = format_terminal_v2(&output, &default_opts());

@@ -550,6 +550,8 @@ mod tests {
                 file: "src/payments.py".to_string(),
                 line: 1,
                 reason: "sig changed".to_string(),
+                external_callers: None,
+                callers_in_diff: None,
             },
             BreakingEntry {
                 entity: "old_handler".to_string(),
@@ -557,6 +559,8 @@ mod tests {
                 file: "src/payments.py".to_string(),
                 line: 1,
                 reason: "removed".to_string(),
+                external_callers: None,
+                callers_in_diff: None,
             },
         ];
         let output = make_output("HEAD~1", "HEAD", vec![section], vec![], vec![], breaking);
@@ -600,6 +604,8 @@ mod tests {
                 file: "src/main.rs".to_string(),
                 line: 1,
                 reason: "removed".to_string(),
+                external_callers: None,
+                callers_in_diff: None,
             },
         ];
         let output = make_output("HEAD~1", "HEAD", vec![section], vec![], vec![], breaking);
@@ -823,6 +829,8 @@ mod tests {
                 file: "src/new_module.py".to_string(),
                 line: 20,
                 reason: "moved".to_string(),
+                external_callers: None,
+                callers_in_diff: None,
             },
         ];
         let output = make_output("HEAD~1", "HEAD", vec![], vec![], vec![mv], breaking);
@@ -874,6 +882,8 @@ mod tests {
                 file: "src/payments.py".to_string(),
                 line: 1,
                 reason: "sig changed".to_string(),
+                external_callers: None,
+                callers_in_diff: None,
             },
         ];
         let output = make_output("HEAD~1", "HEAD", vec![section], vec![], vec![], breaking);

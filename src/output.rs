@@ -31,12 +31,23 @@ pub struct OutputSummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CallerInfo {
+    pub file: String,
+    pub line: u32,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BreakingEntry {
     pub entity: String,
     pub kind: String,
     pub file: String,
     pub line: u32,
     pub reason: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_callers: Option<Vec<CallerInfo>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub callers_in_diff: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -224,6 +235,8 @@ impl DiffOutput {
                         file: diff.file.clone(),
                         line: to_line,
                         reason: breaking_reason_for(diff),
+                        external_callers: None,
+                        callers_in_diff: None,
                     });
                 }
             } else {
@@ -285,6 +298,8 @@ impl DiffOutput {
                         file: diff.file.clone(),
                         line,
                         reason: breaking_reason.unwrap_or_default(),
+                        external_callers: None,
+                        callers_in_diff: None,
                     });
                 }
             }
@@ -577,6 +592,32 @@ fn build_natural_language(
 
     result.push('.');
     result
+}
+
+/// Enrich breaking entries with caller information from the codeix index.
+/// `callers_fn` maps an entity name to a list of (file, line, caller_name) tuples.
+/// `diff_files` is the set of files touched by the diff.
+pub fn enrich_breaking_with_callers(
+    breaking: &mut Vec<BreakingEntry>,
+    callers_fn: &dyn Fn(&str) -> Vec<(String, u32, String)>,
+    diff_files: &std::collections::HashSet<String>,
+) {
+    for entry in breaking.iter_mut() {
+        let all_callers = callers_fn(&entry.entity);
+        let mut in_diff = 0usize;
+        let mut external = Vec::new();
+
+        for (file, line, name) in all_callers {
+            if diff_files.contains(&file) {
+                in_diff += 1;
+            } else {
+                external.push(CallerInfo { file, line, name });
+            }
+        }
+
+        entry.callers_in_diff = Some(in_diff);
+        entry.external_callers = Some(external);
+    }
 }
 
 #[cfg(test)]
