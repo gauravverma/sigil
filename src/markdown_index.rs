@@ -2,11 +2,13 @@ use crate::entity::{Entity, Reference};
 use crate::hasher;
 
 /// Truncate a string to at most 60 characters, appending "..." if truncated.
+/// Uses char boundaries to avoid panicking on multi-byte UTF-8.
 fn truncate_name(s: &str) -> String {
-    if s.len() <= 60 {
+    if s.chars().count() <= 60 {
         s.to_string()
     } else {
-        format!("{}...", &s[..57])
+        let boundary = s.char_indices().nth(57).map(|(i, _)| i).unwrap_or(s.len());
+        format!("{}...", &s[..boundary])
     }
 }
 
@@ -547,14 +549,7 @@ pub fn parse_markdown_file(
         &mut acc_sig, source, file_path, &heading_stack, &mut entities,
     );
 
-    // Close any remaining open headings
-    let end_line = total_lines as u32;
-    close_headings(
-        &mut heading_stack, 1, end_line,
-        source, file_path, &lines, &mut entities,
-    );
-
-    // Handle unclosed fenced code block at EOF
+    // Handle unclosed fenced code block at EOF (before draining heading stack)
     if let State::InFencedCode { start_line, lang, first_content, .. } = &state {
         let parent = current_parent(&heading_stack);
         let sig = lang.clone().filter(|s| !s.is_empty());
@@ -580,9 +575,11 @@ pub fn parse_markdown_file(
         });
     }
 
-    // Handle unclosed table at EOF
+    // Handle unclosed table at EOF (before draining heading stack)
     if let State::InTable { start_line, first_row_content } = &state {
         let parent = current_parent(&heading_stack);
+
+
         let name = first_row_content.clone();
 
         let raw = hasher::extract_raw_bytes(source, *start_line, total_lines);
@@ -603,6 +600,13 @@ pub fn parse_markdown_file(
             struct_hash,
         });
     }
+
+    // Close any remaining open headings (after handling unclosed blocks so they get correct parents)
+    let end_line = total_lines as u32;
+    close_headings(
+        &mut heading_stack, 1, end_line,
+        source, file_path, &lines, &mut entities,
+    );
 
     entities.sort_by(|a: &Entity, b: &Entity| a.line_start.cmp(&b.line_start));
     Ok((entities, Vec::new()))
