@@ -18,6 +18,10 @@ pub fn parse_single_file(
     file_path: &str,
     language: &str,
 ) -> Result<(Vec<Entity>, Vec<Reference>), String> {
+    if language == "json" {
+        return crate::json_index::parse_json_file(source, file_path);
+    }
+
     let (symbols, _texts, references) = codeix::parser::treesitter::parse_file(
         source.as_bytes(), language, file_path
     ).map_err(|e| format!("parse error: {}", e))?;
@@ -128,13 +132,17 @@ pub fn build_index(
         }
 
         let ext = filepath.extension().and_then(|e| e.to_str()).unwrap_or("");
-        let lang = match codeix::parser::languages::detect_language(ext) {
-            Some(l) => l,
-            None => {
-                if verbose {
-                    eprintln!("skip (unsupported): {}", relative_str);
+        let lang = if ext == "json" {
+            "json"
+        } else {
+            match codeix::parser::languages::detect_language(ext) {
+                Some(l) => l,
+                None => {
+                    if verbose {
+                        eprintln!("skip (unsupported): {}", relative_str);
+                    }
+                    continue;
                 }
-                continue;
             }
         };
 
@@ -239,8 +247,10 @@ fn discover_source_files(root: &Path) -> Vec<PathBuf> {
         .filter(|entry| {
             entry.path().extension()
                 .and_then(|e| e.to_str())
-                .and_then(|ext| codeix::parser::languages::detect_language(ext))
-                .is_some()
+                .map(|ext| {
+                    ext == "json" || codeix::parser::languages::detect_language(ext).is_some()
+                })
+                .unwrap_or(false)
         })
         .map(|entry| entry.into_path())
         .collect()
