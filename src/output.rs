@@ -82,6 +82,8 @@ pub struct SnippetContext {
     pub head_snippet: String,
     pub language: String,
     pub snippet_kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hunks: Option<Vec<crate::inline_diff::DiffLine>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -488,11 +490,14 @@ fn build_snippet_context(diff: &EntityDiff, result: &DiffResult) -> Option<Snipp
         _ => "full".to_string(),
     };
 
+    let hunks = inline_diff::compute_inline_diff_hunked(&base_snippet, &head_snippet, 3);
+
     Some(SnippetContext {
         base_snippet,
         head_snippet,
         language,
         snippet_kind,
+        hunks,
     })
 }
 

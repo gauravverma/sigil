@@ -842,6 +842,7 @@ mod tests {
             head_snippet: "def execute_payment(commit: bool = False):".to_string(),
             language: "python".to_string(),
             snippet_kind: "signature".to_string(),
+            hunks: None,
         });
         let section = make_file_section("src/payments.py", vec![entity]);
         let breaking = vec![
@@ -874,6 +875,7 @@ mod tests {
             head_snippet: "new code".to_string(),
             language: "rust".to_string(),
             snippet_kind: "full".to_string(),
+            hunks: None,
         });
         let section = make_file_section("src/lib.rs", vec![entity]);
         let output = make_output("HEAD~1", "HEAD", vec![section], vec![], vec![], vec![]);
