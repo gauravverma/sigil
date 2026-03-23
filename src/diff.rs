@@ -41,9 +41,13 @@ pub fn compute_diff(
 
     for change in &changes {
         let ext = change.path.rsplit('.').next().unwrap_or("");
-        let lang = match codeix::parser::languages::detect_language(ext) {
-            Some(l) => l,
-            None => continue,
+        let lang: &str = if ext == "json" {
+            "json"
+        } else {
+            match codeix::parser::languages::detect_language(ext) {
+                Some(l) => l,
+                None => continue,
+            }
         };
 
         if change.status != FileStatus::Added {
