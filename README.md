@@ -285,6 +285,7 @@ Tree-sitter grammars via [codeix](https://github.com/montanetech/codeix):
 | Ruby | `.rb` `.rake` `.gemspec` |
 | C# | `.cs` |
 | Markdown | `.md` `.markdown` |
+| JSON | `.json` (built-in parser) |
 
 ## Git Hook Setup
 

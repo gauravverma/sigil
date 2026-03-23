@@ -26,6 +26,7 @@ src/
   cache.rs         — Incremental indexing cache (.sigil/cache.json)
   writer.rs        — JSONL output writer
   index.rs         — Index orchestration + parse_single_file
+  json_index.rs    — JSON file parsing (custom parser, not tree-sitter)
   query.rs         — codeix SearchDb wrapper (load_index, explore, search, format helpers)
   git.rs           — Git operations (changed_files, file_at_ref)
   matcher.rs       — Entity matching across versions (exact/moved/renamed)
