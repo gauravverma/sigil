@@ -161,6 +161,52 @@ fn indexes_json_fixture() {
 }
 
 #[test]
+fn indexes_yaml_fixture() {
+    let output = run_sigil_index(
+        &fixture_path(),
+        &["--files", &format!("{}/sample.yaml", fixture_path())],
+    );
+    let entities: Vec<serde_json::Value> = output.lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+
+    // Root keys: name, version, settings, dependencies
+    // Nested: theme (under settings), color, font_size (under theme),
+    //         debug, tags (under settings), serde, blake3 (under dependencies)
+    assert!(entities.len() >= 10, "expected at least 10 entities, got {}", entities.len());
+
+    let names: Vec<&str> = entities.iter()
+        .map(|e| e["name"].as_str().unwrap())
+        .collect();
+    assert!(names.contains(&"name"), "missing 'name' key");
+    assert!(names.contains(&"settings"), "missing 'settings' key");
+    assert!(names.contains(&"theme"), "missing 'theme' key");
+    assert!(names.contains(&"color"), "missing 'color' key");
+    assert!(names.contains(&"dependencies"), "missing 'dependencies' key");
+
+    // Check kinds
+    let settings = entities.iter().find(|e| e["name"] == "settings").unwrap();
+    assert_eq!(settings["kind"].as_str().unwrap(), "object");
+
+    let tags = entities.iter().find(|e| e["name"] == "tags").unwrap();
+    assert_eq!(tags["kind"].as_str().unwrap(), "array");
+
+    let color = entities.iter().find(|e| e["name"] == "color").unwrap();
+    assert_eq!(color["kind"].as_str().unwrap(), "property");
+    assert_eq!(color["parent"].as_str().unwrap(), "theme");
+
+    // Check signatures
+    assert_eq!(settings["sig"].as_str().unwrap(), "\"settings\": object");
+    assert_eq!(color["sig"].as_str().unwrap(), "\"color\": string");
+
+    // All struct_hashes must be 16 hex chars
+    for entity in &entities {
+        let sh = entity["struct_hash"].as_str().unwrap();
+        assert_eq!(sh.len(), 16, "struct_hash wrong length for {}", entity["name"]);
+    }
+}
+
+#[test]
 fn incremental_caching_works() {
     // Use a temp directory with a copy of fixtures
     let tmp = std::env::temp_dir().join("sigil_incr_test");

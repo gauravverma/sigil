@@ -1,0 +1,13 @@
+name: sigil-test
+version: 1.0.0
+settings:
+  theme:
+    color: dark
+    font_size: 14
+  debug: false
+  tags:
+    - fast
+    - structural
+dependencies:
+  serde: "1.0"
+  blake3: "1.0"
