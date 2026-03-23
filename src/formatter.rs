@@ -383,7 +383,26 @@ fn render_modified_continuation(out: &mut String, entity: &OutputEntity) {
 }
 
 fn render_context(out: &mut String, ctx: &SnippetContext) {
-    // Show base → head diff as indented snippet
+    if let Some(ref hunks) = ctx.hunks {
+        for line in hunks {
+            match line.kind {
+                crate::inline_diff::DiffLineKind::Context => {
+                    out.push_str(&format!("       {}\n", line.text.dimmed()));
+                }
+                crate::inline_diff::DiffLineKind::Removed => {
+                    out.push_str(&format!("       {}\n", format!("-  {}", line.text).red()));
+                }
+                crate::inline_diff::DiffLineKind::Added => {
+                    out.push_str(&format!("       {}\n", format!("+  {}", line.text).green()));
+                }
+                crate::inline_diff::DiffLineKind::Separator => {
+                    out.push_str(&format!("       {}\n", "\u{22EF}".dimmed())); // ⋯
+                }
+            }
+        }
+        return;
+    }
+    // Fallback for old-style base/head snippets (backward compat)
     if !ctx.base_snippet.is_empty() {
         for line in ctx.base_snippet.lines() {
             out.push_str(&format!("       {}\n", format!("- {}", line).red()));
@@ -470,7 +489,7 @@ mod tests {
     use super::*;
     use crate::output::{
         BreakingEntry, DiffOutput, FileSection, FileSummary, Meta, MoveEntry, OutputEntity,
-        OutputPattern, OutputSummary,
+        OutputPattern, OutputSummary, SnippetContext, TokenChange,
     };
 
     fn make_meta(base_ref: &str) -> Meta {
@@ -989,5 +1008,38 @@ mod tests {
             "expected at least 4 separator lines, found {}",
             count
         );
+    }
+
+    // ── Hunk rendering test ─────────────────────────────────────────────
+
+    #[test]
+    fn context_mode_renders_hunks() {
+        let mut output = empty_output("HEAD~1");
+        output.summary = make_summary(1, 0, 1, 0, 0, false);
+        let mut entity = make_entity("modified", "my_func", "function");
+        entity.sig_changed = Some(false);
+        entity.body_changed = Some(true);
+        entity.context = Some(SnippetContext {
+            base_snippet: String::new(),
+            head_snippet: String::new(),
+            language: "python".to_string(),
+            snippet_kind: "diff".to_string(),
+            hunks: Some(vec![
+                crate::inline_diff::DiffLine { kind: crate::inline_diff::DiffLineKind::Context, text: "    x = 1".to_string() },
+                crate::inline_diff::DiffLine { kind: crate::inline_diff::DiffLineKind::Removed, text: "    return old".to_string() },
+                crate::inline_diff::DiffLine { kind: crate::inline_diff::DiffLineKind::Added, text: "    return new".to_string() },
+                crate::inline_diff::DiffLine { kind: crate::inline_diff::DiffLineKind::Context, text: "    y = 2".to_string() },
+            ]),
+        });
+        output.files = vec![FileSection {
+            file: "src/a.py".to_string(),
+            summary: FileSummary { added: 0, modified: 1, removed: 0, renamed: 0, formatting_only: 0 },
+            entities: vec![entity],
+        }];
+        let opts = FormatOptions { show_lines: false, show_context: true, use_color: false };
+        let text = format_terminal_v2(&output, &opts);
+        assert!(text.contains("x = 1"), "context line should appear");
+        assert!(text.contains("return old"), "removed line should appear");
+        assert!(text.contains("return new"), "added line should appear");
     }
 }

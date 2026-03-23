@@ -319,6 +319,28 @@ fn build_change_detail_suffix(entity: &OutputEntity) -> String {
 
 /// Render a fenced context code block for a snippet.
 fn render_context_block(md: &mut String, ctx: &SnippetContext) {
+    if let Some(ref hunks) = ctx.hunks {
+        md.push_str("  ```diff\n");
+        for line in hunks {
+            match line.kind {
+                crate::inline_diff::DiffLineKind::Context => {
+                    md.push_str(&format!("   {}\n", line.text));
+                }
+                crate::inline_diff::DiffLineKind::Removed => {
+                    md.push_str(&format!("  -{}\n", line.text));
+                }
+                crate::inline_diff::DiffLineKind::Added => {
+                    md.push_str(&format!("  +{}\n", line.text));
+                }
+                crate::inline_diff::DiffLineKind::Separator => {
+                    md.push_str("  ...\n");
+                }
+            }
+        }
+        md.push_str("  ```\n");
+        return;
+    }
+    // Fallback for old-style base/head snippets (backward compat)
     md.push_str(&format!("  ```{}\n", ctx.language));
     md.push_str("  # before\n");
     for line in ctx.base_snippet.lines() {
