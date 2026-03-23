@@ -286,6 +286,7 @@ Tree-sitter grammars via [codeix](https://github.com/montanetech/codeix):
 | C# | `.cs` |
 | Markdown | `.md` `.markdown` |
 | JSON | `.json` (built-in parser) |
+| YAML | `.yaml` `.yml` (built-in parser) |
 
 ## Git Hook Setup
 
