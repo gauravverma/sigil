@@ -13,11 +13,12 @@ use crate::change_detail;
 pub struct DiffOptions {
     pub include_unchanged: bool,
     pub verbose: bool,
+    pub include_context: bool,
 }
 
 impl Default for DiffOptions {
     fn default() -> Self {
-        DiffOptions { include_unchanged: false, verbose: false }
+        DiffOptions { include_unchanged: false, verbose: false, include_context: false }
     }
 }
 
@@ -114,6 +115,8 @@ pub fn compute_diff(
         entities: entity_diffs,
         patterns,
         summary,
+        old_sources: if opts.include_context { Some(old_sources) } else { None },
+        new_sources: if opts.include_context { Some(new_sources) } else { None },
     })
 }
 
@@ -176,6 +179,8 @@ pub fn compute_file_diff(
         entities: entity_diffs,
         patterns,
         summary,
+        old_sources: if opts.include_context { Some(old_sources) } else { None },
+        new_sources: if opts.include_context { Some(new_sources) } else { None },
     })
 }
 

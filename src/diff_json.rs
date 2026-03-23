@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use std::collections::HashMap;
 use crate::entity::Entity;
 use crate::inline_diff::DiffLine;
 use crate::change_detail::ChangeDetail;
@@ -71,6 +72,10 @@ pub struct DiffResult {
     pub entities: Vec<EntityDiff>,
     pub patterns: Vec<CrossFilePattern>,
     pub summary: DiffSummary,
+    #[serde(skip)]
+    pub old_sources: Option<HashMap<String, String>>,
+    #[serde(skip)]
+    pub new_sources: Option<HashMap<String, String>>,
 }
 
 impl DiffResult {
@@ -184,6 +189,8 @@ mod tests {
                 moved: 0, renamed: 0, formatting_only: 0,
                 has_breaking_change: false,
             },
+            old_sources: None,
+            new_sources: None,
         };
         let json = serde_json::to_string(&result).unwrap();
         let parsed: DiffResult = serde_json::from_str(&json).unwrap();

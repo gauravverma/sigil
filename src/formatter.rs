@@ -148,6 +148,8 @@ mod tests {
                 moved: 0, renamed: 0, formatting_only: 3,
                 has_breaking_change: false,
             },
+            old_sources: None,
+            new_sources: None,
         };
         let output = format_terminal(&result);
         assert!(output.contains("1 added"));
@@ -169,6 +171,8 @@ mod tests {
                 moved: 0, renamed: 0, formatting_only: 0,
                 has_breaking_change: true,
             },
+            old_sources: None,
+            new_sources: None,
         };
         let output = format_terminal(&result);
         assert!(output.contains("BREAKING"));

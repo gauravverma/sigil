@@ -37,6 +37,7 @@ src/
   diff_json.rs     — Diff output structs (EntityDiff, DiffResult)
   inline_diff.rs   — Line-level diffs within entities
   change_detail.rs — Token-level change extraction
+  output.rs        — DiffOutput intermediate model for formatters (terminal, markdown, JSON)
   formatter.rs     — Colored terminal output
 ```
 
