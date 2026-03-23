@@ -54,11 +54,15 @@ enum Cli {
         #[arg(short, long)]
         verbose: bool,
     },
-    /// Structural diff between two git refs
+    /// Structural diff between two git refs or two files
     Diff {
         /// Ref spec: HEAD~1, main..HEAD, abc123..def456
-        #[arg()]
-        ref_spec: String,
+        #[arg(required_unless_present = "files")]
+        ref_spec: Option<String>,
+
+        /// Compare two files directly instead of git refs
+        #[arg(long, num_args = 2, value_names = ["OLD", "NEW"])]
+        files: Vec<PathBuf>,
 
         /// Project root directory
         #[arg(short, long, default_value = ".")]
@@ -212,13 +216,20 @@ fn main() {
                 }
             }
         }
-        Cli::Diff { ref_spec, root, json, pretty, verbose } => {
-            let (base_ref, head_ref) = git::parse_ref_spec(&ref_spec)
-                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+        Cli::Diff { ref_spec, files, root, json, pretty, verbose } => {
+            let result = if files.len() == 2 {
+                let opts = diff::DiffOptions { include_unchanged: false, verbose };
+                diff::compute_file_diff(&files[0], &files[1], &opts)
+                    .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); })
+            } else {
+                let ref_spec = ref_spec.unwrap();
+                let (base_ref, head_ref) = git::parse_ref_spec(&ref_spec)
+                    .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
 
-            let opts = diff::DiffOptions { include_unchanged: false, verbose };
-            let result = diff::compute_diff(&root, &base_ref, &head_ref, &opts)
-                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+                let opts = diff::DiffOptions { include_unchanged: false, verbose };
+                diff::compute_diff(&root, &base_ref, &head_ref, &opts)
+                    .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); })
+            };
 
             if json {
                 let out = std::io::stdout();

@@ -91,13 +91,106 @@ pub fn compute_diff(
         eprintln!("parsed {} old entities, {} new entities", old_entities.len(), new_entities.len());
     }
 
-    let matches = matcher::match_entities(&old_entities, &new_entities);
+    let entity_diffs = match_classify_enrich(
+        &old_entities, &new_entities, &old_sources, &new_sources, opts.verbose,
+    );
+
+    let patterns = DiffResult::detect_patterns(&entity_diffs);
+    let summary = DiffResult::compute_summary(&entity_diffs);
+
+    Ok(DiffResult {
+        base_ref: base_ref.to_string(),
+        head_ref: head_ref.to_string(),
+        entities: entity_diffs,
+        patterns,
+        summary,
+    })
+}
+
+/// Compare two files directly without git.
+pub fn compute_file_diff(
+    old_path: &Path,
+    new_path: &Path,
+    opts: &DiffOptions,
+) -> Result<DiffResult, String> {
+    let old_ext = old_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+    let new_ext = new_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+
+    let old_lang = detect_lang(old_ext)
+        .ok_or_else(|| format!("unsupported file type: {}", old_path.display()))?;
+    let new_lang = detect_lang(new_ext)
+        .ok_or_else(|| format!("unsupported file type: {}", new_path.display()))?;
+
+    if old_lang != new_lang {
+        return Err(format!(
+            "language mismatch: {} ({}) vs {} ({})",
+            old_path.display(), old_lang, new_path.display(), new_lang
+        ));
+    }
+
+    let old_source = std::fs::read_to_string(old_path)
+        .map_err(|e| format!("cannot read {}: {}", old_path.display(), e))?;
+    let new_source = std::fs::read_to_string(new_path)
+        .map_err(|e| format!("cannot read {}: {}", new_path.display(), e))?;
+
+    let old_path_str = old_path.to_string_lossy().to_string();
+    let new_path_str = new_path.to_string_lossy().to_string();
+
+    // Use the same file path for both so entities match by name (not treated as moves)
+    let canonical_path = new_path_str.clone();
+
+    let (old_entities, _) = index::parse_single_file(&old_source, &canonical_path, old_lang)?;
+    let (new_entities, _) = index::parse_single_file(&new_source, &canonical_path, new_lang)?;
+
+    if opts.verbose {
+        eprintln!("parsed {} old entities, {} new entities", old_entities.len(), new_entities.len());
+    }
+
+    let mut old_sources: HashMap<String, String> = HashMap::new();
+    let mut new_sources: HashMap<String, String> = HashMap::new();
+    old_sources.insert(canonical_path.clone(), old_source);
+    new_sources.insert(canonical_path, new_source);
+
+    let entity_diffs = match_classify_enrich(
+        &old_entities, &new_entities, &old_sources, &new_sources, opts.verbose,
+    );
+
+    let patterns = DiffResult::detect_patterns(&entity_diffs);
+    let summary = DiffResult::compute_summary(&entity_diffs);
+
+    Ok(DiffResult {
+        base_ref: old_path_str,
+        head_ref: new_path_str,
+        entities: entity_diffs,
+        patterns,
+        summary,
+    })
+}
+
+/// Detect language from file extension.
+fn detect_lang(ext: &str) -> Option<&str> {
+    match ext {
+        "json" => Some("json"),
+        "yaml" | "yml" => Some("yaml"),
+        "toml" => Some("toml"),
+        _ => codeix::parser::languages::detect_language(ext),
+    }
+}
+
+/// Shared pipeline: match entities, classify changes, enrich with inline diffs.
+fn match_classify_enrich(
+    old_entities: &[Entity],
+    new_entities: &[Entity],
+    old_sources: &HashMap<String, String>,
+    new_sources: &HashMap<String, String>,
+    verbose: bool,
+) -> Vec<EntityDiff> {
+    let matches = matcher::match_entities(old_entities, new_entities);
 
     let mut entity_diffs: Vec<EntityDiff> = matches.iter()
         .map(|m| classifier::classify(m))
         .collect();
 
-    // Enrich with inline diffs
     for diff in &mut entity_diffs {
         if let (Some(old_e), Some(new_e)) = (&diff.old, &diff.new) {
             if let (Some(old_src), Some(new_src)) = (old_sources.get(&old_e.file), new_sources.get(&new_e.file)) {
@@ -114,14 +207,9 @@ pub fn compute_diff(
         }
     }
 
-    let patterns = DiffResult::detect_patterns(&entity_diffs);
-    let summary = DiffResult::compute_summary(&entity_diffs);
+    if verbose {
+        eprintln!("{} entity diffs produced", entity_diffs.len());
+    }
 
-    Ok(DiffResult {
-        base_ref: base_ref.to_string(),
-        head_ref: head_ref.to_string(),
-        entities: entity_diffs,
-        patterns,
-        summary,
-    })
+    entity_diffs
 }

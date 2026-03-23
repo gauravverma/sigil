@@ -164,6 +164,10 @@ sigil diff abc123..def456      # Compare two specific commits
 sigil diff HEAD~3 --json       # JSON output
 sigil diff HEAD~1 --pretty     # Pretty-printed JSON
 sigil diff HEAD~1 -v           # Verbose (show parse progress)
+
+# Compare two files directly (no git required)
+sigil diff --files old.py new.py
+sigil diff --files v1/config.toml v2/config.toml --json
 ```
 
 **Change classifications:**
