@@ -24,6 +24,8 @@ Add a custom markdown parser (`markdown_index.rs`) that extracts structural enti
 | List | `"list"` | First item preview, truncated to 60 chars | enclosing section | `"ordered"` or `"unordered"` |
 | Paragraph | `"paragraph"` | First line preview, truncated to 60 chars | enclosing section | `None` |
 
+All entities have `meta: None` — no metaprogramming markers apply to markdown constructs.
+
 ### Heading Nesting
 
 Headings form a hierarchy: `h2` parents under `h1`, `h3` under `h2`, etc. A heading at the same or higher level closes the previous section at that level. For example, `## A` followed by `## B` are siblings under their parent `h1`, not nested.
@@ -31,6 +33,8 @@ Headings form a hierarchy: `h2` parents under `h1`, `h3` under `h2`, etc. A head
 ### Section Spans
 
 A heading entity's `line_start` is the heading line. Its `line_end` is the line before the next same-or-higher-level heading, or EOF. The body hash covers this full span, so content changes within a section are detected even if no leaf entity specifically changed.
+
+**Overlapping spans are intentional.** A section entity's span encompasses all child entities within it (code blocks, paragraphs, sub-headings, etc.). This means a content change in a child entity will also change the parent section's `struct_hash` and `body_hash`. This is consistent with JSON/YAML/TOML parsers where parent objects span their children, and is the correct behavior — it enables detecting "something changed in this section" at every level of the hierarchy.
 
 ### Content-Derived Names
 
@@ -63,7 +67,7 @@ States:
 ```
 Normal → InFrontMatter  (if `---` at line 1)
 Normal → InFencedCode   (if ``` or ~~~)
-Normal → InTable         (if line matches `| ... |` followed by separator row)
+Normal → InTable         (if line matches `| ... |` and next line is a separator row like `|---|---|`)
 Normal ← InFrontMatter  (on closing `---`)
 Normal ← InFencedCode   (on matching closing fence)
 Normal ← InTable         (on first non-table line)
@@ -82,7 +86,7 @@ A `Vec<(level, name, line_start)>` tracks open sections. When a new heading at l
 
 ### Front Matter Delegation
 
-When `---` is detected at line 1, the YAML content between the delimiters is extracted and passed to the existing `parse_yaml_file()`. Returned entities get:
+When `---` is detected at line 1, the YAML content between the opening and closing `---` delimiters is extracted (**delimiters stripped, only the YAML body is passed**) and fed to the existing `parse_yaml_file()`. The markdown file's path is passed as `file_path` so entities get the correct `file` field. Returned entities get:
 - Line offsets adjusted (shifted by front matter start line)
 - Parent set to `"frontmatter"`
 
@@ -91,9 +95,9 @@ This reuses proven YAML parsing code and provides key-level diff granularity for
 ### Hashing
 
 Same as other custom parsers:
-- `struct_hash` — from raw source bytes of the entity span
-- `body_hash` — from source lines within the entity span
-- `sig_hash` — from the `sig` field
+- `struct_hash` — from raw source bytes of the entity span via `hasher::struct_hash()`
+- `body_hash` — via `hasher::body_hash_raw()` (**not** `body_hash()` — the non-raw variant strips lines starting with `#` as comments, which would incorrectly discard heading lines)
+- `sig_hash` — from the `sig` field via `hasher::sig_hash()`
 
 ### Output
 
@@ -101,17 +105,23 @@ Entities sorted by `(file, line_start)`, deterministic — consistent with all o
 
 ## Integration
 
-### Changes to `src/index.rs`
+Language detection for markdown extensions (`md`, `markdown`, `mdx` → `"markdown"`) must be added in **all four** locations where extension-to-language mapping exists. These are currently duplicated across the codebase:
 
-1. **Extension mapping** — add to language detection:
-   - `.md` → `"markdown"`
-   - `.markdown` → `"markdown"`
-   - `.mdx` → `"markdown"`
+### 1. `src/index.rs` — `build_index()` inline mapping
 
-2. **Dispatcher** — add branch in `parse_single_file()`:
-   - `"markdown"` → `parse_markdown_file(source, file_path)`
+Add `"md" | "markdown" | "mdx" => "markdown"` to the extension match block.
 
-3. **File discovery** — add `md`, `markdown`, `mdx` to the set of recognized extensions.
+### 2. `src/index.rs` — `parse_single_file()` dispatcher
+
+Add `"markdown" => parse_markdown_file(source, file_path)` branch.
+
+### 3. `src/index.rs` — `discover_source_files()` extension filter
+
+Add `md`, `markdown`, `mdx` to the recognized extensions so markdown files are discovered during project indexing.
+
+### 4. `src/diff.rs` — `compute_diff()` and `detect_lang()` inline mappings
+
+Add `"md" | "markdown" | "mdx" => "markdown"` to **both** mapping locations in diff.rs. Without this, `sigil diff` would silently skip markdown files even though `sigil index` processes them.
 
 ### Changes to `src/main.rs`
 
@@ -121,7 +131,7 @@ Entities sorted by `(file, line_start)`, deterministic — consistent with all o
 
 The following are entity-generic and work with any entity kind:
 - `entity.rs` — kind is a free-form string
-- `diff.rs` / `matcher.rs` / `classifier.rs` — operate on `Entity` structs
+- `matcher.rs` / `classifier.rs` — operate on `Entity` structs
 - `formatter.rs` / `markdown_formatter.rs` — format any entity kind
 - `cache.rs` — incremental caching is file-path-based
 
@@ -130,7 +140,7 @@ The following are entity-generic and work with any entity kind:
 ### Handled
 
 - **Nested fences** — state machine tracks the opening fence string, only closes on exact match
-- **Code blocks inside blockquotes** — blockquote is flushed, then code block state takes over
+- **Code blocks inside blockquotes** — fenced code blocks within `>` prefixed lines are treated as part of the enclosing blockquote entity (not extracted as separate code blocks), since every line including the fence markers has the `>` prefix. The entire blockquote including any embedded code is one entity.
 - **Empty sections** — heading with no content produces entity with matching `line_start`/`line_end` and empty body hash
 - **No headings** — all elements are top-level (`parent = None`)
 - **Front matter only at start** — `---` on line 1 triggers front matter; `---` elsewhere is a horizontal rule (ignored)
@@ -143,6 +153,8 @@ The following are entity-generic and work with any entity kind:
 - **HTML blocks** — raw HTML treated as paragraph text
 - **Nested blockquotes** (`>> `) — flattened into single blockquote entity
 - **Nested lists** — sub-lists are part of parent list entity
+- **MDX components** — JSX/TSX components embedded in `.mdx` files are treated as paragraph text
+- **Indented code blocks** — only fenced code blocks are recognized; 4-space indented code blocks are treated as paragraph content
 
 All can be added incrementally without breaking the entity model.
 
