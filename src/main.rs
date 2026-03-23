@@ -87,9 +87,13 @@ enum Cli {
         #[arg(long)]
         lines: bool,
 
-        /// Include code context in output (optionally specify lines of context, default 3)
-        #[arg(long, default_missing_value = "3", num_args = 0..=1)]
-        context: Option<usize>,
+        /// Lines of context around changes (default 3, use --no-context to disable)
+        #[arg(long, default_value = "3")]
+        context: usize,
+
+        /// Disable code context in output
+        #[arg(long)]
+        no_context: bool,
 
         /// Output as GitHub-flavored Markdown
         #[arg(long)]
@@ -253,15 +257,15 @@ fn main() {
                 }
             }
         }
-        Cli::Diff { ref_spec, files, root, json, pretty, verbose, lines, context, markdown, no_emoji, no_color, no_callers, summary, group } => {
+        Cli::Diff { ref_spec, files, root, json, pretty, verbose, lines, context, no_context, markdown, no_emoji, no_color, no_callers, summary, group } => {
             // Handle --no-color
             if no_color {
                 colored::control::set_override(false);
             }
 
             // Compute diff result
-            let include_context = context.is_some();
-            let context_lines = context.unwrap_or(3);
+            let include_context = !no_context;
+            let context_lines = context;
             let result = if files.len() == 2 {
                 let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context, context_lines };
                 diff::compute_file_diff(&files[0], &files[1], &opts)
@@ -340,12 +344,6 @@ fn main() {
                 print!("{}", formatter::format_terminal_v2(&output, &opts));
             }
 
-            // Exit codes (ONLY for Diff command)
-            let s = &output.summary;
-            let exit_code = if s.has_breaking { 2 }
-                else if s.added + s.removed + s.modified + s.moves + s.renamed > 0 { 1 }
-                else { 0 };
-            std::process::exit(exit_code);
         }
         Cli::Explore { root, path, max_entries, json } => {
             let (_mt, db) = query::load_index(&root)
