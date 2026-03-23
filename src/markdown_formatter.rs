@@ -698,6 +698,36 @@ mod tests {
     }
 
     #[test]
+    fn test_formatting_only_not_empty_diff() {
+        // A diff with ONLY formatting_only entities should render file sections,
+        // NOT the "no structural changes" early return.
+        let entities = vec![
+            {
+                let mut e = make_entity("formatting_only", "func_a", "function", false);
+                e.change = "formatting_only".to_string();
+                e.sig_changed = None;
+                e.body_changed = None;
+                e
+            },
+        ];
+        let section = make_file_section("src/main.py", entities);
+        let output = make_output("HEAD~1", "HEAD", vec![section], vec![], vec![], vec![]);
+        let opts = MarkdownOptions { use_emoji: true, show_context: false };
+        let md = format_markdown(&output, &opts);
+
+        // Should NOT show "no structural changes"
+        assert!(
+            !md.contains("no structural changes"),
+            "formatting-only diff must not say 'no structural changes', got:\n{}",
+            md,
+        );
+        // Should show the file section
+        assert!(md.contains("`src/main.py`"));
+        // Should show the formatting count in summary
+        assert!(md.contains("1 formatting"));
+    }
+
+    #[test]
     fn test_patterns_section() {
         let pattern = OutputPattern {
             id: "pat_1".to_string(),

@@ -1063,6 +1063,76 @@ mod tests {
         );
     }
 
+    // ── Formatting-only edge case ─────────────────────────────────────
+
+    #[test]
+    fn formatting_only_summary_shows_formatting_count() {
+        // When ALL entities are formatting_only, the summary should show
+        // the formatting count and NOT "no structural changes".
+        let mut output = empty_output("HEAD~1");
+        output.summary = OutputSummary {
+            files_changed: 2,
+            patterns: 0,
+            moves: 0,
+            added: 0,
+            removed: 0,
+            modified: 0,
+            renamed: 0,
+            formatting_only: 4,
+            has_breaking: false,
+            natural_language: String::new(),
+        };
+        output.files = vec![
+            FileSection {
+                file: "src/a.py".to_string(),
+                summary: FileSummary {
+                    added: 0,
+                    modified: 0,
+                    removed: 0,
+                    renamed: 0,
+                    formatting_only: 2,
+                },
+                entities: vec![
+                    make_entity("formatting_only", "fn_a", "function"),
+                    make_entity("formatting_only", "fn_b", "function"),
+                ],
+            },
+            FileSection {
+                file: "src/b.py".to_string(),
+                summary: FileSummary {
+                    added: 0,
+                    modified: 0,
+                    removed: 0,
+                    renamed: 0,
+                    formatting_only: 2,
+                },
+                entities: vec![
+                    make_entity("formatting_only", "fn_c", "function"),
+                    make_entity("formatting_only", "fn_d", "function"),
+                ],
+            },
+        ];
+        let text = format_terminal_v2(&output, &default_opts());
+        // Header shows "(formatting only)"
+        assert!(
+            text.contains("(formatting only)"),
+            "expected '(formatting only)' in header, got:\n{}",
+            text
+        );
+        // Summary footer shows formatting count
+        assert!(
+            text.contains("4 formatting"),
+            "expected '4 formatting' in summary, got:\n{}",
+            text
+        );
+        // Does NOT say "no structural changes"
+        assert!(
+            !text.contains("no structural changes"),
+            "formatting-only diff should not say 'no structural changes', got:\n{}",
+            text
+        );
+    }
+
     // ── Separator test ──────────────────────────────────────────────────
 
     #[test]

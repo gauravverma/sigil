@@ -1178,6 +1178,67 @@ mod tests {
     }
 
     #[test]
+    fn formatting_only_implies_exit_code_zero() {
+        // When ALL entities are formatting_only, the structural counts
+        // (added, removed, modified, moves, renamed) must all be 0
+        // and has_breaking must be false — matching exit code 0 logic.
+        let entities = vec![
+            EntityDiff {
+                change: ChangeKind::FormattingOnly,
+                name: "fn_a".into(),
+                kind: "function".into(),
+                file: "a.py".into(),
+                old_file: None,
+                old_name: None,
+                sig_changed: None,
+                body_changed: None,
+                breaking: false,
+                breaking_reason: None,
+                old: Some(make_entity("a.py", "fn_a", "function", 1, 5)),
+                new: Some(make_entity("a.py", "fn_a", "function", 1, 5)),
+                inline_diff: None,
+                change_details: None,
+            },
+            EntityDiff {
+                change: ChangeKind::FormattingOnly,
+                name: "fn_b".into(),
+                kind: "function".into(),
+                file: "b.py".into(),
+                old_file: None,
+                old_name: None,
+                sig_changed: None,
+                body_changed: None,
+                breaking: false,
+                breaking_reason: None,
+                old: Some(make_entity("b.py", "fn_b", "function", 1, 10)),
+                new: Some(make_entity("b.py", "fn_b", "function", 1, 10)),
+                inline_diff: None,
+                change_details: None,
+            },
+        ];
+
+        let result = make_diff_result(entities, vec![]);
+        let output = DiffOutput::from_result(&result, false);
+
+        // Structural counts must be 0
+        assert_eq!(output.summary.added, 0);
+        assert_eq!(output.summary.removed, 0);
+        assert_eq!(output.summary.modified, 0);
+        assert_eq!(output.summary.moves, 0);
+        assert_eq!(output.summary.renamed, 0);
+        // formatting_only counted separately
+        assert_eq!(output.summary.formatting_only, 2);
+        // Not breaking
+        assert!(!output.summary.has_breaking);
+        // Exit code 0 condition: !has_breaking && (added + removed + modified + moves + renamed == 0)
+        let s = &output.summary;
+        let exit_code = if s.has_breaking { 2 }
+            else if s.added + s.removed + s.modified + s.moves + s.renamed > 0 { 1 }
+            else { 0 };
+        assert_eq!(exit_code, 0);
+    }
+
+    #[test]
     fn parse_arrow_description_works() {
         let (from, to) = parse_arrow_description("true \u{2192} false");
         assert_eq!(from, "true");

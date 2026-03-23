@@ -78,6 +78,25 @@ fn run_sigil_diff(dir: &std::path::Path, ref_spec: &str, extra_args: &[&str]) ->
     String::from_utf8(output.stdout).expect("invalid utf8")
 }
 
+/// Run sigil diff with arbitrary flags (does NOT force --json).
+fn run_sigil_diff_raw(dir: &std::path::Path, ref_spec: &str, args: &[&str]) -> std::process::Output {
+    let output = Command::new(env!("CARGO_BIN_EXE_sigil"))
+        .arg("diff")
+        .arg(ref_spec)
+        .arg("--root")
+        .arg(dir)
+        .args(args)
+        .output()
+        .expect("failed to run sigil");
+
+    assert!(
+        output.status.code().unwrap_or(3) < 3,
+        "sigil diff failed with error: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output
+}
+
 #[test]
 fn diff_detects_changes() {
     let dir = make_diff_repo();
@@ -218,5 +237,110 @@ fn exit_code_1_for_structural_changes() {
         "diff with structural changes should exit 1 or 2, got {}",
         code
     );
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+// ── New output mode integration tests ──────────────────────────────────────
+
+#[test]
+fn json_v2_schema_has_required_keys() {
+    let dir = make_diff_repo();
+    let output = run_sigil_diff_raw(&dir, "HEAD~1", &["--json"]);
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+
+    assert!(v["meta"].is_object(), "missing meta");
+    assert!(v["meta"]["base_ref"].is_string(), "missing meta.base_ref");
+    assert!(v["meta"]["head_ref"].is_string(), "missing meta.head_ref");
+    assert!(v["meta"]["sigil_version"].is_string(), "missing meta.sigil_version");
+    assert!(v["summary"].is_object(), "missing summary");
+    assert!(v["summary"]["has_breaking"].is_boolean(), "missing summary.has_breaking");
+    assert!(v["summary"]["files_changed"].is_number(), "missing summary.files_changed");
+    assert!(v["breaking"].is_array(), "missing breaking");
+    assert!(v["patterns"].is_array(), "missing patterns");
+    assert!(v["moves"].is_array(), "missing moves");
+    assert!(v["files"].is_array(), "missing files");
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn markdown_output_has_markdown_elements() {
+    let dir = make_diff_repo();
+    let output = run_sigil_diff_raw(&dir, "HEAD~1", &["--markdown"]);
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    // Should contain markdown separator
+    assert!(stdout.contains("---"), "markdown output should contain --- separator");
+    // Should contain backtick-wrapped paths (file names)
+    assert!(stdout.contains("`"), "markdown output should contain backtick-wrapped identifiers");
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn lines_flag_shows_line_numbers() {
+    let dir = make_diff_repo();
+    let output = run_sigil_diff_raw(&dir, "HEAD~1", &["--lines"]);
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    // Line numbers appear as :N after entity names
+    assert!(stdout.contains(":"), "expected line numbers in output with --lines");
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn no_color_flag_removes_ansi() {
+    let dir = make_diff_repo();
+    let output = run_sigil_diff_raw(&dir, "HEAD~1", &["--no-color"]);
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert!(
+        !stdout.contains("\x1b["),
+        "output should not contain ANSI escape codes with --no-color"
+    );
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn json_context_combined() {
+    let dir = make_diff_repo();
+    let output = run_sigil_diff_raw(&dir, "HEAD~1", &["--json", "--context"]);
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+
+    assert!(v["files"].is_array(), "JSON with --context should still have files array");
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn markdown_no_emoji_combined() {
+    let dir = make_diff_repo();
+    let output = run_sigil_diff_raw(&dir, "HEAD~1", &["--markdown", "--no-emoji"]);
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    // Should still contain markdown structure
+    assert!(stdout.contains("---"), "markdown output should contain --- separator");
+    // With --no-emoji, should use ASCII glyphs like +, -, ! instead of emoji
+    // Verify no warning-sign emoji (U+26A0) is present
+    assert!(!stdout.contains('\u{26A0}'), "should not contain warning emoji with --no-emoji");
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn no_color_lines_combined() {
+    let dir = make_diff_repo();
+    let output = run_sigil_diff_raw(&dir, "HEAD~1", &["--no-color", "--lines"]);
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert!(
+        !stdout.contains("\x1b["),
+        "output should not contain ANSI escape codes with --no-color --lines"
+    );
+
     std::fs::remove_dir_all(&dir).ok();
 }
