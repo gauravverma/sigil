@@ -35,14 +35,44 @@ git show HEAD:file.py   ──→ tree-sitter parse ──→ entities + hashes 
 
 ## Install
 
+### Pre-built binaries (recommended)
+
+Download the latest release from [GitHub Releases](https://github.com/gauravverma/sigil/releases):
+
+**macOS (Apple Silicon):**
 ```bash
-cargo install --git https://github.com/AnchorVault/sigil
+curl -L https://github.com/gauravverma/sigil/releases/latest/download/sigil-macos-aarch64.tar.gz | tar xz
+sudo mv sigil /usr/local/bin/
 ```
 
-Or build from source:
+**macOS (Intel):**
+```bash
+curl -L https://github.com/gauravverma/sigil/releases/latest/download/sigil-macos-x86_64.tar.gz | tar xz
+sudo mv sigil /usr/local/bin/
+```
+
+**Linux (x86_64):**
+```bash
+curl -L https://github.com/gauravverma/sigil/releases/latest/download/sigil-linux-x86_64.tar.gz | tar xz
+sudo mv sigil /usr/local/bin/
+```
+
+**Linux (aarch64):**
+```bash
+curl -L https://github.com/gauravverma/sigil/releases/latest/download/sigil-linux-aarch64.tar.gz | tar xz
+sudo mv sigil /usr/local/bin/
+```
+
+### Install via Cargo
 
 ```bash
-git clone https://github.com/AnchorVault/sigil
+cargo install --git https://github.com/gauravverma/sigil
+```
+
+### Build from source
+
+```bash
+git clone https://github.com/gauravverma/sigil
 cd sigil
 cargo build --release
 # Binary at target/release/sigil
