@@ -12,6 +12,7 @@ mod json_index;
 mod toml_index;
 mod yaml_index;
 mod inline_diff;
+mod markdown_formatter;
 mod matcher;
 mod meta;
 mod output;
