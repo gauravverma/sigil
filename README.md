@@ -47,9 +47,9 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gauravverma/sigil/relea
 powershell -ExecutionPolicy Bypass -c "irm https://github.com/gauravverma/sigil/releases/latest/download/sigil-installer.ps1 | iex"
 ```
 
-This installs sigil and a `sigil-update` binary for self-updates. To update later:
+To update later:
 ```bash
-sigil-update
+sigil update
 ```
 
 ### Install via Cargo
