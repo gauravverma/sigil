@@ -60,7 +60,7 @@ fn find_key_line(
 ) -> (u32, usize) {
     // We need to find `"key"` followed by `:` in the source.
     // Build the needle: `"key"`
-    let needle = format!("\"{}\"", key);
+    let needle = serde_json::to_string(key).unwrap_or_else(|_| format!("\"{}\"", key));
     let bytes = source.as_bytes();
     let needle_bytes = needle.as_bytes();
 
@@ -477,5 +477,16 @@ mod tests {
         let names: Vec<&str> = entities.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"my.dotted.key"));
         assert!(names.contains(&"key with spaces"));
+    }
+
+    #[test]
+    fn keys_with_escaped_quotes() {
+        let source = r#"{
+  "say \"hello\"": 1
+}"#;
+        let (entities, _) = parse_json_file(source, "test.json").unwrap();
+        assert_eq!(entities.len(), 1);
+        assert_eq!(entities[0].name, r#"say "hello""#);
+        assert_eq!(entities[0].line_start, 2);
     }
 }
