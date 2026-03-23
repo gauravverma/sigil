@@ -117,6 +117,10 @@ fn render_header(out: &mut String, output: &DiffOutput) {
 
     out.push_str(&separator());
     out.push('\n');
+
+    if let Some(ref summary_line) = output.summary.summary_line {
+        out.push_str(&format!("{}\n", format!("Summary: {}", summary_line).dimmed()));
+    }
 }
 
 // ── Patterns ────────────────────────────────────────────────────────────────
@@ -541,6 +545,7 @@ mod tests {
             formatting_only,
             has_breaking,
             natural_language: String::new(),
+            summary_line: None,
         }
     }
 
@@ -667,6 +672,7 @@ mod tests {
             formatting_only: 5,
             has_breaking: false,
             natural_language: String::new(),
+            summary_line: None,
         };
         let text = format_terminal_v2(&output, &default_opts());
         assert!(text.contains("2 patterns"));
@@ -969,6 +975,7 @@ mod tests {
             formatting_only: 4,
             has_breaking: false,
             natural_language: String::new(),
+            summary_line: None,
         };
         output.files = vec![
             FileSection {
@@ -1068,5 +1075,18 @@ mod tests {
         assert!(text.contains("x = 1"), "context line should appear");
         assert!(text.contains("return old"), "removed line should appear");
         assert!(text.contains("return new"), "added line should appear");
+    }
+
+    // ── Summary line test ────────────────────────────────────────────────
+
+    #[test]
+    fn summary_line_shown_in_header() {
+        let mut output = empty_output("HEAD~1");
+        output.summary.files_changed = 2;
+        output.summary.modified = 1;
+        output.summary.summary_line = Some("updated parse_config in src/config.rs".to_string());
+        let text = format_terminal_v2(&output, &default_opts());
+        assert!(text.contains("Summary:"), "should show summary line");
+        assert!(text.contains("parse_config"), "should contain entity name");
     }
 }

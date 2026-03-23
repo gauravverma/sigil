@@ -28,6 +28,8 @@ pub struct OutputSummary {
     pub formatting_only: usize,
     pub has_breaking: bool,
     pub natural_language: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary_line: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -365,6 +367,8 @@ impl DiffOutput {
             has_breaking,
         );
 
+        let summary_line = build_summary_line(&output_patterns, &breaking_entries, &files);
+
         let summary = OutputSummary {
             files_changed: all_files.len(),
             patterns: output_patterns.len(),
@@ -376,6 +380,7 @@ impl DiffOutput {
             formatting_only,
             has_breaking,
             natural_language,
+            summary_line,
         };
 
         let meta = Meta {
@@ -592,6 +597,56 @@ fn build_natural_language(
 
     result.push('.');
     result
+}
+
+fn build_summary_line(
+    patterns: &[OutputPattern],
+    breaking: &[BreakingEntry],
+    files: &[FileSection],
+) -> Option<String> {
+    let mut parts: Vec<String> = Vec::new();
+
+    // Patterns first (most notable cross-file changes)
+    for pat in patterns.iter().take(2) {
+        if let (Some(from), Some(to)) = (&pat.from_glob, &pat.to_glob) {
+            parts.push(format!("renamed {} \u{2192} {} across {} files", from, to, pat.file_count));
+        } else if let Some(name) = &pat.entity_name {
+            parts.push(format!("{} modified across {} files", name, pat.file_count));
+        }
+    }
+
+    // Breaking changes
+    for b in breaking.iter().take(2) {
+        parts.push(format!("{} ({})", b.entity, b.reason));
+    }
+    if breaking.len() > 2 {
+        parts.push(format!("+{} more breaking", breaking.len() - 2));
+    }
+
+    // Top modified entities (if no patterns/breaking yet)
+    if parts.is_empty() {
+        for section in files.iter().take(3) {
+            let names: Vec<&str> = section.entities.iter()
+                .filter(|e| e.change != "formatting_only")
+                .take(3)
+                .map(|e| e.name.as_str())
+                .collect();
+            if !names.is_empty() {
+                parts.push(format!("{} in {}", names.join(", "), section.file));
+            }
+        }
+    }
+
+    if parts.is_empty() {
+        return None;
+    }
+
+    let joined = parts.join("; ");
+    if joined.len() > 120 {
+        Some(format!("{}...", &joined[..117]))
+    } else {
+        Some(joined)
+    }
 }
 
 /// Enrich breaking entries with caller information from the codeix index.

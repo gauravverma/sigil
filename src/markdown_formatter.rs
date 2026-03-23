@@ -120,6 +120,10 @@ fn render_header(md: &mut String, output: &DiffOutput, opts: &MarkdownOptions) {
             if files == 1 { "" } else { "s" },
         ));
     }
+
+    if let Some(ref summary_line) = output.summary.summary_line {
+        md.push_str(&format!("\n\n_{}_", summary_line));
+    }
 }
 
 /// Render a single pattern entry.
@@ -463,6 +467,7 @@ mod tests {
                 formatting_only,
                 has_breaking,
                 natural_language: String::new(),
+                summary_line: None,
             },
             breaking,
             patterns,

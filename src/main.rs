@@ -105,6 +105,10 @@ enum Cli {
         /// Skip caller analysis for breaking changes
         #[arg(long)]
         no_callers: bool,
+
+        /// Show one-line summary of changes
+        #[arg(long)]
+        summary: bool,
     },
     /// Explore project structure: files grouped by directory
     Explore {
@@ -244,7 +248,7 @@ fn main() {
                 }
             }
         }
-        Cli::Diff { ref_spec, files, root, json, pretty, verbose, lines, context, markdown, no_emoji, no_color, no_callers } => {
+        Cli::Diff { ref_spec, files, root, json, pretty, verbose, lines, context, markdown, no_emoji, no_color, no_callers, summary: _summary } => {
             // Handle --no-color
             if no_color {
                 colored::control::set_override(false);
