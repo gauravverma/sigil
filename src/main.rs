@@ -253,7 +253,7 @@ fn main() {
                 }
             }
         }
-        Cli::Diff { ref_spec, files, root, json, pretty, verbose, lines, context, markdown, no_emoji, no_color, no_callers, summary: _summary, group } => {
+        Cli::Diff { ref_spec, files, root, json, pretty, verbose, lines, context, markdown, no_emoji, no_color, no_callers, summary, group } => {
             // Handle --no-color
             if no_color {
                 colored::control::set_override(false);
@@ -277,6 +277,9 @@ fn main() {
 
             // Build DiffOutput
             let mut output = output::DiffOutput::from_result(&result, include_context, context_lines);
+            if !summary {
+                output.summary.summary_line = None;
+            }
 
             // Caller analysis for breaking changes
             if !no_callers && output.summary.has_breaking {
@@ -293,7 +296,7 @@ fn main() {
                             db.get_callers(name, None, None, None, 100, 0)
                                 .unwrap_or_default()
                                 .into_iter()
-                                .map(|r| (r.file.clone(), r.line[0] as u32, r.caller.clone().unwrap_or_default()))
+                                .map(|r| (r.file.clone(), r.line.first().copied().unwrap_or(0) as u32, r.caller.clone().unwrap_or_default()))
                                 .collect()
                         };
                         output::enrich_breaking_with_callers(&mut output.breaking, &callers_fn, &diff_files);

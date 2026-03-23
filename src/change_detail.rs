@@ -227,10 +227,10 @@ fn diff_line_pair(old_line: &str, new_line: &str) -> Vec<ChangeDetail> {
 }
 
 fn truncate_str(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s.to_string()
-    } else {
-        format!("{}...", &s[..max_len])
+    if s.len() <= max_len { return s.to_string(); }
+    match s.char_indices().nth(max_len) {
+        Some((idx, _)) => format!("{}...", &s[..idx]),
+        None => s.to_string(),
     }
 }
 

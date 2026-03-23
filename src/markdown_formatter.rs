@@ -16,6 +16,7 @@ fn glyph(concept: &str, use_emoji: bool) -> &'static str {
         ("modified", _) => "~",
         ("removed", true) => "\u{2212}",
         ("removed", false) => "-",
+        ("renamed", _) => "\u{2248}",
         ("pattern", _) => "\u{2261}",
         ("move", true) => "\u{2197}",
         ("move", false) => "=>",
@@ -242,6 +243,7 @@ fn render_entity(md: &mut String, entity: &OutputEntity, opts: &MarkdownOptions)
         "added" => glyph("added", opts.use_emoji),
         "modified" => glyph("modified", opts.use_emoji),
         "removed" => glyph("removed", opts.use_emoji),
+        "renamed" => glyph("renamed", opts.use_emoji),
         _ => "?",
     };
 

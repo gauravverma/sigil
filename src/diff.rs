@@ -10,6 +10,7 @@ use crate::classifier;
 use crate::inline_diff;
 use crate::change_detail;
 
+#[allow(dead_code)]
 pub struct DiffOptions {
     pub include_unchanged: bool,
     pub verbose: bool,

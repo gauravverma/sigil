@@ -645,8 +645,9 @@ fn build_summary_line(
     }
 
     let joined = parts.join("; ");
-    if joined.len() > 120 {
-        Some(format!("{}...", &joined[..117]))
+    if joined.chars().count() > 120 {
+        let truncated: String = joined.chars().take(117).collect();
+        Some(format!("{}...", truncated))
     } else {
         Some(joined)
     }

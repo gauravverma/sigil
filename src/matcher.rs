@@ -23,6 +23,7 @@ pub struct EntityMatch {
     pub old: Option<Entity>,
     pub new: Option<Entity>,
     pub match_kind: MatchKind,
+    #[allow(dead_code)]
     pub confidence: f64, // 0.0-1.0; always 1.0 until fuzzy matching is added
 }
 
