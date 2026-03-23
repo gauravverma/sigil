@@ -22,7 +22,18 @@ sigil diff main..HEAD --json         # Structured JSON for programmatic use
 sigil diff abc123..def456 --verbose  # Between any two refs, with progress
 sigil diff --files old.py new.py     # Compare two files directly (no git)
 sigil diff --files a.toml b.toml --json  # File comparison with JSON output
+sigil diff HEAD~1 --lines            # Show line numbers next to entities
+sigil diff HEAD~1 --context          # Include code snippets
+sigil diff HEAD~1 --markdown         # GitHub-flavored Markdown output
+sigil diff HEAD~1 --markdown --no-emoji  # ASCII-only markdown
+sigil diff HEAD~1 --no-color         # Disable ANSI colors
 ```
+
+**Exit codes:**
+- `0` — no structural changes (or formatting-only)
+- `1` — structural changes detected
+- `2` — breaking changes detected
+- `3` — error
 
 **Output classifications:**
 - **ADDED** / **REMOVED** — new or deleted entity
@@ -89,6 +100,9 @@ sigil callers <modified_function_name>    # Who's affected?
 
 # Step 3: JSON for detailed analysis
 sigil diff main..HEAD --json --pretty
+
+# Step 4: Markdown for PR comment
+sigil diff main..HEAD --markdown
 ```
 
 ### After Making Changes (Self-Verification)
