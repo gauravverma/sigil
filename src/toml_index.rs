@@ -391,9 +391,8 @@ fn extract_table_entities(
         let raw = hasher::extract_raw_bytes(source, key_line as usize, end_line as usize);
         let struct_hash = hasher::struct_hash(raw.as_bytes());
 
-        // Compute body_hash from serialized value content
-        let serialized_value = toml::to_string(value).unwrap_or_default();
-        let body_hash = Some(hasher::struct_hash(serialized_value.as_bytes()));
+        // Compute body_hash from raw source lines
+        let body_hash = hasher::body_hash_raw(source, key_line as usize, end_line as usize);
 
         // Compute sig_hash
         let sig_hash = hasher::sig_hash(Some(&sig));
@@ -583,5 +582,18 @@ mod tests {
         assert_eq!(deps.kind, "array");
         assert_eq!(deps.line_start, 1);
         assert!(deps.line_end >= 5);
+    }
+
+    #[test]
+    fn unchanged_section_has_stable_body_hash() {
+        let source_a = "[project]\nname = \"myapp\"\nversion = \"1.0.0\"\n\n[tool]\nbuilder = \"cargo\"\n";
+        let source_b = "[project]\nname = \"myapp\"\nversion = \"2.0.0\"\n\n[tool]\nbuilder = \"cargo\"\n";
+        let (entities_a, _) = parse_toml_file(source_a, "test.toml").unwrap();
+        let (entities_b, _) = parse_toml_file(source_b, "test.toml").unwrap();
+        let tool_a = entities_a.iter().find(|e| e.name == "tool").unwrap();
+        let tool_b = entities_b.iter().find(|e| e.name == "tool").unwrap();
+        assert_eq!(tool_a.body_hash, tool_b.body_hash,
+            "unchanged TOML section should have identical body_hash");
+        assert_eq!(tool_a.struct_hash, tool_b.struct_hash);
     }
 }

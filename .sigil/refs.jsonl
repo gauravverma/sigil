@@ -960,24 +960,42 @@
 {"file":"src/hasher.rs","caller":"body_hash","name":"normalized.as_bytes","ref_kind":"call","line":90}
 {"file":"src/hasher.rs","caller":"body_hash","name":"hash.to_hex()[..16].to_string","ref_kind":"call","line":91}
 {"file":"src/hasher.rs","caller":"body_hash","name":"hash.to_hex","ref_kind":"call","line":91}
-{"file":"src/hasher.rs","caller":"sig_hash","name":"Option","ref_kind":"type_annotation","line":95}
-{"file":"src/hasher.rs","caller":"sig_hash","name":"Option","ref_kind":"type_annotation","line":95}
-{"file":"src/hasher.rs","caller":"sig_hash","name":"String","ref_kind":"type_annotation","line":95}
-{"file":"src/hasher.rs","caller":"sig_hash","name":"sig.trim().split_whitespace().collect::<Vec<_>>().join","ref_kind":"call","line":97}
-{"file":"src/hasher.rs","caller":"sig_hash","name":"sig.trim().split_whitespace","ref_kind":"call","line":97}
-{"file":"src/hasher.rs","caller":"sig_hash","name":"sig.trim","ref_kind":"call","line":97}
-{"file":"src/hasher.rs","caller":"sig_hash","name":"blake3::hash","ref_kind":"call","line":98}
-{"file":"src/hasher.rs","caller":"sig_hash","name":"normalized.as_bytes","ref_kind":"call","line":98}
-{"file":"src/hasher.rs","caller":"sig_hash","name":"hash.to_hex()[..16].to_string","ref_kind":"call","line":99}
-{"file":"src/hasher.rs","caller":"sig_hash","name":"hash.to_hex","ref_kind":"call","line":99}
-{"file":"src/hasher.rs","caller":null,"name":"super::*","ref_kind":"import","line":104}
-{"file":"src/hasher.rs","caller":"struct_hash_16_hex_chars","name":"struct_hash","ref_kind":"call","line":114}
-{"file":"src/hasher.rs","caller":"struct_hash_changes_on_whitespace","name":"struct_hash","ref_kind":"call","line":121}
-{"file":"src/hasher.rs","caller":"struct_hash_changes_on_whitespace","name":"struct_hash","ref_kind":"call","line":122}
-{"file":"src/hasher.rs","caller":"sig_hash_normalizes_whitespace","name":"sig_hash","ref_kind":"call","line":167}
-{"file":"src/hasher.rs","caller":"sig_hash_normalizes_whitespace","name":"sig_hash","ref_kind":"call","line":168}
-{"file":"src/hasher.rs","caller":"sig_hash_detects_param_change","name":"sig_hash","ref_kind":"call","line":174}
-{"file":"src/hasher.rs","caller":"sig_hash_detects_param_change","name":"sig_hash","ref_kind":"call","line":175}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"Option","ref_kind":"type_annotation","line":96}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"String","ref_kind":"type_annotation","line":96}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"get_lines","ref_kind":"call","line":100}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"lines.iter()\n        .map(|l| l.trim())\n        .filter(|l| !l.is_empty())\n        .map(|l| l.split_whitespace().collect::<Vec<_>>().join(\" \"))\n        .collect","ref_kind":"call","line":101}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"lines.iter()\n        .map(|l| l.trim())\n        .filter(|l| !l.is_empty())\n        .map","ref_kind":"call","line":101}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"lines.iter()\n        .map(|l| l.trim())\n        .filter","ref_kind":"call","line":101}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"lines.iter()\n        .map","ref_kind":"call","line":101}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"lines.iter","ref_kind":"call","line":101}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"l.trim","ref_kind":"call","line":102}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"l.is_empty","ref_kind":"call","line":103}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"l.split_whitespace().collect::<Vec<_>>().join","ref_kind":"call","line":104}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"l.split_whitespace","ref_kind":"call","line":104}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"normalized.is_empty","ref_kind":"call","line":106}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"normalized.join","ref_kind":"call","line":109}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"blake3::hash","ref_kind":"call","line":110}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"joined.as_bytes","ref_kind":"call","line":110}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"hash.to_hex()[..16].to_string","ref_kind":"call","line":111}
+{"file":"src/hasher.rs","caller":"body_hash_raw","name":"hash.to_hex","ref_kind":"call","line":111}
+{"file":"src/hasher.rs","caller":"sig_hash","name":"Option","ref_kind":"type_annotation","line":115}
+{"file":"src/hasher.rs","caller":"sig_hash","name":"Option","ref_kind":"type_annotation","line":115}
+{"file":"src/hasher.rs","caller":"sig_hash","name":"String","ref_kind":"type_annotation","line":115}
+{"file":"src/hasher.rs","caller":"sig_hash","name":"sig.trim().split_whitespace().collect::<Vec<_>>().join","ref_kind":"call","line":117}
+{"file":"src/hasher.rs","caller":"sig_hash","name":"sig.trim().split_whitespace","ref_kind":"call","line":117}
+{"file":"src/hasher.rs","caller":"sig_hash","name":"sig.trim","ref_kind":"call","line":117}
+{"file":"src/hasher.rs","caller":"sig_hash","name":"blake3::hash","ref_kind":"call","line":118}
+{"file":"src/hasher.rs","caller":"sig_hash","name":"normalized.as_bytes","ref_kind":"call","line":118}
+{"file":"src/hasher.rs","caller":"sig_hash","name":"hash.to_hex()[..16].to_string","ref_kind":"call","line":119}
+{"file":"src/hasher.rs","caller":"sig_hash","name":"hash.to_hex","ref_kind":"call","line":119}
+{"file":"src/hasher.rs","caller":null,"name":"super::*","ref_kind":"import","line":124}
+{"file":"src/hasher.rs","caller":"struct_hash_16_hex_chars","name":"struct_hash","ref_kind":"call","line":134}
+{"file":"src/hasher.rs","caller":"struct_hash_changes_on_whitespace","name":"struct_hash","ref_kind":"call","line":141}
+{"file":"src/hasher.rs","caller":"struct_hash_changes_on_whitespace","name":"struct_hash","ref_kind":"call","line":142}
+{"file":"src/hasher.rs","caller":"sig_hash_normalizes_whitespace","name":"sig_hash","ref_kind":"call","line":187}
+{"file":"src/hasher.rs","caller":"sig_hash_normalizes_whitespace","name":"sig_hash","ref_kind":"call","line":188}
+{"file":"src/hasher.rs","caller":"sig_hash_detects_param_change","name":"sig_hash","ref_kind":"call","line":194}
+{"file":"src/hasher.rs","caller":"sig_hash_detects_param_change","name":"sig_hash","ref_kind":"call","line":195}
 {"file":"src/index.rs","caller":null,"name":"std::path::{Path, PathBuf}","ref_kind":"import","line":1}
 {"file":"src/index.rs","caller":null,"name":"crate::cache::{self, Cache}","ref_kind":"import","line":3}
 {"file":"src/index.rs","caller":null,"name":"crate::entity::{Entity, Reference}","ref_kind":"import","line":4}
@@ -1265,86 +1283,83 @@
 {"file":"src/json_index.rs","caller":"extract_object_entities","name":"hasher::extract_raw_bytes","ref_kind":"call","line":251}
 {"file":"src/json_index.rs","caller":"extract_object_entities","name":"hasher::struct_hash","ref_kind":"call","line":252}
 {"file":"src/json_index.rs","caller":"extract_object_entities","name":"raw.as_bytes","ref_kind":"call","line":252}
-{"file":"src/json_index.rs","caller":"extract_object_entities","name":"serde_json::to_string(value).unwrap_or_default","ref_kind":"call","line":255}
-{"file":"src/json_index.rs","caller":"extract_object_entities","name":"serde_json::to_string","ref_kind":"call","line":255}
-{"file":"src/json_index.rs","caller":"extract_object_entities","name":"hasher::struct_hash","ref_kind":"call","line":256}
-{"file":"src/json_index.rs","caller":"extract_object_entities","name":"serialized_value.as_bytes","ref_kind":"call","line":256}
-{"file":"src/json_index.rs","caller":"extract_object_entities","name":"hasher::sig_hash","ref_kind":"call","line":259}
-{"file":"src/json_index.rs","caller":"extract_object_entities","name":"entities.push","ref_kind":"call","line":261}
-{"file":"src/json_index.rs","caller":"extract_object_entities","name":"file_path.to_string","ref_kind":"call","line":262}
-{"file":"src/json_index.rs","caller":"extract_object_entities","name":"key.clone","ref_kind":"call","line":263}
-{"file":"src/json_index.rs","caller":"extract_object_entities","name":"kind.to_string","ref_kind":"call","line":264}
-{"file":"src/json_index.rs","caller":"extract_object_entities","name":"parent.map","ref_kind":"call","line":267}
-{"file":"src/json_index.rs","caller":"extract_object_entities","name":"s.to_string","ref_kind":"call","line":267}
-{"file":"src/json_index.rs","caller":"extract_object_entities","name":"source.as_bytes","ref_kind":"call","line":279}
-{"file":"src/json_index.rs","caller":"extract_object_entities","name":"bytes.len","ref_kind":"call","line":281}
-{"file":"src/json_index.rs","caller":"extract_object_entities","name":"extract_object_entities","ref_kind":"call","line":285}
-{"file":"src/json_index.rs","caller":null,"name":"super::*","ref_kind":"import","line":300}
-{"file":"src/json_index.rs","caller":"parse_simple_json","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":308}
-{"file":"src/json_index.rs","caller":"parse_simple_json","name":"parse_json_file","ref_kind":"call","line":308}
-{"file":"src/json_index.rs","caller":"parse_simple_json","name":"entities.iter().map(|e| e.name.as_str()).collect","ref_kind":"call","line":312}
-{"file":"src/json_index.rs","caller":"parse_simple_json","name":"entities.iter().map","ref_kind":"call","line":312}
-{"file":"src/json_index.rs","caller":"parse_simple_json","name":"entities.iter","ref_kind":"call","line":312}
-{"file":"src/json_index.rs","caller":"parse_simple_json","name":"e.name.as_str","ref_kind":"call","line":312}
-{"file":"src/json_index.rs","caller":"parse_simple_json","name":"entities.iter().find(|e| e.name == \"name\").unwrap","ref_kind":"call","line":316}
-{"file":"src/json_index.rs","caller":"parse_simple_json","name":"entities.iter().find","ref_kind":"call","line":316}
-{"file":"src/json_index.rs","caller":"parse_simple_json","name":"entities.iter","ref_kind":"call","line":316}
-{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":334}
-{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"parse_json_file","ref_kind":"call","line":334}
-{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find(|e| e.name == \"settings\").unwrap","ref_kind":"call","line":337}
-{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find","ref_kind":"call","line":337}
-{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter","ref_kind":"call","line":337}
-{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find(|e| e.name == \"theme\").unwrap","ref_kind":"call","line":343}
-{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find","ref_kind":"call","line":343}
-{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter","ref_kind":"call","line":343}
-{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find(|e| e.name == \"color\").unwrap","ref_kind":"call","line":347}
-{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find","ref_kind":"call","line":347}
-{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter","ref_kind":"call","line":347}
-{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find(|e| e.name == \"debug\").unwrap","ref_kind":"call","line":351}
-{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find","ref_kind":"call","line":351}
-{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter","ref_kind":"call","line":351}
-{"file":"src/json_index.rs","caller":"parse_arrays","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":362}
-{"file":"src/json_index.rs","caller":"parse_arrays","name":"parse_json_file","ref_kind":"call","line":362}
-{"file":"src/json_index.rs","caller":"parse_arrays","name":"entities.iter().find(|e| e.name == \"tags\").unwrap","ref_kind":"call","line":363}
-{"file":"src/json_index.rs","caller":"parse_arrays","name":"entities.iter().find","ref_kind":"call","line":363}
-{"file":"src/json_index.rs","caller":"parse_arrays","name":"entities.iter","ref_kind":"call","line":363}
-{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":377}
-{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"parse_json_file","ref_kind":"call","line":377}
-{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"entities\n            .iter()\n            .map(|e| (e.name.as_str(), e.sig.as_deref().unwrap()))\n            .collect","ref_kind":"call","line":380}
-{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"entities\n            .iter()\n            .map","ref_kind":"call","line":380}
-{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"entities\n            .iter","ref_kind":"call","line":380}
-{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"e.name.as_str","ref_kind":"call","line":382}
-{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"e.sig.as_deref().unwrap","ref_kind":"call","line":382}
-{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"e.sig.as_deref","ref_kind":"call","line":382}
-{"file":"src/json_index.rs","caller":"hashes_are_present_and_16_chars","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":394}
-{"file":"src/json_index.rs","caller":"hashes_are_present_and_16_chars","name":"parse_json_file","ref_kind":"call","line":394}
-{"file":"src/json_index.rs","caller":"parse_empty_object","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":408}
-{"file":"src/json_index.rs","caller":"parse_empty_object","name":"parse_json_file","ref_kind":"call","line":408}
-{"file":"src/json_index.rs","caller":"parse_invalid_json","name":"parse_json_file","ref_kind":"call","line":415}
-{"file":"src/json_index.rs","caller":"entities_sorted_by_line","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":425}
-{"file":"src/json_index.rs","caller":"entities_sorted_by_line","name":"parse_json_file","ref_kind":"call","line":425}
-{"file":"src/json_index.rs","caller":"multiline_object_value_span","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":437}
-{"file":"src/json_index.rs","caller":"multiline_object_value_span","name":"parse_json_file","ref_kind":"call","line":437}
-{"file":"src/json_index.rs","caller":"multiline_object_value_span","name":"entities.iter().find(|e| e.name == \"config\").unwrap","ref_kind":"call","line":438}
-{"file":"src/json_index.rs","caller":"multiline_object_value_span","name":"entities.iter().find","ref_kind":"call","line":438}
-{"file":"src/json_index.rs","caller":"multiline_object_value_span","name":"entities.iter","ref_kind":"call","line":438}
-{"file":"src/json_index.rs","caller":"duplicate_keys_in_different_parents","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":449}
-{"file":"src/json_index.rs","caller":"duplicate_keys_in_different_parents","name":"parse_json_file","ref_kind":"call","line":449}
-{"file":"src/json_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter().filter(|e| e.name == \"id\").collect","ref_kind":"call","line":450}
-{"file":"src/json_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter().filter","ref_kind":"call","line":450}
-{"file":"src/json_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter","ref_kind":"call","line":450}
-{"file":"src/json_index.rs","caller":"parse_root_array_returns_empty","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":458}
-{"file":"src/json_index.rs","caller":"parse_root_array_returns_empty","name":"parse_json_file","ref_kind":"call","line":458}
-{"file":"src/json_index.rs","caller":"meta_is_always_none","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":465}
-{"file":"src/json_index.rs","caller":"meta_is_always_none","name":"parse_json_file","ref_kind":"call","line":465}
-{"file":"src/json_index.rs","caller":"keys_with_special_characters","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":475}
-{"file":"src/json_index.rs","caller":"keys_with_special_characters","name":"parse_json_file","ref_kind":"call","line":475}
-{"file":"src/json_index.rs","caller":"keys_with_special_characters","name":"entities.iter().map(|e| e.name.as_str()).collect","ref_kind":"call","line":477}
-{"file":"src/json_index.rs","caller":"keys_with_special_characters","name":"entities.iter().map","ref_kind":"call","line":477}
-{"file":"src/json_index.rs","caller":"keys_with_special_characters","name":"entities.iter","ref_kind":"call","line":477}
-{"file":"src/json_index.rs","caller":"keys_with_special_characters","name":"e.name.as_str","ref_kind":"call","line":477}
-{"file":"src/json_index.rs","caller":"keys_with_escaped_quotes","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":487}
-{"file":"src/json_index.rs","caller":"keys_with_escaped_quotes","name":"parse_json_file","ref_kind":"call","line":487}
+{"file":"src/json_index.rs","caller":"extract_object_entities","name":"hasher::body_hash_raw","ref_kind":"call","line":255}
+{"file":"src/json_index.rs","caller":"extract_object_entities","name":"hasher::sig_hash","ref_kind":"call","line":258}
+{"file":"src/json_index.rs","caller":"extract_object_entities","name":"entities.push","ref_kind":"call","line":260}
+{"file":"src/json_index.rs","caller":"extract_object_entities","name":"file_path.to_string","ref_kind":"call","line":261}
+{"file":"src/json_index.rs","caller":"extract_object_entities","name":"key.clone","ref_kind":"call","line":262}
+{"file":"src/json_index.rs","caller":"extract_object_entities","name":"kind.to_string","ref_kind":"call","line":263}
+{"file":"src/json_index.rs","caller":"extract_object_entities","name":"parent.map","ref_kind":"call","line":266}
+{"file":"src/json_index.rs","caller":"extract_object_entities","name":"s.to_string","ref_kind":"call","line":266}
+{"file":"src/json_index.rs","caller":"extract_object_entities","name":"source.as_bytes","ref_kind":"call","line":278}
+{"file":"src/json_index.rs","caller":"extract_object_entities","name":"bytes.len","ref_kind":"call","line":280}
+{"file":"src/json_index.rs","caller":"extract_object_entities","name":"extract_object_entities","ref_kind":"call","line":284}
+{"file":"src/json_index.rs","caller":null,"name":"super::*","ref_kind":"import","line":299}
+{"file":"src/json_index.rs","caller":"parse_simple_json","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":307}
+{"file":"src/json_index.rs","caller":"parse_simple_json","name":"parse_json_file","ref_kind":"call","line":307}
+{"file":"src/json_index.rs","caller":"parse_simple_json","name":"entities.iter().map(|e| e.name.as_str()).collect","ref_kind":"call","line":311}
+{"file":"src/json_index.rs","caller":"parse_simple_json","name":"entities.iter().map","ref_kind":"call","line":311}
+{"file":"src/json_index.rs","caller":"parse_simple_json","name":"entities.iter","ref_kind":"call","line":311}
+{"file":"src/json_index.rs","caller":"parse_simple_json","name":"e.name.as_str","ref_kind":"call","line":311}
+{"file":"src/json_index.rs","caller":"parse_simple_json","name":"entities.iter().find(|e| e.name == \"name\").unwrap","ref_kind":"call","line":315}
+{"file":"src/json_index.rs","caller":"parse_simple_json","name":"entities.iter().find","ref_kind":"call","line":315}
+{"file":"src/json_index.rs","caller":"parse_simple_json","name":"entities.iter","ref_kind":"call","line":315}
+{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":333}
+{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"parse_json_file","ref_kind":"call","line":333}
+{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find(|e| e.name == \"settings\").unwrap","ref_kind":"call","line":336}
+{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find","ref_kind":"call","line":336}
+{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter","ref_kind":"call","line":336}
+{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find(|e| e.name == \"theme\").unwrap","ref_kind":"call","line":342}
+{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find","ref_kind":"call","line":342}
+{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter","ref_kind":"call","line":342}
+{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find(|e| e.name == \"color\").unwrap","ref_kind":"call","line":346}
+{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find","ref_kind":"call","line":346}
+{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter","ref_kind":"call","line":346}
+{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find(|e| e.name == \"debug\").unwrap","ref_kind":"call","line":350}
+{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter().find","ref_kind":"call","line":350}
+{"file":"src/json_index.rs","caller":"parse_nested_objects","name":"entities.iter","ref_kind":"call","line":350}
+{"file":"src/json_index.rs","caller":"parse_arrays","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":361}
+{"file":"src/json_index.rs","caller":"parse_arrays","name":"parse_json_file","ref_kind":"call","line":361}
+{"file":"src/json_index.rs","caller":"parse_arrays","name":"entities.iter().find(|e| e.name == \"tags\").unwrap","ref_kind":"call","line":362}
+{"file":"src/json_index.rs","caller":"parse_arrays","name":"entities.iter().find","ref_kind":"call","line":362}
+{"file":"src/json_index.rs","caller":"parse_arrays","name":"entities.iter","ref_kind":"call","line":362}
+{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":376}
+{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"parse_json_file","ref_kind":"call","line":376}
+{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"entities\n            .iter()\n            .map(|e| (e.name.as_str(), e.sig.as_deref().unwrap()))\n            .collect","ref_kind":"call","line":379}
+{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"entities\n            .iter()\n            .map","ref_kind":"call","line":379}
+{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"entities\n            .iter","ref_kind":"call","line":379}
+{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"e.name.as_str","ref_kind":"call","line":381}
+{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"e.sig.as_deref().unwrap","ref_kind":"call","line":381}
+{"file":"src/json_index.rs","caller":"parse_all_value_types","name":"e.sig.as_deref","ref_kind":"call","line":381}
+{"file":"src/json_index.rs","caller":"hashes_are_present_and_16_chars","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":393}
+{"file":"src/json_index.rs","caller":"hashes_are_present_and_16_chars","name":"parse_json_file","ref_kind":"call","line":393}
+{"file":"src/json_index.rs","caller":"parse_empty_object","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":407}
+{"file":"src/json_index.rs","caller":"parse_empty_object","name":"parse_json_file","ref_kind":"call","line":407}
+{"file":"src/json_index.rs","caller":"parse_invalid_json","name":"parse_json_file","ref_kind":"call","line":414}
+{"file":"src/json_index.rs","caller":"entities_sorted_by_line","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":424}
+{"file":"src/json_index.rs","caller":"entities_sorted_by_line","name":"parse_json_file","ref_kind":"call","line":424}
+{"file":"src/json_index.rs","caller":"multiline_object_value_span","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":436}
+{"file":"src/json_index.rs","caller":"multiline_object_value_span","name":"parse_json_file","ref_kind":"call","line":436}
+{"file":"src/json_index.rs","caller":"multiline_object_value_span","name":"entities.iter().find(|e| e.name == \"config\").unwrap","ref_kind":"call","line":437}
+{"file":"src/json_index.rs","caller":"multiline_object_value_span","name":"entities.iter().find","ref_kind":"call","line":437}
+{"file":"src/json_index.rs","caller":"multiline_object_value_span","name":"entities.iter","ref_kind":"call","line":437}
+{"file":"src/json_index.rs","caller":"duplicate_keys_in_different_parents","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":448}
+{"file":"src/json_index.rs","caller":"duplicate_keys_in_different_parents","name":"parse_json_file","ref_kind":"call","line":448}
+{"file":"src/json_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter().filter(|e| e.name == \"id\").collect","ref_kind":"call","line":449}
+{"file":"src/json_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter().filter","ref_kind":"call","line":449}
+{"file":"src/json_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter","ref_kind":"call","line":449}
+{"file":"src/json_index.rs","caller":"parse_root_array_returns_empty","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":457}
+{"file":"src/json_index.rs","caller":"parse_root_array_returns_empty","name":"parse_json_file","ref_kind":"call","line":457}
+{"file":"src/json_index.rs","caller":"meta_is_always_none","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":464}
+{"file":"src/json_index.rs","caller":"meta_is_always_none","name":"parse_json_file","ref_kind":"call","line":464}
+{"file":"src/json_index.rs","caller":"keys_with_special_characters","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":474}
+{"file":"src/json_index.rs","caller":"keys_with_special_characters","name":"parse_json_file","ref_kind":"call","line":474}
+{"file":"src/json_index.rs","caller":"keys_with_special_characters","name":"entities.iter().map(|e| e.name.as_str()).collect","ref_kind":"call","line":476}
+{"file":"src/json_index.rs","caller":"keys_with_special_characters","name":"entities.iter().map","ref_kind":"call","line":476}
+{"file":"src/json_index.rs","caller":"keys_with_special_characters","name":"entities.iter","ref_kind":"call","line":476}
+{"file":"src/json_index.rs","caller":"keys_with_special_characters","name":"e.name.as_str","ref_kind":"call","line":476}
+{"file":"src/json_index.rs","caller":"keys_with_escaped_quotes","name":"parse_json_file(source, \"test.json\").unwrap","ref_kind":"call","line":486}
+{"file":"src/json_index.rs","caller":"keys_with_escaped_quotes","name":"parse_json_file","ref_kind":"call","line":486}
 {"file":"src/main.rs","caller":null,"name":"clap::Parser","ref_kind":"import","line":23}
 {"file":"src/main.rs","caller":null,"name":"std::path::PathBuf","ref_kind":"import","line":24}
 {"file":"src/main.rs","caller":"main","name":"Cli::parse","ref_kind":"call","line":212}
@@ -2614,90 +2629,97 @@
 {"file":"src/toml_index.rs","caller":"extract_table_entities","name":"hasher::extract_raw_bytes","ref_kind":"call","line":391}
 {"file":"src/toml_index.rs","caller":"extract_table_entities","name":"hasher::struct_hash","ref_kind":"call","line":392}
 {"file":"src/toml_index.rs","caller":"extract_table_entities","name":"raw.as_bytes","ref_kind":"call","line":392}
-{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"toml::to_string(value).unwrap_or_default","ref_kind":"call","line":395}
-{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"toml::to_string","ref_kind":"call","line":395}
-{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"hasher::struct_hash","ref_kind":"call","line":396}
-{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"serialized_value.as_bytes","ref_kind":"call","line":396}
-{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"hasher::sig_hash","ref_kind":"call","line":399}
-{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"entities.push","ref_kind":"call","line":401}
-{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"file_path.to_string","ref_kind":"call","line":402}
-{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"key.clone","ref_kind":"call","line":403}
-{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"kind.to_string","ref_kind":"call","line":404}
-{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"parent.map","ref_kind":"call","line":407}
-{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"s.to_string","ref_kind":"call","line":407}
-{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"extract_table_entities","ref_kind":"call","line":418}
-{"file":"src/toml_index.rs","caller":null,"name":"super::*","ref_kind":"import","line":433}
-{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":438}
-{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"parse_toml_file","ref_kind":"call","line":438}
-{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"entities.iter().map(|e| e.name.as_str()).collect","ref_kind":"call","line":442}
-{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"entities.iter().map","ref_kind":"call","line":442}
-{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"entities.iter","ref_kind":"call","line":442}
-{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"e.name.as_str","ref_kind":"call","line":442}
-{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"entities.iter().find(|e| e.name == \"name\").unwrap","ref_kind":"call","line":446}
-{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"entities.iter().find","ref_kind":"call","line":446}
-{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"entities.iter","ref_kind":"call","line":446}
-{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":457}
-{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"parse_toml_file","ref_kind":"call","line":457}
-{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find(|e| e.name == \"settings\").unwrap","ref_kind":"call","line":459}
-{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find","ref_kind":"call","line":459}
-{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter","ref_kind":"call","line":459}
-{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find(|e| e.name == \"theme\").unwrap","ref_kind":"call","line":463}
-{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find","ref_kind":"call","line":463}
-{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter","ref_kind":"call","line":463}
-{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find(|e| e.name == \"color\").unwrap","ref_kind":"call","line":467}
-{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find","ref_kind":"call","line":467}
-{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter","ref_kind":"call","line":467}
-{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find(|e| e.name == \"debug\").unwrap","ref_kind":"call","line":471}
-{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find","ref_kind":"call","line":471}
-{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter","ref_kind":"call","line":471}
-{"file":"src/toml_index.rs","caller":"parse_arrays","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":479}
-{"file":"src/toml_index.rs","caller":"parse_arrays","name":"parse_toml_file","ref_kind":"call","line":479}
-{"file":"src/toml_index.rs","caller":"parse_arrays","name":"entities.iter().find(|e| e.name == \"tags\").unwrap","ref_kind":"call","line":480}
-{"file":"src/toml_index.rs","caller":"parse_arrays","name":"entities.iter().find","ref_kind":"call","line":480}
-{"file":"src/toml_index.rs","caller":"parse_arrays","name":"entities.iter","ref_kind":"call","line":480}
-{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":488}
-{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"parse_toml_file","ref_kind":"call","line":488}
-{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"entities.iter()\n            .map(|e| (e.name.as_str(), e.sig.as_deref().unwrap()))\n            .collect","ref_kind":"call","line":491}
-{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"entities.iter()\n            .map","ref_kind":"call","line":491}
-{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"entities.iter","ref_kind":"call","line":491}
-{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"e.name.as_str","ref_kind":"call","line":492}
-{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"e.sig.as_deref().unwrap","ref_kind":"call","line":492}
-{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"e.sig.as_deref","ref_kind":"call","line":492}
-{"file":"src/toml_index.rs","caller":"hashes_are_present_and_16_chars","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":503}
-{"file":"src/toml_index.rs","caller":"hashes_are_present_and_16_chars","name":"parse_toml_file","ref_kind":"call","line":503}
-{"file":"src/toml_index.rs","caller":"parse_empty_table","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":517}
-{"file":"src/toml_index.rs","caller":"parse_empty_table","name":"parse_toml_file","ref_kind":"call","line":517}
-{"file":"src/toml_index.rs","caller":"parse_invalid_toml","name":"parse_toml_file","ref_kind":"call","line":524}
-{"file":"src/toml_index.rs","caller":"entities_sorted_by_line","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":531}
-{"file":"src/toml_index.rs","caller":"entities_sorted_by_line","name":"parse_toml_file","ref_kind":"call","line":531}
-{"file":"src/toml_index.rs","caller":"table_section_span","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":538}
-{"file":"src/toml_index.rs","caller":"table_section_span","name":"parse_toml_file","ref_kind":"call","line":538}
-{"file":"src/toml_index.rs","caller":"table_section_span","name":"entities.iter().find(|e| e.name == \"config\").unwrap","ref_kind":"call","line":539}
-{"file":"src/toml_index.rs","caller":"table_section_span","name":"entities.iter().find","ref_kind":"call","line":539}
-{"file":"src/toml_index.rs","caller":"table_section_span","name":"entities.iter","ref_kind":"call","line":539}
-{"file":"src/toml_index.rs","caller":"duplicate_keys_in_different_parents","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":547}
-{"file":"src/toml_index.rs","caller":"duplicate_keys_in_different_parents","name":"parse_toml_file","ref_kind":"call","line":547}
-{"file":"src/toml_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter().filter(|e| e.name == \"id\").collect","ref_kind":"call","line":548}
-{"file":"src/toml_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter().filter","ref_kind":"call","line":548}
-{"file":"src/toml_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter","ref_kind":"call","line":548}
-{"file":"src/toml_index.rs","caller":"meta_is_always_none","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":556}
-{"file":"src/toml_index.rs","caller":"meta_is_always_none","name":"parse_toml_file","ref_kind":"call","line":556}
-{"file":"src/toml_index.rs","caller":"inline_table","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":563}
-{"file":"src/toml_index.rs","caller":"inline_table","name":"parse_toml_file","ref_kind":"call","line":563}
-{"file":"src/toml_index.rs","caller":"inline_table","name":"entities.iter().find(|e| e.name == \"config\").unwrap","ref_kind":"call","line":564}
-{"file":"src/toml_index.rs","caller":"inline_table","name":"entities.iter().find","ref_kind":"call","line":564}
-{"file":"src/toml_index.rs","caller":"inline_table","name":"entities.iter","ref_kind":"call","line":564}
-{"file":"src/toml_index.rs","caller":"quoted_keys","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":571}
-{"file":"src/toml_index.rs","caller":"quoted_keys","name":"parse_toml_file","ref_kind":"call","line":571}
-{"file":"src/toml_index.rs","caller":"quoted_keys","name":"entities.iter().map(|e| e.name.as_str()).collect","ref_kind":"call","line":573}
-{"file":"src/toml_index.rs","caller":"quoted_keys","name":"entities.iter().map","ref_kind":"call","line":573}
-{"file":"src/toml_index.rs","caller":"quoted_keys","name":"entities.iter","ref_kind":"call","line":573}
-{"file":"src/toml_index.rs","caller":"quoted_keys","name":"e.name.as_str","ref_kind":"call","line":573}
-{"file":"src/toml_index.rs","caller":"multiline_array","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":581}
-{"file":"src/toml_index.rs","caller":"multiline_array","name":"parse_toml_file","ref_kind":"call","line":581}
-{"file":"src/toml_index.rs","caller":"multiline_array","name":"entities.iter().find(|e| e.name == \"deps\").unwrap","ref_kind":"call","line":582}
-{"file":"src/toml_index.rs","caller":"multiline_array","name":"entities.iter().find","ref_kind":"call","line":582}
-{"file":"src/toml_index.rs","caller":"multiline_array","name":"entities.iter","ref_kind":"call","line":582}
+{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"hasher::body_hash_raw","ref_kind":"call","line":395}
+{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"hasher::sig_hash","ref_kind":"call","line":398}
+{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"entities.push","ref_kind":"call","line":400}
+{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"file_path.to_string","ref_kind":"call","line":401}
+{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"key.clone","ref_kind":"call","line":402}
+{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"kind.to_string","ref_kind":"call","line":403}
+{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"parent.map","ref_kind":"call","line":406}
+{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"s.to_string","ref_kind":"call","line":406}
+{"file":"src/toml_index.rs","caller":"extract_table_entities","name":"extract_table_entities","ref_kind":"call","line":417}
+{"file":"src/toml_index.rs","caller":null,"name":"super::*","ref_kind":"import","line":432}
+{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":437}
+{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"parse_toml_file","ref_kind":"call","line":437}
+{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"entities.iter().map(|e| e.name.as_str()).collect","ref_kind":"call","line":441}
+{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"entities.iter().map","ref_kind":"call","line":441}
+{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"entities.iter","ref_kind":"call","line":441}
+{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"e.name.as_str","ref_kind":"call","line":441}
+{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"entities.iter().find(|e| e.name == \"name\").unwrap","ref_kind":"call","line":445}
+{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"entities.iter().find","ref_kind":"call","line":445}
+{"file":"src/toml_index.rs","caller":"parse_simple_toml","name":"entities.iter","ref_kind":"call","line":445}
+{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":456}
+{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"parse_toml_file","ref_kind":"call","line":456}
+{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find(|e| e.name == \"settings\").unwrap","ref_kind":"call","line":458}
+{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find","ref_kind":"call","line":458}
+{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter","ref_kind":"call","line":458}
+{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find(|e| e.name == \"theme\").unwrap","ref_kind":"call","line":462}
+{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find","ref_kind":"call","line":462}
+{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter","ref_kind":"call","line":462}
+{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find(|e| e.name == \"color\").unwrap","ref_kind":"call","line":466}
+{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find","ref_kind":"call","line":466}
+{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter","ref_kind":"call","line":466}
+{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find(|e| e.name == \"debug\").unwrap","ref_kind":"call","line":470}
+{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter().find","ref_kind":"call","line":470}
+{"file":"src/toml_index.rs","caller":"parse_nested_tables","name":"entities.iter","ref_kind":"call","line":470}
+{"file":"src/toml_index.rs","caller":"parse_arrays","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":478}
+{"file":"src/toml_index.rs","caller":"parse_arrays","name":"parse_toml_file","ref_kind":"call","line":478}
+{"file":"src/toml_index.rs","caller":"parse_arrays","name":"entities.iter().find(|e| e.name == \"tags\").unwrap","ref_kind":"call","line":479}
+{"file":"src/toml_index.rs","caller":"parse_arrays","name":"entities.iter().find","ref_kind":"call","line":479}
+{"file":"src/toml_index.rs","caller":"parse_arrays","name":"entities.iter","ref_kind":"call","line":479}
+{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":487}
+{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"parse_toml_file","ref_kind":"call","line":487}
+{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"entities.iter()\n            .map(|e| (e.name.as_str(), e.sig.as_deref().unwrap()))\n            .collect","ref_kind":"call","line":490}
+{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"entities.iter()\n            .map","ref_kind":"call","line":490}
+{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"entities.iter","ref_kind":"call","line":490}
+{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"e.name.as_str","ref_kind":"call","line":491}
+{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"e.sig.as_deref().unwrap","ref_kind":"call","line":491}
+{"file":"src/toml_index.rs","caller":"parse_all_value_types","name":"e.sig.as_deref","ref_kind":"call","line":491}
+{"file":"src/toml_index.rs","caller":"hashes_are_present_and_16_chars","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":502}
+{"file":"src/toml_index.rs","caller":"hashes_are_present_and_16_chars","name":"parse_toml_file","ref_kind":"call","line":502}
+{"file":"src/toml_index.rs","caller":"parse_empty_table","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":516}
+{"file":"src/toml_index.rs","caller":"parse_empty_table","name":"parse_toml_file","ref_kind":"call","line":516}
+{"file":"src/toml_index.rs","caller":"parse_invalid_toml","name":"parse_toml_file","ref_kind":"call","line":523}
+{"file":"src/toml_index.rs","caller":"entities_sorted_by_line","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":530}
+{"file":"src/toml_index.rs","caller":"entities_sorted_by_line","name":"parse_toml_file","ref_kind":"call","line":530}
+{"file":"src/toml_index.rs","caller":"table_section_span","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":537}
+{"file":"src/toml_index.rs","caller":"table_section_span","name":"parse_toml_file","ref_kind":"call","line":537}
+{"file":"src/toml_index.rs","caller":"table_section_span","name":"entities.iter().find(|e| e.name == \"config\").unwrap","ref_kind":"call","line":538}
+{"file":"src/toml_index.rs","caller":"table_section_span","name":"entities.iter().find","ref_kind":"call","line":538}
+{"file":"src/toml_index.rs","caller":"table_section_span","name":"entities.iter","ref_kind":"call","line":538}
+{"file":"src/toml_index.rs","caller":"duplicate_keys_in_different_parents","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":546}
+{"file":"src/toml_index.rs","caller":"duplicate_keys_in_different_parents","name":"parse_toml_file","ref_kind":"call","line":546}
+{"file":"src/toml_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter().filter(|e| e.name == \"id\").collect","ref_kind":"call","line":547}
+{"file":"src/toml_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter().filter","ref_kind":"call","line":547}
+{"file":"src/toml_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter","ref_kind":"call","line":547}
+{"file":"src/toml_index.rs","caller":"meta_is_always_none","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":555}
+{"file":"src/toml_index.rs","caller":"meta_is_always_none","name":"parse_toml_file","ref_kind":"call","line":555}
+{"file":"src/toml_index.rs","caller":"inline_table","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":562}
+{"file":"src/toml_index.rs","caller":"inline_table","name":"parse_toml_file","ref_kind":"call","line":562}
+{"file":"src/toml_index.rs","caller":"inline_table","name":"entities.iter().find(|e| e.name == \"config\").unwrap","ref_kind":"call","line":563}
+{"file":"src/toml_index.rs","caller":"inline_table","name":"entities.iter().find","ref_kind":"call","line":563}
+{"file":"src/toml_index.rs","caller":"inline_table","name":"entities.iter","ref_kind":"call","line":563}
+{"file":"src/toml_index.rs","caller":"quoted_keys","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":570}
+{"file":"src/toml_index.rs","caller":"quoted_keys","name":"parse_toml_file","ref_kind":"call","line":570}
+{"file":"src/toml_index.rs","caller":"quoted_keys","name":"entities.iter().map(|e| e.name.as_str()).collect","ref_kind":"call","line":572}
+{"file":"src/toml_index.rs","caller":"quoted_keys","name":"entities.iter().map","ref_kind":"call","line":572}
+{"file":"src/toml_index.rs","caller":"quoted_keys","name":"entities.iter","ref_kind":"call","line":572}
+{"file":"src/toml_index.rs","caller":"quoted_keys","name":"e.name.as_str","ref_kind":"call","line":572}
+{"file":"src/toml_index.rs","caller":"multiline_array","name":"parse_toml_file(source, \"test.toml\").unwrap","ref_kind":"call","line":580}
+{"file":"src/toml_index.rs","caller":"multiline_array","name":"parse_toml_file","ref_kind":"call","line":580}
+{"file":"src/toml_index.rs","caller":"multiline_array","name":"entities.iter().find(|e| e.name == \"deps\").unwrap","ref_kind":"call","line":581}
+{"file":"src/toml_index.rs","caller":"multiline_array","name":"entities.iter().find","ref_kind":"call","line":581}
+{"file":"src/toml_index.rs","caller":"multiline_array","name":"entities.iter","ref_kind":"call","line":581}
+{"file":"src/toml_index.rs","caller":"unchanged_section_has_stable_body_hash","name":"parse_toml_file(source_a, \"test.toml\").unwrap","ref_kind":"call","line":591}
+{"file":"src/toml_index.rs","caller":"unchanged_section_has_stable_body_hash","name":"parse_toml_file","ref_kind":"call","line":591}
+{"file":"src/toml_index.rs","caller":"unchanged_section_has_stable_body_hash","name":"parse_toml_file(source_b, \"test.toml\").unwrap","ref_kind":"call","line":592}
+{"file":"src/toml_index.rs","caller":"unchanged_section_has_stable_body_hash","name":"parse_toml_file","ref_kind":"call","line":592}
+{"file":"src/toml_index.rs","caller":"unchanged_section_has_stable_body_hash","name":"entities_a.iter().find(|e| e.name == \"tool\").unwrap","ref_kind":"call","line":593}
+{"file":"src/toml_index.rs","caller":"unchanged_section_has_stable_body_hash","name":"entities_a.iter().find","ref_kind":"call","line":593}
+{"file":"src/toml_index.rs","caller":"unchanged_section_has_stable_body_hash","name":"entities_a.iter","ref_kind":"call","line":593}
+{"file":"src/toml_index.rs","caller":"unchanged_section_has_stable_body_hash","name":"entities_b.iter().find(|e| e.name == \"tool\").unwrap","ref_kind":"call","line":594}
+{"file":"src/toml_index.rs","caller":"unchanged_section_has_stable_body_hash","name":"entities_b.iter().find","ref_kind":"call","line":594}
+{"file":"src/toml_index.rs","caller":"unchanged_section_has_stable_body_hash","name":"entities_b.iter","ref_kind":"call","line":594}
 {"file":"src/writer.rs","caller":null,"name":"std::io::Write","ref_kind":"import","line":1}
 {"file":"src/writer.rs","caller":null,"name":"crate::entity::{Entity, Reference}","ref_kind":"import","line":2}
 {"file":"src/writer.rs","caller":"write_entities_jsonl","name":"Write","ref_kind":"type_annotation","line":4}
@@ -2854,89 +2876,86 @@
 {"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"hasher::extract_raw_bytes","ref_kind":"call","line":304}
 {"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"hasher::struct_hash","ref_kind":"call","line":305}
 {"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"raw.as_bytes","ref_kind":"call","line":305}
-{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"serde_yaml::to_string(value).unwrap_or_default","ref_kind":"call","line":308}
-{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"serde_yaml::to_string","ref_kind":"call","line":308}
-{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"hasher::struct_hash","ref_kind":"call","line":309}
-{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"serialized_value.as_bytes","ref_kind":"call","line":309}
-{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"hasher::sig_hash","ref_kind":"call","line":312}
-{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"entities.push","ref_kind":"call","line":314}
-{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"file_path.to_string","ref_kind":"call","line":315}
-{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"key.clone","ref_kind":"call","line":316}
-{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"kind.to_string","ref_kind":"call","line":317}
-{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"parent.map","ref_kind":"call","line":320}
-{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"s.to_string","ref_kind":"call","line":320}
-{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"extract_mapping_entities","ref_kind":"call","line":336}
-{"file":"src/yaml_index.rs","caller":null,"name":"super::*","ref_kind":"import","line":351}
-{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":356}
-{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"parse_yaml_file","ref_kind":"call","line":356}
-{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"entities.iter().map(|e| e.name.as_str()).collect","ref_kind":"call","line":360}
-{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"entities.iter().map","ref_kind":"call","line":360}
-{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"entities.iter","ref_kind":"call","line":360}
-{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"e.name.as_str","ref_kind":"call","line":360}
-{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"entities.iter().find(|e| e.name == \"name\").unwrap","ref_kind":"call","line":364}
-{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"entities.iter().find","ref_kind":"call","line":364}
-{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"entities.iter","ref_kind":"call","line":364}
-{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":375}
-{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"parse_yaml_file","ref_kind":"call","line":375}
-{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find(|e| e.name == \"settings\").unwrap","ref_kind":"call","line":378}
-{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find","ref_kind":"call","line":378}
-{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter","ref_kind":"call","line":378}
-{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find(|e| e.name == \"theme\").unwrap","ref_kind":"call","line":383}
-{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find","ref_kind":"call","line":383}
-{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter","ref_kind":"call","line":383}
-{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find(|e| e.name == \"color\").unwrap","ref_kind":"call","line":387}
-{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find","ref_kind":"call","line":387}
-{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter","ref_kind":"call","line":387}
-{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find(|e| e.name == \"debug\").unwrap","ref_kind":"call","line":391}
-{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find","ref_kind":"call","line":391}
-{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter","ref_kind":"call","line":391}
-{"file":"src/yaml_index.rs","caller":"parse_sequences","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":399}
-{"file":"src/yaml_index.rs","caller":"parse_sequences","name":"parse_yaml_file","ref_kind":"call","line":399}
-{"file":"src/yaml_index.rs","caller":"parse_sequences","name":"entities.iter().find(|e| e.name == \"tags\").unwrap","ref_kind":"call","line":400}
-{"file":"src/yaml_index.rs","caller":"parse_sequences","name":"entities.iter().find","ref_kind":"call","line":400}
-{"file":"src/yaml_index.rs","caller":"parse_sequences","name":"entities.iter","ref_kind":"call","line":400}
-{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":408}
-{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"parse_yaml_file","ref_kind":"call","line":408}
-{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"entities.iter()\n            .map(|e| (e.name.as_str(), e.sig.as_deref().unwrap()))\n            .collect","ref_kind":"call","line":411}
-{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"entities.iter()\n            .map","ref_kind":"call","line":411}
-{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"entities.iter","ref_kind":"call","line":411}
-{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"e.name.as_str","ref_kind":"call","line":412}
-{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"e.sig.as_deref().unwrap","ref_kind":"call","line":412}
-{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"e.sig.as_deref","ref_kind":"call","line":412}
-{"file":"src/yaml_index.rs","caller":"hashes_are_present_and_16_chars","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":424}
-{"file":"src/yaml_index.rs","caller":"hashes_are_present_and_16_chars","name":"parse_yaml_file","ref_kind":"call","line":424}
-{"file":"src/yaml_index.rs","caller":"parse_empty_mapping","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":438}
-{"file":"src/yaml_index.rs","caller":"parse_empty_mapping","name":"parse_yaml_file","ref_kind":"call","line":438}
-{"file":"src/yaml_index.rs","caller":"parse_invalid_yaml","name":"parse_yaml_file","ref_kind":"call","line":445}
-{"file":"src/yaml_index.rs","caller":"entities_sorted_by_line","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":452}
-{"file":"src/yaml_index.rs","caller":"entities_sorted_by_line","name":"parse_yaml_file","ref_kind":"call","line":452}
-{"file":"src/yaml_index.rs","caller":"multiline_mapping_span","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":459}
-{"file":"src/yaml_index.rs","caller":"multiline_mapping_span","name":"parse_yaml_file","ref_kind":"call","line":459}
-{"file":"src/yaml_index.rs","caller":"multiline_mapping_span","name":"entities.iter().find(|e| e.name == \"config\").unwrap","ref_kind":"call","line":460}
-{"file":"src/yaml_index.rs","caller":"multiline_mapping_span","name":"entities.iter().find","ref_kind":"call","line":460}
-{"file":"src/yaml_index.rs","caller":"multiline_mapping_span","name":"entities.iter","ref_kind":"call","line":460}
-{"file":"src/yaml_index.rs","caller":"duplicate_keys_in_different_parents","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":468}
-{"file":"src/yaml_index.rs","caller":"duplicate_keys_in_different_parents","name":"parse_yaml_file","ref_kind":"call","line":468}
-{"file":"src/yaml_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter().filter(|e| e.name == \"id\").collect","ref_kind":"call","line":469}
-{"file":"src/yaml_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter().filter","ref_kind":"call","line":469}
-{"file":"src/yaml_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter","ref_kind":"call","line":469}
-{"file":"src/yaml_index.rs","caller":"parse_root_sequence_returns_empty","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":477}
-{"file":"src/yaml_index.rs","caller":"parse_root_sequence_returns_empty","name":"parse_yaml_file","ref_kind":"call","line":477}
-{"file":"src/yaml_index.rs","caller":"meta_is_always_none","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":484}
-{"file":"src/yaml_index.rs","caller":"meta_is_always_none","name":"parse_yaml_file","ref_kind":"call","line":484}
-{"file":"src/yaml_index.rs","caller":"keys_with_special_characters","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":491}
-{"file":"src/yaml_index.rs","caller":"keys_with_special_characters","name":"parse_yaml_file","ref_kind":"call","line":491}
-{"file":"src/yaml_index.rs","caller":"keys_with_special_characters","name":"entities.iter().map(|e| e.name.as_str()).collect","ref_kind":"call","line":493}
-{"file":"src/yaml_index.rs","caller":"keys_with_special_characters","name":"entities.iter().map","ref_kind":"call","line":493}
-{"file":"src/yaml_index.rs","caller":"keys_with_special_characters","name":"entities.iter","ref_kind":"call","line":493}
-{"file":"src/yaml_index.rs","caller":"keys_with_special_characters","name":"e.name.as_str","ref_kind":"call","line":493}
-{"file":"src/yaml_index.rs","caller":"comments_are_ignored_in_parsing","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":501}
-{"file":"src/yaml_index.rs","caller":"comments_are_ignored_in_parsing","name":"parse_yaml_file","ref_kind":"call","line":501}
-{"file":"src/yaml_index.rs","caller":"flow_style_mapping","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":508}
-{"file":"src/yaml_index.rs","caller":"flow_style_mapping","name":"parse_yaml_file","ref_kind":"call","line":508}
-{"file":"src/yaml_index.rs","caller":"flow_style_mapping","name":"entities.iter().find(|e| e.name == \"config\").unwrap","ref_kind":"call","line":509}
-{"file":"src/yaml_index.rs","caller":"flow_style_mapping","name":"entities.iter().find","ref_kind":"call","line":509}
-{"file":"src/yaml_index.rs","caller":"flow_style_mapping","name":"entities.iter","ref_kind":"call","line":509}
+{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"hasher::body_hash_raw","ref_kind":"call","line":308}
+{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"hasher::sig_hash","ref_kind":"call","line":311}
+{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"entities.push","ref_kind":"call","line":313}
+{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"file_path.to_string","ref_kind":"call","line":314}
+{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"key.clone","ref_kind":"call","line":315}
+{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"kind.to_string","ref_kind":"call","line":316}
+{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"parent.map","ref_kind":"call","line":319}
+{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"s.to_string","ref_kind":"call","line":319}
+{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"extract_mapping_entities","ref_kind":"call","line":335}
+{"file":"src/yaml_index.rs","caller":null,"name":"super::*","ref_kind":"import","line":350}
+{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":355}
+{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"parse_yaml_file","ref_kind":"call","line":355}
+{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"entities.iter().map(|e| e.name.as_str()).collect","ref_kind":"call","line":359}
+{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"entities.iter().map","ref_kind":"call","line":359}
+{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"entities.iter","ref_kind":"call","line":359}
+{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"e.name.as_str","ref_kind":"call","line":359}
+{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"entities.iter().find(|e| e.name == \"name\").unwrap","ref_kind":"call","line":363}
+{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"entities.iter().find","ref_kind":"call","line":363}
+{"file":"src/yaml_index.rs","caller":"parse_simple_yaml","name":"entities.iter","ref_kind":"call","line":363}
+{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":374}
+{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"parse_yaml_file","ref_kind":"call","line":374}
+{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find(|e| e.name == \"settings\").unwrap","ref_kind":"call","line":377}
+{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find","ref_kind":"call","line":377}
+{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter","ref_kind":"call","line":377}
+{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find(|e| e.name == \"theme\").unwrap","ref_kind":"call","line":382}
+{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find","ref_kind":"call","line":382}
+{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter","ref_kind":"call","line":382}
+{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find(|e| e.name == \"color\").unwrap","ref_kind":"call","line":386}
+{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find","ref_kind":"call","line":386}
+{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter","ref_kind":"call","line":386}
+{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find(|e| e.name == \"debug\").unwrap","ref_kind":"call","line":390}
+{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter().find","ref_kind":"call","line":390}
+{"file":"src/yaml_index.rs","caller":"parse_nested_mappings","name":"entities.iter","ref_kind":"call","line":390}
+{"file":"src/yaml_index.rs","caller":"parse_sequences","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":398}
+{"file":"src/yaml_index.rs","caller":"parse_sequences","name":"parse_yaml_file","ref_kind":"call","line":398}
+{"file":"src/yaml_index.rs","caller":"parse_sequences","name":"entities.iter().find(|e| e.name == \"tags\").unwrap","ref_kind":"call","line":399}
+{"file":"src/yaml_index.rs","caller":"parse_sequences","name":"entities.iter().find","ref_kind":"call","line":399}
+{"file":"src/yaml_index.rs","caller":"parse_sequences","name":"entities.iter","ref_kind":"call","line":399}
+{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":407}
+{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"parse_yaml_file","ref_kind":"call","line":407}
+{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"entities.iter()\n            .map(|e| (e.name.as_str(), e.sig.as_deref().unwrap()))\n            .collect","ref_kind":"call","line":410}
+{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"entities.iter()\n            .map","ref_kind":"call","line":410}
+{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"entities.iter","ref_kind":"call","line":410}
+{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"e.name.as_str","ref_kind":"call","line":411}
+{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"e.sig.as_deref().unwrap","ref_kind":"call","line":411}
+{"file":"src/yaml_index.rs","caller":"parse_all_value_types","name":"e.sig.as_deref","ref_kind":"call","line":411}
+{"file":"src/yaml_index.rs","caller":"hashes_are_present_and_16_chars","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":423}
+{"file":"src/yaml_index.rs","caller":"hashes_are_present_and_16_chars","name":"parse_yaml_file","ref_kind":"call","line":423}
+{"file":"src/yaml_index.rs","caller":"parse_empty_mapping","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":437}
+{"file":"src/yaml_index.rs","caller":"parse_empty_mapping","name":"parse_yaml_file","ref_kind":"call","line":437}
+{"file":"src/yaml_index.rs","caller":"parse_invalid_yaml","name":"parse_yaml_file","ref_kind":"call","line":444}
+{"file":"src/yaml_index.rs","caller":"entities_sorted_by_line","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":451}
+{"file":"src/yaml_index.rs","caller":"entities_sorted_by_line","name":"parse_yaml_file","ref_kind":"call","line":451}
+{"file":"src/yaml_index.rs","caller":"multiline_mapping_span","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":458}
+{"file":"src/yaml_index.rs","caller":"multiline_mapping_span","name":"parse_yaml_file","ref_kind":"call","line":458}
+{"file":"src/yaml_index.rs","caller":"multiline_mapping_span","name":"entities.iter().find(|e| e.name == \"config\").unwrap","ref_kind":"call","line":459}
+{"file":"src/yaml_index.rs","caller":"multiline_mapping_span","name":"entities.iter().find","ref_kind":"call","line":459}
+{"file":"src/yaml_index.rs","caller":"multiline_mapping_span","name":"entities.iter","ref_kind":"call","line":459}
+{"file":"src/yaml_index.rs","caller":"duplicate_keys_in_different_parents","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":467}
+{"file":"src/yaml_index.rs","caller":"duplicate_keys_in_different_parents","name":"parse_yaml_file","ref_kind":"call","line":467}
+{"file":"src/yaml_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter().filter(|e| e.name == \"id\").collect","ref_kind":"call","line":468}
+{"file":"src/yaml_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter().filter","ref_kind":"call","line":468}
+{"file":"src/yaml_index.rs","caller":"duplicate_keys_in_different_parents","name":"entities.iter","ref_kind":"call","line":468}
+{"file":"src/yaml_index.rs","caller":"parse_root_sequence_returns_empty","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":476}
+{"file":"src/yaml_index.rs","caller":"parse_root_sequence_returns_empty","name":"parse_yaml_file","ref_kind":"call","line":476}
+{"file":"src/yaml_index.rs","caller":"meta_is_always_none","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":483}
+{"file":"src/yaml_index.rs","caller":"meta_is_always_none","name":"parse_yaml_file","ref_kind":"call","line":483}
+{"file":"src/yaml_index.rs","caller":"keys_with_special_characters","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":490}
+{"file":"src/yaml_index.rs","caller":"keys_with_special_characters","name":"parse_yaml_file","ref_kind":"call","line":490}
+{"file":"src/yaml_index.rs","caller":"keys_with_special_characters","name":"entities.iter().map(|e| e.name.as_str()).collect","ref_kind":"call","line":492}
+{"file":"src/yaml_index.rs","caller":"keys_with_special_characters","name":"entities.iter().map","ref_kind":"call","line":492}
+{"file":"src/yaml_index.rs","caller":"keys_with_special_characters","name":"entities.iter","ref_kind":"call","line":492}
+{"file":"src/yaml_index.rs","caller":"keys_with_special_characters","name":"e.name.as_str","ref_kind":"call","line":492}
+{"file":"src/yaml_index.rs","caller":"comments_are_ignored_in_parsing","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":500}
+{"file":"src/yaml_index.rs","caller":"comments_are_ignored_in_parsing","name":"parse_yaml_file","ref_kind":"call","line":500}
+{"file":"src/yaml_index.rs","caller":"flow_style_mapping","name":"parse_yaml_file(source, \"test.yaml\").unwrap","ref_kind":"call","line":507}
+{"file":"src/yaml_index.rs","caller":"flow_style_mapping","name":"parse_yaml_file","ref_kind":"call","line":507}
+{"file":"src/yaml_index.rs","caller":"flow_style_mapping","name":"entities.iter().find(|e| e.name == \"config\").unwrap","ref_kind":"call","line":508}
+{"file":"src/yaml_index.rs","caller":"flow_style_mapping","name":"entities.iter().find","ref_kind":"call","line":508}
+{"file":"src/yaml_index.rs","caller":"flow_style_mapping","name":"entities.iter","ref_kind":"call","line":508}
 {"file":"tests/diff_integration.rs","caller":null,"name":"std::process::Command","ref_kind":"import","line":1}
 {"file":"tests/diff_integration.rs","caller":null,"name":"std::path::PathBuf","ref_kind":"import","line":2}
 {"file":"tests/diff_integration.rs","caller":"run_git","name":"std::path::Path","ref_kind":"type_annotation","line":4}
