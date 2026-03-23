@@ -27,6 +27,9 @@ pub fn parse_single_file(
     if language == "toml" {
         return crate::toml_index::parse_toml_file(source, file_path);
     }
+    if language == "markdown" {
+        return crate::markdown_index::parse_markdown_file(source, file_path);
+    }
 
     let (symbols, _texts, references) = codeix::parser::treesitter::parse_file(
         source.as_bytes(), language, file_path
@@ -144,6 +147,8 @@ pub fn build_index(
             "yaml"
         } else if ext == "toml" {
             "toml"
+        } else if ext == "md" || ext == "markdown" || ext == "mdx" {
+            "markdown"
         } else {
             match codeix::parser::languages::detect_language(ext) {
                 Some(l) => l,
@@ -258,7 +263,8 @@ fn discover_source_files(root: &Path) -> Vec<PathBuf> {
             entry.path().extension()
                 .and_then(|e| e.to_str())
                 .map(|ext| {
-                    ext == "json" || ext == "yaml" || ext == "yml" || ext == "toml"
+                    ext == "md" || ext == "markdown" || ext == "mdx"
+                        || ext == "json" || ext == "yaml" || ext == "yml" || ext == "toml"
                         || codeix::parser::languages::detect_language(ext).is_some()
                 })
                 .unwrap_or(false)

@@ -55,6 +55,8 @@ pub fn compute_diff(
             "yaml"
         } else if ext == "toml" {
             "toml"
+        } else if ext == "md" || ext == "markdown" || ext == "mdx" {
+            "markdown"
         } else {
             match codeix::parser::languages::detect_language(ext) {
                 Some(l) => l,
@@ -192,6 +194,7 @@ fn detect_lang(ext: &str) -> Option<&str> {
         "json" => Some("json"),
         "yaml" | "yml" => Some("yaml"),
         "toml" => Some("toml"),
+        "md" | "markdown" | "mdx" => Some("markdown"),
         _ => codeix::parser::languages::detect_language(ext),
     }
 }
