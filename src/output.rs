@@ -136,7 +136,7 @@ pub struct DiffOutput {
 }
 
 impl DiffOutput {
-    pub fn from_result(result: &DiffResult, include_context: bool) -> Self {
+    pub fn from_result(result: &DiffResult, include_context: bool, context_lines: usize) -> Self {
         // Build pattern index: map entity names to pattern IDs
         let mut pattern_map: BTreeMap<String, String> = BTreeMap::new();
         let mut output_patterns: Vec<OutputPattern> = Vec::new();
@@ -247,7 +247,7 @@ impl DiffOutput {
                 let pattern_ref = pattern_map.get(&diff.name).cloned();
 
                 let context = if include_context {
-                    build_snippet_context(diff, result)
+                    build_snippet_context(diff, result, context_lines)
                 } else {
                     None
                 };
@@ -457,7 +457,7 @@ fn parse_arrow_description(desc: &str) -> (String, String) {
 }
 
 /// Build a snippet context from entity diff source maps.
-fn build_snippet_context(diff: &EntityDiff, result: &DiffResult) -> Option<SnippetContext> {
+fn build_snippet_context(diff: &EntityDiff, result: &DiffResult, context_lines: usize) -> Option<SnippetContext> {
     let old_sources = result.old_sources.as_ref()?;
     let new_sources = result.new_sources.as_ref()?;
 
@@ -490,7 +490,7 @@ fn build_snippet_context(diff: &EntityDiff, result: &DiffResult) -> Option<Snipp
         _ => "full".to_string(),
     };
 
-    let hunks = inline_diff::compute_inline_diff_hunked(&base_snippet, &head_snippet, 3);
+    let hunks = inline_diff::compute_inline_diff_hunked(&base_snippet, &head_snippet, context_lines);
 
     Some(SnippetContext {
         base_snippet,
@@ -671,7 +671,7 @@ mod tests {
         ];
 
         let result = make_diff_result(entities, vec![]);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
 
         assert_eq!(output.summary.added, 1);
         assert_eq!(output.summary.modified, 1);
@@ -714,7 +714,7 @@ mod tests {
         ];
 
         let result = make_diff_result(entities, vec![]);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
 
         assert_eq!(output.moves.len(), 1);
         assert_eq!(output.moves[0].entity, "moved_func");
@@ -749,7 +749,7 @@ mod tests {
         ];
 
         let result = make_diff_result(entities, vec![]);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
 
         // Should NOT be in moves
         assert_eq!(output.moves.len(), 0);
@@ -780,7 +780,7 @@ mod tests {
         ];
 
         let result = make_diff_result(entities, vec![]);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
 
         assert_eq!(output.moves.len(), 0);
         assert_eq!(output.files.len(), 1);
@@ -834,7 +834,7 @@ mod tests {
         ];
 
         let result = make_diff_result(entities, patterns);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
 
         assert_eq!(output.patterns.len(), 1);
         assert_eq!(output.patterns[0].id, "pat_1");
@@ -883,7 +883,7 @@ mod tests {
         ];
 
         let result = make_diff_result(entities, patterns);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
 
         assert_eq!(output.patterns[0].pattern_type, "rename");
         assert!(output.patterns[0].entity_name.is_none());
@@ -927,7 +927,7 @@ mod tests {
         ];
 
         let result = make_diff_result(entities, vec![]);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
 
         assert_eq!(output.breaking.len(), 2);
         assert_eq!(output.breaking[0].entity, "old_api");
@@ -958,7 +958,7 @@ mod tests {
         ];
 
         let result = make_diff_result(entities, vec![]);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
 
         assert_eq!(output.breaking.len(), 1);
         assert_eq!(output.breaking[0].file, "new.py"); // destination file
@@ -991,7 +991,7 @@ mod tests {
     #[test]
     fn empty_diff_no_structural_changes() {
         let result = make_diff_result(vec![], vec![]);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
 
         assert!(output.files.is_empty());
         assert!(output.moves.is_empty());
@@ -1048,7 +1048,7 @@ mod tests {
         ];
 
         let result = make_diff_result(entities, vec![]);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
 
         let entity = &output.files[0].entities[0];
         // Should have 4 token changes (LineAdded and Comment are skipped)
@@ -1074,7 +1074,7 @@ mod tests {
     #[test]
     fn meta_fields_populated() {
         let result = make_diff_result(vec![], vec![]);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
 
         assert_eq!(output.meta.base_ref, "abc123");
         assert_eq!(output.meta.head_ref, "def456");
@@ -1103,7 +1103,7 @@ mod tests {
             },
         ];
         let result = make_diff_result(entities, vec![]);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
         assert!((output.moves[0].confidence - 1.0).abs() < f64::EPSILON);
 
         // Sig changed only: confidence 0.8
@@ -1126,7 +1126,7 @@ mod tests {
             },
         ];
         let result = make_diff_result(entities, vec![]);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
         assert!((output.moves[0].confidence - 0.8).abs() < f64::EPSILON);
 
         // Both changed: confidence 0.6
@@ -1149,7 +1149,7 @@ mod tests {
             },
         ];
         let result = make_diff_result(entities, vec![]);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
         assert!((output.moves[0].confidence - 0.6).abs() < f64::EPSILON);
     }
 
@@ -1175,7 +1175,7 @@ mod tests {
         ];
 
         let result = make_diff_result(entities, vec![]);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
 
         assert_eq!(output.summary.formatting_only, 1);
         assert_eq!(output.files[0].summary.formatting_only, 1);
@@ -1223,7 +1223,7 @@ mod tests {
         ];
 
         let result = make_diff_result(entities, vec![]);
-        let output = DiffOutput::from_result(&result, false);
+        let output = DiffOutput::from_result(&result, false, 3);
 
         // Structural counts must be 0
         assert_eq!(output.summary.added, 0);
@@ -1309,7 +1309,7 @@ mod tests {
             new_sources: Some(new_sources),
         };
 
-        let output = DiffOutput::from_result(&result, true);
+        let output = DiffOutput::from_result(&result, true, 3);
         let entity = &output.files[0].entities[0];
 
         assert!(entity.context.is_some());

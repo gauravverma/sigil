@@ -86,9 +86,9 @@ enum Cli {
         #[arg(long)]
         lines: bool,
 
-        /// Include code snippets in output
-        #[arg(long)]
-        context: bool,
+        /// Include code context in output (optionally specify lines of context, default 3)
+        #[arg(long, default_missing_value = "3", num_args = 0..=1)]
+        context: Option<usize>,
 
         /// Output as GitHub-flavored Markdown
         #[arg(long)]
@@ -247,21 +247,23 @@ fn main() {
             }
 
             // Compute diff result
+            let include_context = context.is_some();
+            let context_lines = context.unwrap_or(3);
             let result = if files.len() == 2 {
-                let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context: context };
+                let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context, context_lines };
                 diff::compute_file_diff(&files[0], &files[1], &opts)
                     .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(3); })
             } else {
                 let ref_spec = ref_spec.unwrap();
                 let (base_ref, head_ref) = git::parse_ref_spec(&ref_spec)
                     .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(3); });
-                let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context: context };
+                let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context, context_lines };
                 diff::compute_diff(&root, &base_ref, &head_ref, &opts)
                     .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(3); })
             };
 
             // Build DiffOutput
-            let output = output::DiffOutput::from_result(&result, context);
+            let output = output::DiffOutput::from_result(&result, include_context, context_lines);
 
             // Dispatch to formatter
             if json {
@@ -276,13 +278,13 @@ fn main() {
             } else if markdown {
                 let opts = markdown_formatter::MarkdownOptions {
                     use_emoji: !no_emoji,
-                    show_context: context,
+                    show_context: include_context,
                 };
                 print!("{}", markdown_formatter::format_markdown(&output, &opts));
             } else {
                 let opts = formatter::FormatOptions {
                     show_lines: lines,
-                    show_context: context,
+                    show_context: include_context,
                     use_color: !no_color,
                 };
                 print!("{}", formatter::format_terminal_v2(&output, &opts));

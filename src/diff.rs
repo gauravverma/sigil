@@ -14,11 +14,12 @@ pub struct DiffOptions {
     pub include_unchanged: bool,
     pub verbose: bool,
     pub include_context: bool,
+    pub context_lines: usize,
 }
 
 impl Default for DiffOptions {
     fn default() -> Self {
-        DiffOptions { include_unchanged: false, verbose: false, include_context: false }
+        DiffOptions { include_unchanged: false, verbose: false, include_context: false, context_lines: 3 }
     }
 }
 
