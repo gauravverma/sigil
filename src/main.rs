@@ -9,6 +9,7 @@ mod git;
 mod hasher;
 mod index;
 mod json_index;
+mod yaml_index;
 mod inline_diff;
 mod matcher;
 mod meta;
