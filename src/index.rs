@@ -21,6 +21,9 @@ pub fn parse_single_file(
     if language == "json" {
         return crate::json_index::parse_json_file(source, file_path);
     }
+    if language == "yaml" {
+        return crate::yaml_index::parse_yaml_file(source, file_path);
+    }
 
     let (symbols, _texts, references) = codeix::parser::treesitter::parse_file(
         source.as_bytes(), language, file_path
@@ -134,6 +137,8 @@ pub fn build_index(
         let ext = filepath.extension().and_then(|e| e.to_str()).unwrap_or("");
         let lang = if ext == "json" {
             "json"
+        } else if ext == "yaml" || ext == "yml" {
+            "yaml"
         } else {
             match codeix::parser::languages::detect_language(ext) {
                 Some(l) => l,
@@ -248,7 +253,8 @@ fn discover_source_files(root: &Path) -> Vec<PathBuf> {
             entry.path().extension()
                 .and_then(|e| e.to_str())
                 .map(|ext| {
-                    ext == "json" || codeix::parser::languages::detect_language(ext).is_some()
+                    ext == "json" || ext == "yaml" || ext == "yml"
+                        || codeix::parser::languages::detect_language(ext).is_some()
                 })
                 .unwrap_or(false)
         })

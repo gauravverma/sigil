@@ -43,6 +43,8 @@ pub fn compute_diff(
         let ext = change.path.rsplit('.').next().unwrap_or("");
         let lang: &str = if ext == "json" {
             "json"
+        } else if ext == "yaml" || ext == "yml" {
+            "yaml"
         } else {
             match codeix::parser::languages::detect_language(ext) {
                 Some(l) => l,
