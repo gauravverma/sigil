@@ -350,6 +350,22 @@ chmod +x .git/hooks/pre-push
 
 ## Integration with AI Agents
 
+### Install the Skill (recommended)
+
+The sigil skill teaches AI agents (Claude Code, Gemini CLI, etc.) to automatically use `sigil diff` instead of `git diff` for code reviews, PR analysis, and self-verification after edits.
+
+```bash
+npx skills add gauravverma/skills
+```
+
+Once installed, agents will automatically:
+- Use `sigil diff` instead of `git diff` when reviewing PRs or commits
+- Run `sigil diff HEAD` to verify their own edits
+- Use `sigil search`, `sigil callers`, and `sigil callees` for code navigation
+- Prefer structural diffs over raw line-level diffs
+
+### Manual Setup
+
 Add to your `CLAUDE.md` or agent instructions:
 
 ```markdown
