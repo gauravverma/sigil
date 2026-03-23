@@ -38,7 +38,8 @@ src/
   inline_diff.rs   — Line-level diffs within entities
   change_detail.rs — Token-level change extraction
   output.rs        — DiffOutput intermediate model for formatters (terminal, markdown, JSON)
-  formatter.rs     — Colored terminal output
+  formatter.rs     — Colored terminal output (format_terminal_v2 with FormatOptions)
+  markdown_formatter.rs — GitHub-flavored Markdown output (format_markdown with MarkdownOptions)
 ```
 
 ## Key Dependencies
@@ -57,6 +58,7 @@ src/
 - Entity output is sorted deterministically by (file, line_start)
 - Incremental indexing: only re-parses changed files
 - `sigil diff` shells out to git (no git2 dependency)
+- `sigil diff` exit codes: 0 = no changes, 1 = structural changes, 2 = breaking changes, 3 = error
 
 ## Useful Commands
 
@@ -67,6 +69,12 @@ sigil diff HEAD~1
 
 # JSON diff for AI review
 sigil diff main..HEAD --json --pretty
+
+# Markdown output for PRs
+sigil diff main..HEAD --markdown
+
+# Terminal with line numbers and code context
+sigil diff HEAD~1 --lines --context
 
 # Compare two files directly (no git required)
 sigil diff --files old.py new.py

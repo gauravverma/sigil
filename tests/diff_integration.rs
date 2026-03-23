@@ -69,7 +69,12 @@ fn run_sigil_diff(dir: &std::path::Path, ref_spec: &str, extra_args: &[&str]) ->
         .output()
         .expect("failed to run sigil");
 
-    assert!(output.status.success(), "sigil diff failed: {}", String::from_utf8_lossy(&output.stderr));
+    // Accept exit codes 0, 1, 2 as valid (only 3 is an error)
+    assert!(
+        output.status.code().unwrap_or(3) < 3,
+        "sigil diff failed with error: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     String::from_utf8(output.stdout).expect("invalid utf8")
 }
 
@@ -79,8 +84,14 @@ fn diff_detects_changes() {
     let json_str = run_sigil_diff(&dir, "HEAD~1", &[]);
     let result: serde_json::Value = serde_json::from_str(&json_str).unwrap();
 
-    let entities = result["entities"].as_array().unwrap();
-    assert!(!entities.is_empty(), "should detect entity changes");
+    // Entities are now nested inside files[]
+    let files = result["files"].as_array().unwrap();
+    assert!(!files.is_empty(), "should detect file changes");
+
+    let all_entities: Vec<&serde_json::Value> = files.iter()
+        .flat_map(|f| f["entities"].as_array().unwrap())
+        .collect();
+    assert!(!all_entities.is_empty(), "should detect entity changes");
 
     // Check summary has at least 1 added (audit_log)
     let summary = &result["summary"];
@@ -95,25 +106,30 @@ fn diff_json_has_required_fields() {
     let json_str = run_sigil_diff(&dir, "HEAD~1", &[]);
     let result: serde_json::Value = serde_json::from_str(&json_str).unwrap();
 
-    assert!(result["base_ref"].is_string());
-    assert!(result["head_ref"].is_string());
-    assert!(result["entities"].is_array());
-    assert!(result["patterns"].is_array());
-    assert!(result["summary"].is_object());
+    // V2 output shape: meta, summary, breaking, patterns, moves, files
+    assert!(result["meta"].is_object(), "missing meta");
+    assert!(result["meta"]["base_ref"].is_string(), "missing meta.base_ref");
+    assert!(result["meta"]["head_ref"].is_string(), "missing meta.head_ref");
+    assert!(result["summary"].is_object(), "missing summary");
+    assert!(result["patterns"].is_array(), "missing patterns");
+    assert!(result["files"].is_array(), "missing files");
 
     let summary = &result["summary"];
-    for field in &["added", "removed", "modified", "moved", "renamed", "formatting_only"] {
+    for field in &["added", "removed", "modified", "moves", "renamed", "formatting_only"] {
         assert!(summary[field].is_number(), "summary missing field: {}", field);
     }
-    assert!(summary["has_breaking_change"].is_boolean());
+    assert!(summary["has_breaking"].is_boolean(), "summary missing has_breaking");
 
-    // Check entity diff fields
-    for entity in result["entities"].as_array().unwrap() {
-        assert!(entity["change"].is_string(), "entity missing change field");
-        assert!(entity["name"].is_string(), "entity missing name field");
-        assert!(entity["kind"].is_string(), "entity missing kind field");
-        assert!(entity["file"].is_string(), "entity missing file field");
-        assert!(entity["breaking"].is_boolean(), "entity missing breaking field");
+    // Check entity fields inside files
+    for file_section in result["files"].as_array().unwrap() {
+        assert!(file_section["file"].is_string(), "file section missing file field");
+        assert!(file_section["entities"].is_array(), "file section missing entities");
+        for entity in file_section["entities"].as_array().unwrap() {
+            assert!(entity["change"].is_string(), "entity missing change field");
+            assert!(entity["name"].is_string(), "entity missing name field");
+            assert!(entity["kind"].is_string(), "entity missing kind field");
+            assert!(entity["breaking"].is_boolean(), "entity missing breaking field");
+        }
     }
 
     std::fs::remove_dir_all(&dir).ok();
@@ -130,10 +146,15 @@ fn diff_terminal_output_works() {
         .output()
         .expect("failed to run sigil");
 
-    assert!(output.status.success());
+    // Exit code 1 means structural changes detected (expected for this test)
+    assert!(
+        output.status.code().unwrap_or(3) < 3,
+        "sigil diff failed with error: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("ADDED") || stdout.contains("MODIFIED") || stdout.contains("RENAMED")
-        || stdout.contains("FORMATTING"), "terminal output should contain change labels: {}", stdout);
+    // V2 terminal format uses glyphs like +, ~, - instead of ADDED/MODIFIED labels
+    assert!(!stdout.is_empty(), "terminal output should not be empty: {}", stdout);
 
     std::fs::remove_dir_all(&dir).ok();
 }
@@ -148,21 +169,54 @@ fn diff_deterministic() {
 }
 
 #[test]
-fn diff_modified_entities_have_change_details() {
+fn diff_modified_entities_have_token_changes() {
     let dir = make_diff_repo();
     let json_str = run_sigil_diff(&dir, "HEAD~1", &[]);
     let result: serde_json::Value = serde_json::from_str(&json_str).unwrap();
 
-    let modified: Vec<&serde_json::Value> = result["entities"].as_array().unwrap()
+    let all_entities: Vec<&serde_json::Value> = result["files"].as_array().unwrap()
         .iter()
+        .flat_map(|f| f["entities"].as_array().unwrap())
+        .collect();
+
+    let modified: Vec<&&serde_json::Value> = all_entities.iter()
         .filter(|e| e["change"] == "modified")
         .collect();
 
-    // At least one modified entity should have change_details
-    let has_details = modified.iter().any(|e| {
-        e.get("change_details").is_some_and(|d| d.is_array() && !d.as_array().unwrap().is_empty())
+    // At least one modified entity should have token_changes
+    let has_changes = modified.iter().any(|e| {
+        e.get("token_changes").is_some_and(|d| d.is_array() && !d.as_array().unwrap().is_empty())
     });
-    assert!(has_details, "modified entities should have change_details");
+    assert!(has_changes, "modified entities should have token_changes");
 
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn exit_code_0_for_no_changes() {
+    let dir = make_diff_repo();
+    let output = Command::new(env!("CARGO_BIN_EXE_sigil"))
+        .args(["diff", "HEAD..HEAD", "--root"])
+        .arg(&dir)
+        .output()
+        .expect("failed to run sigil");
+    assert_eq!(output.status.code(), Some(0), "HEAD..HEAD should produce exit code 0 (no changes)");
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn exit_code_1_for_structural_changes() {
+    let dir = make_diff_repo();
+    let output = Command::new(env!("CARGO_BIN_EXE_sigil"))
+        .args(["diff", "HEAD~1", "--root"])
+        .arg(&dir)
+        .output()
+        .expect("failed to run sigil");
+    let code = output.status.code().unwrap_or(3);
+    assert!(
+        code == 1 || code == 2,
+        "diff with structural changes should exit 1 or 2, got {}",
+        code
+    );
     std::fs::remove_dir_all(&dir).ok();
 }

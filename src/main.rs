@@ -81,6 +81,26 @@ enum Cli {
         /// Print progress information
         #[arg(short, long)]
         verbose: bool,
+
+        /// Show line numbers next to entity names
+        #[arg(long)]
+        lines: bool,
+
+        /// Include code snippets in output
+        #[arg(long)]
+        context: bool,
+
+        /// Output as GitHub-flavored Markdown
+        #[arg(long)]
+        markdown: bool,
+
+        /// Use ASCII glyphs instead of emoji (with --markdown)
+        #[arg(long)]
+        no_emoji: bool,
+
+        /// Disable ANSI color output
+        #[arg(long)]
+        no_color: bool,
     },
     /// Explore project structure: files grouped by directory
     Explore {
@@ -218,33 +238,60 @@ fn main() {
                 }
             }
         }
-        Cli::Diff { ref_spec, files, root, json, pretty, verbose } => {
+        Cli::Diff { ref_spec, files, root, json, pretty, verbose, lines, context, markdown, no_emoji, no_color } => {
+            // Handle --no-color
+            if no_color {
+                colored::control::set_override(false);
+            }
+
+            // Compute diff result
             let result = if files.len() == 2 {
-                let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context: false };
+                let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context: context };
                 diff::compute_file_diff(&files[0], &files[1], &opts)
-                    .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); })
+                    .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(3); })
             } else {
                 let ref_spec = ref_spec.unwrap();
                 let (base_ref, head_ref) = git::parse_ref_spec(&ref_spec)
-                    .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
-
-                let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context: false };
+                    .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(3); });
+                let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context: context };
                 diff::compute_diff(&root, &base_ref, &head_ref, &opts)
-                    .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); })
+                    .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(3); })
             };
 
+            // Build DiffOutput
+            let output = output::DiffOutput::from_result(&result, context);
+
+            // Dispatch to formatter
             if json {
                 let out = std::io::stdout();
                 let mut out = out.lock();
                 if pretty {
-                    serde_json::to_writer_pretty(&mut out, &result)
+                    serde_json::to_writer_pretty(&mut out, &output)
                 } else {
-                    serde_json::to_writer(&mut out, &result)
+                    serde_json::to_writer(&mut out, &output)
                 }.expect("Failed to write JSON");
                 println!();
+            } else if markdown {
+                let opts = markdown_formatter::MarkdownOptions {
+                    use_emoji: !no_emoji,
+                    show_context: context,
+                };
+                print!("{}", markdown_formatter::format_markdown(&output, &opts));
             } else {
-                print!("{}", formatter::format_terminal(&result));
+                let opts = formatter::FormatOptions {
+                    show_lines: lines,
+                    show_context: context,
+                    use_color: !no_color,
+                };
+                print!("{}", formatter::format_terminal_v2(&output, &opts));
             }
+
+            // Exit codes (ONLY for Diff command)
+            let s = &output.summary;
+            let exit_code = if s.has_breaking { 2 }
+                else if s.added + s.removed + s.modified + s.moves + s.renamed > 0 { 1 }
+                else { 0 };
+            std::process::exit(exit_code);
         }
         Cli::Explore { root, path, max_entries, json } => {
             let (_mt, db) = query::load_index(&root)

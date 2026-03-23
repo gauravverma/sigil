@@ -164,11 +164,22 @@ sigil diff abc123..def456      # Compare two specific commits
 sigil diff HEAD~3 --json       # JSON output
 sigil diff HEAD~1 --pretty     # Pretty-printed JSON
 sigil diff HEAD~1 -v           # Verbose (show parse progress)
+sigil diff HEAD~1 --lines      # Show line numbers
+sigil diff HEAD~1 --context    # Include code snippets
+sigil diff HEAD~1 --markdown   # GitHub-flavored Markdown output
+sigil diff HEAD~1 --no-color   # Disable ANSI colors
+sigil diff HEAD~1 --markdown --no-emoji  # ASCII-only markdown
 
 # Compare two files directly (no git required)
 sigil diff --files old.py new.py
 sigil diff --files v1/config.toml v2/config.toml --json
 ```
+
+**Exit codes:**
+- `0` — no structural changes
+- `1` — structural changes detected
+- `2` — breaking changes detected
+- `3` — error (invalid ref, unsupported file type, etc.)
 
 **Change classifications:**
 - **ADDED** — new entity
@@ -315,32 +326,57 @@ chmod +x .git/hooks/pre-push
 
 ```json
 {
-  "base_ref": "HEAD~1",
-  "head_ref": "HEAD",
-  "entities": [
-    {
-      "change": "modified",
-      "name": "process_payment",
-      "kind": "function",
-      "file": "src/payments.py",
-      "sig_changed": true,
-      "body_changed": true,
-      "breaking": true,
-      "change_details": [
-        { "kind": "value_changed", "description": "\"true\" → \"false\"" }
-      ]
-    }
-  ],
-  "patterns": [],
+  "meta": {
+    "base_ref": "HEAD~1",
+    "head_ref": "HEAD",
+    "generated_at": "2026-03-23T12:00:00Z",
+    "sigil_version": "0.1.1"
+  },
   "summary": {
+    "files_changed": 1,
+    "patterns": 0,
+    "moves": 0,
     "added": 0,
     "removed": 0,
     "modified": 1,
-    "moved": 0,
     "renamed": 0,
     "formatting_only": 0,
-    "has_breaking_change": true
-  }
+    "has_breaking": true,
+    "natural_language": "1 modified (1 breaking) across 1 file"
+  },
+  "breaking": [
+    {
+      "entity": "process_payment",
+      "kind": "function",
+      "file": "src/payments.py",
+      "line": 5,
+      "reason": "public signature removed or changed"
+    }
+  ],
+  "patterns": [],
+  "moves": [],
+  "files": [
+    {
+      "file": "src/payments.py",
+      "summary": { "added": 0, "modified": 1, "removed": 0, "renamed": 0, "formatting_only": 0 },
+      "entities": [
+        {
+          "change": "modified",
+          "name": "process_payment",
+          "kind": "function",
+          "line": 5,
+          "line_end": 12,
+          "sig_changed": true,
+          "body_changed": true,
+          "breaking": true,
+          "breaking_reason": "public signature removed or changed",
+          "token_changes": [
+            { "type": "value_changed", "from": "true", "to": "false" }
+          ]
+        }
+      ]
+    }
+  ]
 }
 ```
 
@@ -379,7 +415,7 @@ After making changes, run: sigil diff HEAD to verify your edits.
 
 - name: Label breaking changes
   run: |
-    if jq -e '.summary.has_breaking_change' diff.json; then
+    if jq -e '.summary.has_breaking' diff.json; then
       gh pr edit --add-label "breaking-change"
     fi
 ```
