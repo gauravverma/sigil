@@ -153,9 +153,9 @@ All code intelligence commands support `--json` for structured output and `--roo
 
 ## Commands
 
-### `sigil diff <REF_SPEC>`
+### `sigil diff`
 
-Structural diff between two git refs.
+Structural diff between two git refs or two files.
 
 ```
 sigil diff HEAD~1              # Compare with previous commit
@@ -284,16 +284,16 @@ Tree-sitter grammars via [codeix](https://github.com/montanetech/codeix):
 
 ## Git Hook Setup
 
-To automatically run `sigil index` after each commit:
+To automatically update the sigil index on every commit (so `.sigil/` stays in sync):
 
 ```bash
-# Create the hook
-cat > .git/hooks/post-commit << 'EOF'
+cat > .git/hooks/pre-commit << 'EOF'
 #!/bin/sh
 sigil index --verbose 2>&1 | tail -1
+git add .sigil/
 EOF
 
-chmod +x .git/hooks/post-commit
+chmod +x .git/hooks/pre-commit
 ```
 
 For a pre-push hook that runs structural diff:

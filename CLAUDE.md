@@ -33,7 +33,7 @@ src/
   git.rs           — Git operations (changed_files, file_at_ref)
   matcher.rs       — Entity matching across versions (exact/moved/renamed)
   classifier.rs    — Change classification (sig/body hash matrix)
-  diff.rs          — Diff orchestration (git → parse → match → classify)
+  diff.rs          — Diff orchestration (git refs or direct file comparison → parse → match → classify)
   diff_json.rs     — Diff output structs (EntityDiff, DiffResult)
   inline_diff.rs   — Line-level diffs within entities
   change_detail.rs — Token-level change extraction
@@ -48,6 +48,7 @@ src/
 - **similar** — line and word diffing
 - **clap** — CLI argument parsing
 - **colored** — terminal colors
+- **toml** — TOML parsing
 
 ## Conventions
 
@@ -65,6 +66,9 @@ sigil diff HEAD~1
 
 # JSON diff for AI review
 sigil diff main..HEAD --json --pretty
+
+# Compare two files directly (no git required)
+sigil diff --files old.py new.py
 
 # Code intelligence queries (powered by codeix SearchDb)
 sigil explore                            # Project structure overview

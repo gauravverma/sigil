@@ -20,6 +20,8 @@ sigil diff HEAD~1                    # What changed in the last commit
 sigil diff main..HEAD                # What changed on this branch
 sigil diff main..HEAD --json         # Structured JSON for programmatic use
 sigil diff abc123..def456 --verbose  # Between any two refs, with progress
+sigil diff --files old.py new.py     # Compare two files directly (no git)
+sigil diff --files a.toml b.toml --json  # File comparison with JSON output
 ```
 
 **Output classifications:**
@@ -150,6 +152,7 @@ sigil diff HEAD~1 --json
 | "Find files matching a pattern" | No | `Glob "**/*.go"` |
 | "Find a string in code" | `sigil search "string"` | Also fine with `Grep "string"` |
 | "What changed in this PR/commit?" | `sigil diff` | No — git diff is line-level noise |
+| "Compare two versions of a file" | `sigil diff --files old new` | No — diff is unstructured |
 | "Read a specific file" | No | `Read` tool |
 
 **Rule of thumb:** If the question is about **relationships** (callers, callees, "where is X used", "what does X do"), always prefer sigil. If it's about **text matching** or **file finding**, Grep/Glob is fine.

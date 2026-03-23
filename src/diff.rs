@@ -40,6 +40,11 @@ pub fn compute_diff(
     let mut new_sources: HashMap<String, String> = HashMap::new();
 
     for change in &changes {
+        // Skip .sigil/ internal cache files
+        if change.path.starts_with(".sigil/") || change.path.starts_with(".sigil\\") {
+            continue;
+        }
+
         let ext = change.path.rsplit('.').next().unwrap_or("");
         let lang: &str = if ext == "json" {
             "json"
