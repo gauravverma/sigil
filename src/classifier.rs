@@ -125,7 +125,7 @@ mod tests {
     fn formatting_only() {
         let old = entity(Some("sh1"), Some("bh1"), "st_old");
         let new = entity(Some("sh1"), Some("bh1"), "st_new");
-        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::ExactMatch };
+        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::ExactMatch, confidence: 1.0 };
         let d = classify(&m);
         assert_eq!(d.change, ChangeKind::FormattingOnly);
         assert!(!d.breaking);
@@ -135,7 +135,7 @@ mod tests {
     fn sig_changed_only() {
         let old = entity(Some("sh1"), Some("bh1"), "st_old");
         let new = entity(Some("sh2"), Some("bh1"), "st_new");
-        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::ExactMatch };
+        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::ExactMatch, confidence: 1.0 };
         let d = classify(&m);
         assert_eq!(d.change, ChangeKind::Modified);
         assert_eq!(d.sig_changed, Some(true));
@@ -146,7 +146,7 @@ mod tests {
     fn body_changed_only() {
         let old = entity(Some("sh1"), Some("bh1"), "st_old");
         let new = entity(Some("sh1"), Some("bh2"), "st_new");
-        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::ExactMatch };
+        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::ExactMatch, confidence: 1.0 };
         let d = classify(&m);
         assert_eq!(d.change, ChangeKind::Modified);
         assert_eq!(d.sig_changed, Some(false));
@@ -158,7 +158,7 @@ mod tests {
     fn both_changed() {
         let old = entity(Some("sh1"), Some("bh1"), "st_old");
         let new = entity(Some("sh2"), Some("bh2"), "st_new");
-        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::ExactMatch };
+        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::ExactMatch, confidence: 1.0 };
         let d = classify(&m);
         assert_eq!(d.change, ChangeKind::Modified);
         assert_eq!(d.sig_changed, Some(true));
@@ -169,7 +169,7 @@ mod tests {
     fn breaking_when_public_sig_changes() {
         let old = entity(Some("sh1"), Some("bh1"), "st_old");
         let new = entity(Some("sh2"), Some("bh1"), "st_new");
-        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::ExactMatch };
+        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::ExactMatch, confidence: 1.0 };
         let d = classify(&m);
         assert!(d.breaking);
     }
@@ -180,7 +180,7 @@ mod tests {
         old.parent = Some("SomeClass".into());
         let mut new = entity(Some("sh2"), Some("bh1"), "st_new");
         new.parent = Some("SomeClass".into());
-        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::ExactMatch };
+        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::ExactMatch, confidence: 1.0 };
         let d = classify(&m);
         assert!(!d.breaking);
     }
@@ -188,7 +188,7 @@ mod tests {
     #[test]
     fn added_entity() {
         let new = entity(Some("sh1"), Some("bh1"), "st1");
-        let m = EntityMatch { old: None, new: Some(new), match_kind: MatchKind::Added };
+        let m = EntityMatch { old: None, new: Some(new), match_kind: MatchKind::Added, confidence: 1.0 };
         let d = classify(&m);
         assert_eq!(d.change, ChangeKind::Added);
         assert!(!d.breaking);
@@ -197,7 +197,7 @@ mod tests {
     #[test]
     fn removed_entity_is_breaking() {
         let old = entity(Some("sh1"), Some("bh1"), "st1");
-        let m = EntityMatch { old: Some(old), new: None, match_kind: MatchKind::Removed };
+        let m = EntityMatch { old: Some(old), new: None, match_kind: MatchKind::Removed, confidence: 1.0 };
         let d = classify(&m);
         assert_eq!(d.change, ChangeKind::Removed);
         assert!(d.breaking);
@@ -208,7 +208,7 @@ mod tests {
         let mut old = entity(Some("sh1"), Some("bh1"), "st1");
         old.file = "old.py".into();
         let new = entity(Some("sh1"), Some("bh1"), "st1");
-        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::Moved };
+        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::Moved, confidence: 1.0 };
         let d = classify(&m);
         assert_eq!(d.change, ChangeKind::Moved);
         assert_eq!(d.old_file, Some("old.py".to_string()));
@@ -218,7 +218,7 @@ mod tests {
     fn renamed_entity_is_breaking() {
         let old = entity(Some("sh1"), Some("bh1"), "st1");
         let new = entity(Some("sh2"), Some("bh1"), "st2");
-        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::Renamed };
+        let m = EntityMatch { old: Some(old), new: Some(new), match_kind: MatchKind::Renamed, confidence: 1.0 };
         let d = classify(&m);
         assert_eq!(d.change, ChangeKind::Renamed);
         assert!(d.breaking);

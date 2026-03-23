@@ -15,6 +15,7 @@ pub struct EntityMatch {
     pub old: Option<Entity>,
     pub new: Option<Entity>,
     pub match_kind: MatchKind,
+    pub confidence: f64, // 0.0-1.0; always 1.0 until fuzzy matching is added
 }
 
 /// Match entities across two versions.
@@ -51,6 +52,7 @@ pub fn match_entities(old: &[Entity], new: &[Entity]) -> Vec<EntityMatch> {
                     old: Some(oe.clone()),
                     new: Some(ne.clone()),
                     match_kind: MatchKind::ExactMatch,
+                    confidence: 1.0,
                 });
                 used_old.insert(oi);
                 used_new.insert(ni);
@@ -72,6 +74,7 @@ pub fn match_entities(old: &[Entity], new: &[Entity]) -> Vec<EntityMatch> {
                     old: Some(old[oi].clone()),
                     new: Some(ne.clone()),
                     match_kind: MatchKind::Moved,
+                    confidence: 1.0,
                 });
                 used_old.insert(oi);
                 used_new.insert(ni);
@@ -95,6 +98,7 @@ pub fn match_entities(old: &[Entity], new: &[Entity]) -> Vec<EntityMatch> {
                     old: Some(old[oi].clone()),
                     new: Some(ne.clone()),
                     match_kind: MatchKind::Renamed,
+                    confidence: 1.0,
                 });
                 used_old.insert(oi);
                 used_new.insert(ni);
@@ -109,6 +113,7 @@ pub fn match_entities(old: &[Entity], new: &[Entity]) -> Vec<EntityMatch> {
                 old: Some(oe.clone()),
                 new: None,
                 match_kind: MatchKind::Removed,
+                confidence: 1.0,
             });
         }
     }
@@ -118,6 +123,7 @@ pub fn match_entities(old: &[Entity], new: &[Entity]) -> Vec<EntityMatch> {
                 old: None,
                 new: Some(ne.clone()),
                 match_kind: MatchKind::Added,
+                confidence: 1.0,
             });
         }
     }
