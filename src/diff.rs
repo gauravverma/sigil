@@ -103,9 +103,14 @@ pub fn compute_diff(
     let patterns = DiffResult::detect_patterns(&entity_diffs);
     let summary = DiffResult::compute_summary(&entity_diffs);
 
+    let base_sha = git::resolve_ref(root, base_ref).ok();
+    let head_sha = git::resolve_ref(root, head_ref).ok();
+
     Ok(DiffResult {
         base_ref: base_ref.to_string(),
         head_ref: head_ref.to_string(),
+        base_sha,
+        head_sha,
         entities: entity_diffs,
         patterns,
         summary,
@@ -166,6 +171,8 @@ pub fn compute_file_diff(
     Ok(DiffResult {
         base_ref: old_path_str,
         head_ref: new_path_str,
+        base_sha: None,
+        head_sha: None,
         entities: entity_diffs,
         patterns,
         summary,

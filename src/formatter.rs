@@ -139,6 +139,8 @@ mod tests {
         let result = DiffResult {
             base_ref: "abc".into(),
             head_ref: "def".into(),
+            base_sha: None,
+            head_sha: None,
             entities: vec![],
             patterns: vec![],
             summary: DiffSummary {
@@ -158,6 +160,8 @@ mod tests {
         let result = DiffResult {
             base_ref: "abc".into(),
             head_ref: "def".into(),
+            base_sha: None,
+            head_sha: None,
             entities: vec![],
             patterns: vec![],
             summary: DiffSummary {
