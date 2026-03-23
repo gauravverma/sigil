@@ -54,8 +54,20 @@ pub fn format_terminal_v2(output: &DiffOutput, opts: &FormatOptions) -> String {
         }
     }
 
-    // 4. Separator before file sections (if there are patterns or moves)
-    if !output.patterns.is_empty() || !output.moves.is_empty() {
+    // 3b. Groups section (if --group)
+    if let Some(ref groups) = output.groups {
+        if !groups.is_empty() {
+            out.push('\n');
+            out.push_str(&"change groups".dimmed().to_string());
+            out.push('\n');
+            out.push('\n');
+            render_groups(&mut out, groups);
+        }
+    }
+
+    // 4. Separator before file sections (if there are patterns, moves, or groups)
+    let has_groups = output.groups.as_ref().map_or(false, |g| !g.is_empty());
+    if !output.patterns.is_empty() || !output.moves.is_empty() || has_groups {
         out.push('\n');
         out.push_str(&separator());
         out.push('\n');
@@ -117,6 +129,10 @@ fn render_header(out: &mut String, output: &DiffOutput) {
 
     out.push_str(&separator());
     out.push('\n');
+
+    if let Some(ref summary_line) = output.summary.summary_line {
+        out.push_str(&format!("{}\n", format!("Summary: {}", summary_line).dimmed()));
+    }
 }
 
 // ── Patterns ────────────────────────────────────────────────────────────────
@@ -174,6 +190,26 @@ fn render_move(out: &mut String, mv: &MoveEntry) {
         GLYPH_ARROW,
         mv.to_file,
     ));
+}
+
+// ── Groups ───────────────────────────────────────────────────────────────────
+
+fn render_groups(out: &mut String, groups: &[crate::grouping::ChangeGroup]) {
+    for (i, group) in groups.iter().enumerate() {
+        out.push_str(&format!("  {}. {}\n", i + 1, group.label.bold()));
+        for entity in &group.entities {
+            let glyph = match entity.change.as_str() {
+                "added" => GLYPH_ADDED,
+                "removed" => GLYPH_REMOVED,
+                "modified" => GLYPH_MODIFIED,
+                "renamed" => GLYPH_RENAMED,
+                _ => GLYPH_FORMAT,
+            };
+            out.push_str(&format!("     {}  {:<9} {:<20} {}\n",
+                glyph, entity.change, entity.name.bold(), entity.kind.dimmed()));
+        }
+        out.push('\n');
+    }
 }
 
 // ── Per-file section ────────────────────────────────────────────────────────
@@ -383,7 +419,26 @@ fn render_modified_continuation(out: &mut String, entity: &OutputEntity) {
 }
 
 fn render_context(out: &mut String, ctx: &SnippetContext) {
-    // Show base → head diff as indented snippet
+    if let Some(ref hunks) = ctx.hunks {
+        for line in hunks {
+            match line.kind {
+                crate::inline_diff::DiffLineKind::Context => {
+                    out.push_str(&format!("       {}\n", line.text.dimmed()));
+                }
+                crate::inline_diff::DiffLineKind::Removed => {
+                    out.push_str(&format!("       {}\n", format!("-  {}", line.text).red()));
+                }
+                crate::inline_diff::DiffLineKind::Added => {
+                    out.push_str(&format!("       {}\n", format!("+  {}", line.text).green()));
+                }
+                crate::inline_diff::DiffLineKind::Separator => {
+                    out.push_str(&format!("       {}\n", "\u{22EF}".dimmed())); // ⋯
+                }
+            }
+        }
+        return;
+    }
+    // Fallback for old-style base/head snippets (backward compat)
     if !ctx.base_snippet.is_empty() {
         for line in ctx.base_snippet.lines() {
             out.push_str(&format!("       {}\n", format!("- {}", line).red()));
@@ -441,19 +496,38 @@ fn render_breaking(out: &mut String, output: &DiffOutput) {
         return;
     }
 
-    let entries: Vec<String> = output
-        .breaking
-        .iter()
-        .map(|b| format!("{} ({})", b.entity, b.reason))
-        .collect();
+    for b in &output.breaking {
+        out.push_str(&format!(
+            "  {} {}  {} ({})\n",
+            GLYPH_BREAKING.red(),
+            "breaking:".red().bold(),
+            b.entity,
+            b.reason,
+        ));
 
-    let joined = entries.join(&format!("  {}  ", GLYPH_FORMAT));
-    out.push_str(&format!(
-        "  {} {}  {}\n",
-        GLYPH_BREAKING.red(),
-        "breaking:".red().bold(),
-        joined,
-    ));
+        // Caller impact
+        if let Some(ref callers) = b.external_callers {
+            if callers.is_empty() {
+                let in_diff = b.callers_in_diff.unwrap_or(0);
+                if in_diff > 0 {
+                    out.push_str(&format!("     {}\n",
+                        format!("0 callers outside this diff ({} in diff, safe)", in_diff).dimmed()));
+                } else {
+                    out.push_str(&format!("     {}\n",
+                        "0 callers found (safe)".dimmed()));
+                }
+            } else {
+                out.push_str(&format!("     {} callers outside this diff:\n", callers.len()));
+                for c in callers.iter().take(5) {
+                    out.push_str(&format!("       {}:{}  {}\n",
+                        c.file.dimmed(), c.line, c.name));
+                }
+                if callers.len() > 5 {
+                    out.push_str(&format!("       +{} more\n", callers.len() - 5));
+                }
+            }
+        }
+    }
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -470,7 +544,7 @@ mod tests {
     use super::*;
     use crate::output::{
         BreakingEntry, DiffOutput, FileSection, FileSummary, Meta, MoveEntry, OutputEntity,
-        OutputPattern, OutputSummary,
+        OutputPattern, OutputSummary, SnippetContext, TokenChange,
     };
 
     fn make_meta(base_ref: &str) -> Meta {
@@ -503,6 +577,7 @@ mod tests {
             formatting_only,
             has_breaking,
             natural_language: String::new(),
+            summary_line: None,
         }
     }
 
@@ -540,6 +615,7 @@ mod tests {
             patterns: vec![],
             moves: vec![],
             files: vec![],
+            groups: None,
         }
     }
 
@@ -566,6 +642,8 @@ mod tests {
             file: "src/payments.py".to_string(),
             line: 47,
             reason: "public signature changed".to_string(),
+            external_callers: None,
+            callers_in_diff: None,
         }];
         output.files = vec![FileSection {
             file: "src/payments.py".to_string(),
@@ -627,6 +705,7 @@ mod tests {
             formatting_only: 5,
             has_breaking: false,
             natural_language: String::new(),
+            summary_line: None,
         };
         let text = format_terminal_v2(&output, &default_opts());
         assert!(text.contains("2 patterns"));
@@ -798,6 +877,8 @@ mod tests {
             file: "src/new.py".to_string(),
             line: 20,
             reason: "public entity moved".to_string(),
+            external_callers: None,
+            callers_in_diff: None,
         }];
         let text = format_terminal_v2(&output, &default_opts());
         assert!(text.contains("moves"));
@@ -826,6 +907,8 @@ mod tests {
                 file: "src/payments.py".to_string(),
                 line: 47,
                 reason: "sig changed".to_string(),
+                external_callers: None,
+                callers_in_diff: None,
             },
             BreakingEntry {
                 entity: "old_handler".to_string(),
@@ -833,6 +916,8 @@ mod tests {
                 file: "src/payments.py".to_string(),
                 line: 100,
                 reason: "removed".to_string(),
+                external_callers: None,
+                callers_in_diff: None,
             },
         ];
         let text = format_terminal_v2(&output, &default_opts());
@@ -923,6 +1008,7 @@ mod tests {
             formatting_only: 4,
             has_breaking: false,
             natural_language: String::new(),
+            summary_line: None,
         };
         output.files = vec![
             FileSection {
@@ -989,5 +1075,51 @@ mod tests {
             "expected at least 4 separator lines, found {}",
             count
         );
+    }
+
+    // ── Hunk rendering test ─────────────────────────────────────────────
+
+    #[test]
+    fn context_mode_renders_hunks() {
+        let mut output = empty_output("HEAD~1");
+        output.summary = make_summary(1, 0, 1, 0, 0, false);
+        let mut entity = make_entity("modified", "my_func", "function");
+        entity.sig_changed = Some(false);
+        entity.body_changed = Some(true);
+        entity.context = Some(SnippetContext {
+            base_snippet: String::new(),
+            head_snippet: String::new(),
+            language: "python".to_string(),
+            snippet_kind: "diff".to_string(),
+            hunks: Some(vec![
+                crate::inline_diff::DiffLine { kind: crate::inline_diff::DiffLineKind::Context, text: "    x = 1".to_string() },
+                crate::inline_diff::DiffLine { kind: crate::inline_diff::DiffLineKind::Removed, text: "    return old".to_string() },
+                crate::inline_diff::DiffLine { kind: crate::inline_diff::DiffLineKind::Added, text: "    return new".to_string() },
+                crate::inline_diff::DiffLine { kind: crate::inline_diff::DiffLineKind::Context, text: "    y = 2".to_string() },
+            ]),
+        });
+        output.files = vec![FileSection {
+            file: "src/a.py".to_string(),
+            summary: FileSummary { added: 0, modified: 1, removed: 0, renamed: 0, formatting_only: 0 },
+            entities: vec![entity],
+        }];
+        let opts = FormatOptions { show_lines: false, show_context: true, use_color: false };
+        let text = format_terminal_v2(&output, &opts);
+        assert!(text.contains("x = 1"), "context line should appear");
+        assert!(text.contains("return old"), "removed line should appear");
+        assert!(text.contains("return new"), "added line should appear");
+    }
+
+    // ── Summary line test ────────────────────────────────────────────────
+
+    #[test]
+    fn summary_line_shown_in_header() {
+        let mut output = empty_output("HEAD~1");
+        output.summary.files_changed = 2;
+        output.summary.modified = 1;
+        output.summary.summary_line = Some("updated parse_config in src/config.rs".to_string());
+        let text = format_terminal_v2(&output, &default_opts());
+        assert!(text.contains("Summary:"), "should show summary line");
+        assert!(text.contains("parse_config"), "should contain entity name");
     }
 }

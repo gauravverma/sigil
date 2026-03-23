@@ -251,9 +251,8 @@ fn extract_object_entities(
         let raw = hasher::extract_raw_bytes(source, key_line as usize, end_line as usize);
         let struct_hash = hasher::struct_hash(raw.as_bytes());
 
-        // Compute body_hash from the serialized value content
-        let serialized_value = serde_json::to_string(value).unwrap_or_default();
-        let body_hash = Some(hasher::struct_hash(serialized_value.as_bytes()));
+        // Compute body_hash from raw source lines
+        let body_hash = hasher::body_hash_raw(source, key_line as usize, end_line as usize);
 
         // Compute sig_hash
         let sig_hash = hasher::sig_hash(Some(&sig));

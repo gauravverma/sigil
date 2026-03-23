@@ -58,7 +58,7 @@ src/
 - Entity output is sorted deterministically by (file, line_start)
 - Incremental indexing: only re-parses changed files
 - `sigil diff` shells out to git (no git2 dependency)
-- `sigil diff` exit codes: 0 = no changes, 1 = structural changes, 2 = breaking changes, 3 = error
+- `sigil diff` always exits 0 on success (error handling exits non-zero via `std::process::exit(3)`)
 
 ## Useful Commands
 

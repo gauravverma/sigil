@@ -16,6 +16,7 @@ fn glyph(concept: &str, use_emoji: bool) -> &'static str {
         ("modified", _) => "~",
         ("removed", true) => "\u{2212}",
         ("removed", false) => "-",
+        ("renamed", _) => "\u{2248}",
         ("pattern", _) => "\u{2261}",
         ("move", true) => "\u{2197}",
         ("move", false) => "=>",
@@ -119,6 +120,10 @@ fn render_header(md: &mut String, output: &DiffOutput, opts: &MarkdownOptions) {
             files,
             if files == 1 { "" } else { "s" },
         ));
+    }
+
+    if let Some(ref summary_line) = output.summary.summary_line {
+        md.push_str(&format!("\n\n_{}_", summary_line));
     }
 }
 
@@ -238,6 +243,7 @@ fn render_entity(md: &mut String, entity: &OutputEntity, opts: &MarkdownOptions)
         "added" => glyph("added", opts.use_emoji),
         "modified" => glyph("modified", opts.use_emoji),
         "removed" => glyph("removed", opts.use_emoji),
+        "renamed" => glyph("renamed", opts.use_emoji),
         _ => "?",
     };
 
@@ -319,6 +325,28 @@ fn build_change_detail_suffix(entity: &OutputEntity) -> String {
 
 /// Render a fenced context code block for a snippet.
 fn render_context_block(md: &mut String, ctx: &SnippetContext) {
+    if let Some(ref hunks) = ctx.hunks {
+        md.push_str("  ```diff\n");
+        for line in hunks {
+            match line.kind {
+                crate::inline_diff::DiffLineKind::Context => {
+                    md.push_str(&format!("   {}\n", line.text));
+                }
+                crate::inline_diff::DiffLineKind::Removed => {
+                    md.push_str(&format!("  -{}\n", line.text));
+                }
+                crate::inline_diff::DiffLineKind::Added => {
+                    md.push_str(&format!("  +{}\n", line.text));
+                }
+                crate::inline_diff::DiffLineKind::Separator => {
+                    md.push_str("  ...\n");
+                }
+            }
+        }
+        md.push_str("  ```\n");
+        return;
+    }
+    // Fallback for old-style base/head snippets (backward compat)
     md.push_str(&format!("  ```{}\n", ctx.language));
     md.push_str("  # before\n");
     for line in ctx.base_snippet.lines() {
@@ -441,11 +469,13 @@ mod tests {
                 formatting_only,
                 has_breaking,
                 natural_language: String::new(),
+                summary_line: None,
             },
             breaking,
             patterns,
             moves,
             files,
+            groups: None,
         }
     }
 
@@ -528,6 +558,8 @@ mod tests {
                 file: "src/payments.py".to_string(),
                 line: 1,
                 reason: "sig changed".to_string(),
+                external_callers: None,
+                callers_in_diff: None,
             },
             BreakingEntry {
                 entity: "old_handler".to_string(),
@@ -535,6 +567,8 @@ mod tests {
                 file: "src/payments.py".to_string(),
                 line: 1,
                 reason: "removed".to_string(),
+                external_callers: None,
+                callers_in_diff: None,
             },
         ];
         let output = make_output("HEAD~1", "HEAD", vec![section], vec![], vec![], breaking);
@@ -578,6 +612,8 @@ mod tests {
                 file: "src/main.rs".to_string(),
                 line: 1,
                 reason: "removed".to_string(),
+                external_callers: None,
+                callers_in_diff: None,
             },
         ];
         let output = make_output("HEAD~1", "HEAD", vec![section], vec![], vec![], breaking);
@@ -801,6 +837,8 @@ mod tests {
                 file: "src/new_module.py".to_string(),
                 line: 20,
                 reason: "moved".to_string(),
+                external_callers: None,
+                callers_in_diff: None,
             },
         ];
         let output = make_output("HEAD~1", "HEAD", vec![], vec![], vec![mv], breaking);
@@ -842,6 +880,7 @@ mod tests {
             head_snippet: "def execute_payment(commit: bool = False):".to_string(),
             language: "python".to_string(),
             snippet_kind: "signature".to_string(),
+            hunks: None,
         });
         let section = make_file_section("src/payments.py", vec![entity]);
         let breaking = vec![
@@ -851,6 +890,8 @@ mod tests {
                 file: "src/payments.py".to_string(),
                 line: 1,
                 reason: "sig changed".to_string(),
+                external_callers: None,
+                callers_in_diff: None,
             },
         ];
         let output = make_output("HEAD~1", "HEAD", vec![section], vec![], vec![], breaking);
@@ -874,6 +915,7 @@ mod tests {
             head_snippet: "new code".to_string(),
             language: "rust".to_string(),
             snippet_kind: "full".to_string(),
+            hunks: None,
         });
         let section = make_file_section("src/lib.rs", vec![entity]);
         let output = make_output("HEAD~1", "HEAD", vec![section], vec![], vec![], vec![]);

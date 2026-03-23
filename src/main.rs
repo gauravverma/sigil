@@ -6,6 +6,7 @@ mod diff_json;
 mod entity;
 mod formatter;
 mod git;
+mod grouping;
 mod hasher;
 mod index;
 mod json_index;
@@ -86,9 +87,13 @@ enum Cli {
         #[arg(long)]
         lines: bool,
 
-        /// Include code snippets in output
+        /// Lines of context around changes (default 3, use --no-context to disable)
+        #[arg(long, default_value = "3")]
+        context: usize,
+
+        /// Disable code context in output
         #[arg(long)]
-        context: bool,
+        no_context: bool,
 
         /// Output as GitHub-flavored Markdown
         #[arg(long)]
@@ -101,6 +106,18 @@ enum Cli {
         /// Disable ANSI color output
         #[arg(long)]
         no_color: bool,
+
+        /// Skip caller analysis for breaking changes
+        #[arg(long)]
+        no_callers: bool,
+
+        /// Show one-line summary of changes
+        #[arg(long)]
+        summary: bool,
+
+        /// Group related changes together
+        #[arg(long)]
+        group: bool,
     },
     /// Explore project structure: files grouped by directory
     Explore {
@@ -240,28 +257,67 @@ fn main() {
                 }
             }
         }
-        Cli::Diff { ref_spec, files, root, json, pretty, verbose, lines, context, markdown, no_emoji, no_color } => {
+        Cli::Diff { ref_spec, files, root, json, pretty, verbose, lines, context, no_context, markdown, no_emoji, no_color, no_callers, summary, group } => {
             // Handle --no-color
             if no_color {
                 colored::control::set_override(false);
             }
 
             // Compute diff result
+            let include_context = !no_context;
+            let context_lines = context;
             let result = if files.len() == 2 {
-                let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context: context };
+                let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context, context_lines };
                 diff::compute_file_diff(&files[0], &files[1], &opts)
                     .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(3); })
             } else {
                 let ref_spec = ref_spec.unwrap();
                 let (base_ref, head_ref) = git::parse_ref_spec(&ref_spec)
                     .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(3); });
-                let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context: context };
+                let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context, context_lines };
                 diff::compute_diff(&root, &base_ref, &head_ref, &opts)
                     .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(3); })
             };
 
             // Build DiffOutput
-            let output = output::DiffOutput::from_result(&result, context);
+            let mut output = output::DiffOutput::from_result(&result, include_context, context_lines);
+            if !summary {
+                output.summary.summary_line = None;
+            }
+
+            // Caller analysis for breaking changes
+            if !no_callers && output.summary.has_breaking {
+                // Collect files touched by the diff
+                let diff_files: std::collections::HashSet<String> = output.files.iter()
+                    .map(|f| f.file.clone())
+                    .collect();
+
+                // Try to load index for caller queries
+                match query::load_index(&root) {
+                    Ok((_mt, db)) => {
+                        let db = db.lock().unwrap();
+                        let callers_fn = |name: &str| -> Vec<(String, u32, String)> {
+                            db.get_callers(name, None, None, None, 100, 0)
+                                .unwrap_or_default()
+                                .into_iter()
+                                .map(|r| (r.file.clone(), r.line.first().copied().unwrap_or(0) as u32, r.caller.clone().unwrap_or_default()))
+                                .collect()
+                        };
+                        output::enrich_breaking_with_callers(&mut output.breaking, &callers_fn, &diff_files);
+                    }
+                    Err(_) => {
+                        // Index not available — skip caller analysis silently
+                        if verbose {
+                            eprintln!("note: run `sigil index` to enable caller impact analysis");
+                        }
+                    }
+                }
+            }
+
+            // Compute groups if --group flag is set
+            if group {
+                output.groups = Some(grouping::compute_groups(&output));
+            }
 
             // Dispatch to formatter
             if json {
@@ -276,24 +332,18 @@ fn main() {
             } else if markdown {
                 let opts = markdown_formatter::MarkdownOptions {
                     use_emoji: !no_emoji,
-                    show_context: context,
+                    show_context: include_context,
                 };
                 print!("{}", markdown_formatter::format_markdown(&output, &opts));
             } else {
                 let opts = formatter::FormatOptions {
                     show_lines: lines,
-                    show_context: context,
+                    show_context: include_context,
                     use_color: !no_color,
                 };
                 print!("{}", formatter::format_terminal_v2(&output, &opts));
             }
 
-            // Exit codes (ONLY for Diff command)
-            let s = &output.summary;
-            let exit_code = if s.has_breaking { 2 }
-                else if s.added + s.removed + s.modified + s.moves + s.renamed > 0 { 1 }
-                else { 0 };
-            std::process::exit(exit_code);
         }
         Cli::Explore { root, path, max_entries, json } => {
             let (_mt, db) = query::load_index(&root)

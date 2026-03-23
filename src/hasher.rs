@@ -91,6 +91,26 @@ pub fn body_hash(source: &str, body_start_line: usize, line_end: usize) -> Optio
     Some(hash.to_hex()[..16].to_string())
 }
 
+/// Compute body_hash for config files: normalized raw text (strip indent, collapse whitespace).
+/// Unlike code body_hash, does not strip comments or docstrings.
+pub fn body_hash_raw(source: &str, line_start: usize, line_end: usize) -> Option<String> {
+    if line_start > line_end || line_start == 0 {
+        return None;
+    }
+    let lines = get_lines(source, line_start, line_end);
+    let normalized: Vec<String> = lines.iter()
+        .map(|l| l.trim())
+        .filter(|l| !l.is_empty())
+        .map(|l| l.split_whitespace().collect::<Vec<_>>().join(" "))
+        .collect();
+    if normalized.is_empty() {
+        return None;
+    }
+    let joined = normalized.join("\n");
+    let hash = blake3::hash(joined.as_bytes());
+    Some(hash.to_hex()[..16].to_string())
+}
+
 /// Compute sig_hash: BLAKE3 of normalized signature.
 pub fn sig_hash(sig: Option<&str>) -> Option<String> {
     let sig = sig?;

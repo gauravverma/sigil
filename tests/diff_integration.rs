@@ -69,10 +69,9 @@ fn run_sigil_diff(dir: &std::path::Path, ref_spec: &str, extra_args: &[&str]) ->
         .output()
         .expect("failed to run sigil");
 
-    // Accept exit codes 0, 1, 2 as valid (only 3 is an error)
     assert!(
-        output.status.code().unwrap_or(3) < 3,
-        "sigil diff failed with error: {}",
+        output.status.success(),
+        "sigil diff failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
     String::from_utf8(output.stdout).expect("invalid utf8")
@@ -90,8 +89,8 @@ fn run_sigil_diff_raw(dir: &std::path::Path, ref_spec: &str, args: &[&str]) -> s
         .expect("failed to run sigil");
 
     assert!(
-        output.status.code().unwrap_or(3) < 3,
-        "sigil diff failed with error: {}",
+        output.status.success(),
+        "sigil diff failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
     output
@@ -219,24 +218,19 @@ fn exit_code_0_for_no_changes() {
         .arg(&dir)
         .output()
         .expect("failed to run sigil");
-    assert_eq!(output.status.code(), Some(0), "HEAD..HEAD should produce exit code 0 (no changes)");
+    assert!(output.status.success(), "HEAD..HEAD should exit 0");
     std::fs::remove_dir_all(&dir).ok();
 }
 
 #[test]
-fn exit_code_1_for_structural_changes() {
+fn exit_code_0_for_structural_changes() {
     let dir = make_diff_repo();
     let output = Command::new(env!("CARGO_BIN_EXE_sigil"))
         .args(["diff", "HEAD~1", "--root"])
         .arg(&dir)
         .output()
         .expect("failed to run sigil");
-    let code = output.status.code().unwrap_or(3);
-    assert!(
-        code == 1 || code == 2,
-        "diff with structural changes should exit 1 or 2, got {}",
-        code
-    );
+    assert!(output.status.success(), "diff with changes should still exit 0");
     std::fs::remove_dir_all(&dir).ok();
 }
 
@@ -305,13 +299,14 @@ fn no_color_flag_removes_ansi() {
 }
 
 #[test]
-fn json_context_combined() {
+fn json_with_context_default() {
     let dir = make_diff_repo();
-    let output = run_sigil_diff_raw(&dir, "HEAD~1", &["--json", "--context"]);
+    // Context is now on by default (3 lines)
+    let output = run_sigil_diff_raw(&dir, "HEAD~1", &["--json"]);
     let stdout = String::from_utf8(output.stdout).unwrap();
     let v: serde_json::Value = serde_json::from_str(&stdout).unwrap();
 
-    assert!(v["files"].is_array(), "JSON with --context should still have files array");
+    assert!(v["files"].is_array(), "JSON output should have files array");
 
     std::fs::remove_dir_all(&dir).ok();
 }
