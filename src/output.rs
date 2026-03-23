@@ -146,6 +146,8 @@ pub struct DiffOutput {
     pub patterns: Vec<OutputPattern>,
     pub moves: Vec<MoveEntry>,
     pub files: Vec<FileSection>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub groups: Option<Vec<crate::grouping::ChangeGroup>>,
 }
 
 impl DiffOutput {
@@ -399,6 +401,7 @@ impl DiffOutput {
             patterns: output_patterns,
             moves,
             files,
+            groups: None,
         }
     }
 }

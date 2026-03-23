@@ -6,6 +6,7 @@ mod diff_json;
 mod entity;
 mod formatter;
 mod git;
+mod grouping;
 mod hasher;
 mod index;
 mod json_index;
@@ -109,6 +110,10 @@ enum Cli {
         /// Show one-line summary of changes
         #[arg(long)]
         summary: bool,
+
+        /// Group related changes together
+        #[arg(long)]
+        group: bool,
     },
     /// Explore project structure: files grouped by directory
     Explore {
@@ -248,7 +253,7 @@ fn main() {
                 }
             }
         }
-        Cli::Diff { ref_spec, files, root, json, pretty, verbose, lines, context, markdown, no_emoji, no_color, no_callers, summary: _summary } => {
+        Cli::Diff { ref_spec, files, root, json, pretty, verbose, lines, context, markdown, no_emoji, no_color, no_callers, summary: _summary, group } => {
             // Handle --no-color
             if no_color {
                 colored::control::set_override(false);
@@ -300,6 +305,11 @@ fn main() {
                         }
                     }
                 }
+            }
+
+            // Compute groups if --group flag is set
+            if group {
+                output.groups = Some(grouping::compute_groups(&output));
             }
 
             // Dispatch to formatter

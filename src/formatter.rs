@@ -54,8 +54,20 @@ pub fn format_terminal_v2(output: &DiffOutput, opts: &FormatOptions) -> String {
         }
     }
 
-    // 4. Separator before file sections (if there are patterns or moves)
-    if !output.patterns.is_empty() || !output.moves.is_empty() {
+    // 3b. Groups section (if --group)
+    if let Some(ref groups) = output.groups {
+        if !groups.is_empty() {
+            out.push('\n');
+            out.push_str(&"change groups".dimmed().to_string());
+            out.push('\n');
+            out.push('\n');
+            render_groups(&mut out, groups);
+        }
+    }
+
+    // 4. Separator before file sections (if there are patterns, moves, or groups)
+    let has_groups = output.groups.as_ref().map_or(false, |g| !g.is_empty());
+    if !output.patterns.is_empty() || !output.moves.is_empty() || has_groups {
         out.push('\n');
         out.push_str(&separator());
         out.push('\n');
@@ -178,6 +190,26 @@ fn render_move(out: &mut String, mv: &MoveEntry) {
         GLYPH_ARROW,
         mv.to_file,
     ));
+}
+
+// ── Groups ───────────────────────────────────────────────────────────────────
+
+fn render_groups(out: &mut String, groups: &[crate::grouping::ChangeGroup]) {
+    for (i, group) in groups.iter().enumerate() {
+        out.push_str(&format!("  {}. {}\n", i + 1, group.label.bold()));
+        for entity in &group.entities {
+            let glyph = match entity.change.as_str() {
+                "added" => GLYPH_ADDED,
+                "removed" => GLYPH_REMOVED,
+                "modified" => GLYPH_MODIFIED,
+                "renamed" => GLYPH_RENAMED,
+                _ => GLYPH_FORMAT,
+            };
+            out.push_str(&format!("     {}  {:<9} {:<20} {}\n",
+                glyph, entity.change, entity.name.bold(), entity.kind.dimmed()));
+        }
+        out.push('\n');
+    }
 }
 
 // ── Per-file section ────────────────────────────────────────────────────────
@@ -583,6 +615,7 @@ mod tests {
             patterns: vec![],
             moves: vec![],
             files: vec![],
+            groups: None,
         }
     }
 

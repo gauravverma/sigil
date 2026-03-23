@@ -473,6 +473,7 @@ mod tests {
             patterns,
             moves,
             files,
+            groups: None,
         }
     }
 
