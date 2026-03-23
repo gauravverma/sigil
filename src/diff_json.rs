@@ -30,6 +30,8 @@ pub struct EntityDiff {
     pub body_changed: Option<bool>,
     pub breaking: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub breaking_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub old: Option<Entity>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub new: Option<Entity>,
@@ -134,19 +136,20 @@ mod tests {
             EntityDiff {
                 change: ChangeKind::Added, name: "foo".into(), kind: "function".into(),
                 file: "a.py".into(), old_file: None, old_name: None,
-                sig_changed: None, body_changed: None, breaking: false,
+                sig_changed: None, body_changed: None, breaking: false, breaking_reason: None,
                 old: None, new: None, inline_diff: None, change_details: None,
             },
             EntityDiff {
                 change: ChangeKind::Modified, name: "bar".into(), kind: "function".into(),
                 file: "a.py".into(), old_file: None, old_name: None,
                 sig_changed: Some(true), body_changed: Some(false), breaking: true,
+                breaking_reason: Some("sig_changed".into()),
                 old: None, new: None, inline_diff: None, change_details: None,
             },
             EntityDiff {
                 change: ChangeKind::FormattingOnly, name: "baz".into(), kind: "function".into(),
                 file: "a.py".into(), old_file: None, old_name: None,
-                sig_changed: None, body_changed: None, breaking: false,
+                sig_changed: None, body_changed: None, breaking: false, breaking_reason: None,
                 old: None, new: None, inline_diff: None, change_details: None,
             },
         ];
@@ -188,13 +191,13 @@ mod tests {
             EntityDiff {
                 change: ChangeKind::Modified, name: "init".into(), kind: "function".into(),
                 file: "a.py".into(), old_file: None, old_name: None,
-                sig_changed: Some(true), body_changed: Some(false), breaking: false,
+                sig_changed: Some(true), body_changed: Some(false), breaking: false, breaking_reason: None,
                 old: None, new: None, inline_diff: None, change_details: None,
             },
             EntityDiff {
                 change: ChangeKind::Modified, name: "init".into(), kind: "function".into(),
                 file: "b.py".into(), old_file: None, old_name: None,
-                sig_changed: Some(true), body_changed: Some(false), breaking: false,
+                sig_changed: Some(true), body_changed: Some(false), breaking: false, breaking_reason: None,
                 old: None, new: None, inline_diff: None, change_details: None,
             },
         ];

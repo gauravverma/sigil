@@ -13,25 +13,31 @@ pub fn classify(m: &EntityMatch) -> EntityDiff {
             old_file: None, old_name: None,
             sig_changed: None, body_changed: None,
             breaking: false,
+            breaking_reason: None,
             old: None, new: Some(ne.clone()),
             inline_diff: None,
             change_details: None,
         },
-        (Some(oe), None, MatchKind::Removed) => EntityDiff {
-            change: ChangeKind::Removed,
-            name: oe.name.clone(),
-            kind: oe.kind.clone(),
-            file: oe.file.clone(),
-            old_file: None, old_name: None,
-            sig_changed: None, body_changed: None,
-            breaking: is_public(oe),
-            old: Some(oe.clone()), new: None,
-            inline_diff: None,
-            change_details: None,
+        (Some(oe), None, MatchKind::Removed) => {
+            let brk = is_public(oe);
+            EntityDiff {
+                change: ChangeKind::Removed,
+                name: oe.name.clone(),
+                kind: oe.kind.clone(),
+                file: oe.file.clone(),
+                old_file: None, old_name: None,
+                sig_changed: None, body_changed: None,
+                breaking: brk,
+                breaking_reason: if brk { Some("removed".into()) } else { None },
+                old: Some(oe.clone()), new: None,
+                inline_diff: None,
+                change_details: None,
+            }
         },
         (Some(oe), Some(ne), MatchKind::Moved) => {
             let sig_changed = oe.sig_hash != ne.sig_hash;
             let body_changed = oe.body_hash != ne.body_hash;
+            let brk = is_public(oe) && sig_changed;
             EntityDiff {
                 change: ChangeKind::Moved,
                 name: ne.name.clone(),
@@ -41,24 +47,29 @@ pub fn classify(m: &EntityMatch) -> EntityDiff {
                 old_name: None,
                 sig_changed: if sig_changed || body_changed { Some(sig_changed) } else { None },
                 body_changed: if sig_changed || body_changed { Some(body_changed) } else { None },
-                breaking: is_public(oe) && sig_changed,
+                breaking: brk,
+                breaking_reason: if brk { Some("moved".into()) } else { None },
                 old: Some(oe.clone()), new: Some(ne.clone()),
                 inline_diff: None,
                 change_details: None,
             }
         },
-        (Some(oe), Some(ne), MatchKind::Renamed) => EntityDiff {
-            change: ChangeKind::Renamed,
-            name: ne.name.clone(),
-            kind: ne.kind.clone(),
-            file: ne.file.clone(),
-            old_file: if oe.file != ne.file { Some(oe.file.clone()) } else { None },
-            old_name: Some(oe.name.clone()),
-            sig_changed: None, body_changed: None,
-            breaking: is_public(oe),
-            old: Some(oe.clone()), new: Some(ne.clone()),
-            inline_diff: None,
-            change_details: None,
+        (Some(oe), Some(ne), MatchKind::Renamed) => {
+            let brk = is_public(oe);
+            EntityDiff {
+                change: ChangeKind::Renamed,
+                name: ne.name.clone(),
+                kind: ne.kind.clone(),
+                file: ne.file.clone(),
+                old_file: if oe.file != ne.file { Some(oe.file.clone()) } else { None },
+                old_name: Some(oe.name.clone()),
+                sig_changed: None, body_changed: None,
+                breaking: brk,
+                breaking_reason: if brk { Some("renamed".into()) } else { None },
+                old: Some(oe.clone()), new: Some(ne.clone()),
+                inline_diff: None,
+                change_details: None,
+            }
         },
         (Some(oe), Some(ne), MatchKind::ExactMatch) => {
             let sig_changed = oe.sig_hash != ne.sig_hash;
@@ -74,12 +85,14 @@ pub fn classify(m: &EntityMatch) -> EntityDiff {
                     old_file: None, old_name: None,
                     sig_changed: None, body_changed: None,
                     breaking: false,
+                    breaking_reason: None,
                     old: Some(oe.clone()), new: Some(ne.clone()),
                     inline_diff: None,
                     change_details: None,
                 };
             }
 
+            let brk = is_public(oe) && sig_changed;
             EntityDiff {
                 change: ChangeKind::Modified,
                 name: ne.name.clone(),
@@ -88,7 +101,8 @@ pub fn classify(m: &EntityMatch) -> EntityDiff {
                 old_file: None, old_name: None,
                 sig_changed: Some(sig_changed),
                 body_changed: Some(body_changed),
-                breaking: is_public(oe) && sig_changed,
+                breaking: brk,
+                breaking_reason: if brk { Some("sig_changed".into()) } else { None },
                 old: Some(oe.clone()), new: Some(ne.clone()),
                 inline_diff: None,
                 change_details: None,
