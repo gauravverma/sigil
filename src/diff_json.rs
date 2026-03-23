@@ -62,6 +62,10 @@ pub struct DiffSummary {
 pub struct DiffResult {
     pub base_ref: String,
     pub head_ref: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_sha: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub head_sha: Option<String>,
     pub entities: Vec<EntityDiff>,
     pub patterns: Vec<CrossFilePattern>,
     pub summary: DiffSummary,
@@ -168,6 +172,8 @@ mod tests {
         let result = DiffResult {
             base_ref: "abc123".into(),
             head_ref: "def456".into(),
+            base_sha: None,
+            head_sha: None,
             entities: vec![],
             patterns: vec![],
             summary: DiffSummary {
