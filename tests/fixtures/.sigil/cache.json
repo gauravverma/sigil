@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "files": {
+    "sample.go": "7183c46fcbdc128fbeffb3d2cee79995af6a3a5ebaf0dcdb92df58adde86fe8c",
+    "sample.py": "1bade77b23df7d3eedab1dd30843b71a82b1a23e7e667ecf36eff78b0c391132",
+    "sample.ts": "22731bebda184c622da7f7727e64180baffd1b9ba0d545c3b65571ec2ceaf317",
+    "sample.rs": "547dc04ef9d3769c84173c8cce2c3e2fa663fd7ad6565802544503dfee3a43e4"
+  }
+}
