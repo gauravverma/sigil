@@ -12,6 +12,7 @@ cargo test               # Run all tests (unit + integration)
 cargo test --lib         # Unit tests only
 cargo test --test integration       # Index integration tests
 cargo test --test diff_integration  # Diff integration tests
+cargo test --test markdown_integration  # Markdown integration tests
 ```
 
 ## Architecture
@@ -29,6 +30,7 @@ src/
   json_index.rs    — JSON file parsing (custom parser, not tree-sitter)
   yaml_index.rs    — YAML file parsing (custom parser, not tree-sitter)
   toml_index.rs    — TOML file parsing (custom parser, not tree-sitter)
+  markdown_index.rs — Markdown file parsing (custom parser: headings, code blocks, tables, lists, blockquotes, paragraphs, front matter)
   query.rs         — codeix SearchDb wrapper (load_index, explore, search, format helpers)
   git.rs           — Git operations (changed_files, file_at_ref)
   matcher.rs       — Entity matching across versions (exact/moved/renamed)
