@@ -116,55 +116,101 @@ fn diff_line_pair(old_line: &str, new_line: &str) -> Vec<ChangeDetail> {
     }
 
     let diff = TextDiff::from_words(old_line.trim(), new_line.trim());
-    let mut removed_tokens = Vec::new();
-    let mut added_tokens = Vec::new();
 
-    for change in diff.iter_all_changes() {
-        let val = change.value().trim();
-        if val.is_empty() { continue; }
-        match change.tag() {
-            ChangeTag::Delete => removed_tokens.push(val.to_string()),
-            ChangeTag::Insert => added_tokens.push(val.to_string()),
-            ChangeTag::Equal => {}
-        }
-    }
+    // Collect all tokens with their tags
+    let tokens: Vec<(ChangeTag, String)> = diff.iter_all_changes()
+        .map(|change| (change.tag(), change.value().to_string()))
+        .collect();
 
-    if removed_tokens.is_empty() && added_tokens.is_empty() {
+    // Check if there are any changes at all
+    let has_changes = tokens.iter().any(|(tag, _)| *tag != ChangeTag::Equal);
+    if !has_changes {
         return Vec::new();
     }
 
+    // Find change regions and expand with context
+    let context_tokens = 5;
     let mut details = Vec::new();
-
-    if removed_tokens.len() == added_tokens.len() {
-        for (old_tok, new_tok) in removed_tokens.iter().zip(added_tokens.iter()) {
-            let kind = classify_token_change(old_tok, new_tok);
-            details.push(ChangeDetail {
-                kind,
-                description: format!("{} → {}", old_tok, new_tok),
-            });
+    let mut i = 0;
+    while i < tokens.len() {
+        if tokens[i].0 == ChangeTag::Equal {
+            i += 1;
+            continue;
         }
-    } else if removed_tokens.is_empty() {
-        let joined = added_tokens.join(" ");
+
+        // Found start of a change region; advance to end of consecutive non-Equal tokens
+        let region_start = i;
+        while i < tokens.len() && tokens[i].0 != ChangeTag::Equal {
+            i += 1;
+        }
+        let region_end = i;
+
+        // Expand context backwards and forwards
+        let ctx_start = region_start.saturating_sub(context_tokens);
+        let ctx_end = (region_end + context_tokens).min(tokens.len());
+
+        // Build old and new strings from expanded region
+        let mut old_parts: Vec<&str> = Vec::new();
+        let mut new_parts: Vec<&str> = Vec::new();
+        for (tag, val) in &tokens[ctx_start..ctx_end] {
+            match tag {
+                ChangeTag::Equal => {
+                    old_parts.push(val.as_str());
+                    new_parts.push(val.as_str());
+                }
+                ChangeTag::Delete => {
+                    old_parts.push(val.as_str());
+                }
+                ChangeTag::Insert => {
+                    new_parts.push(val.as_str());
+                }
+            }
+        }
+
+        let old_str = old_parts.concat().trim().to_string();
+        let new_str = new_parts.concat().trim().to_string();
+
+        if old_str == new_str || (old_str.is_empty() && new_str.is_empty()) {
+            continue;
+        }
+
+        // Determine kind: pure removal or pure addition use ArgumentRemoved/Added;
+        // otherwise classify based on the changed content.
+        let kind = if old_str.is_empty() {
+            DetailKind::ArgumentAdded
+        } else if new_str.is_empty() {
+            DetailKind::ArgumentRemoved
+        } else {
+            classify_token_change(&old_str, &new_str)
+        };
+
         details.push(ChangeDetail {
-            kind: DetailKind::ArgumentAdded,
-            description: format!("+ {}", joined),
-        });
-    } else if added_tokens.is_empty() {
-        let joined = removed_tokens.join(" ");
-        details.push(ChangeDetail {
-            kind: DetailKind::ArgumentRemoved,
-            description: format!("- {}", joined),
-        });
-    } else {
-        let old_summary = removed_tokens.join(" ");
-        let new_summary = added_tokens.join(" ");
-        details.push(ChangeDetail {
-            kind: DetailKind::ValueChanged,
-            description: format!("{} → {}", old_summary, new_summary),
+            kind,
+            description: format!("{} \u{2192} {}", truncate_str(&old_str, 80), truncate_str(&new_str, 80)),
         });
     }
 
+    // Fallback: if no details extracted but lines differ
+    if details.is_empty() {
+        let old_trimmed = old_line.trim();
+        let new_trimmed = new_line.trim();
+        if old_trimmed != new_trimmed {
+            details.push(ChangeDetail {
+                kind: DetailKind::ValueChanged,
+                description: format!("{} \u{2192} {}", truncate_str(old_trimmed, 80), truncate_str(new_trimmed, 80)),
+            });
+        }
+    }
+
     details
+}
+
+fn truncate_str(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        s.to_string()
+    } else {
+        format!("{}...", &s[..max_len])
+    }
 }
 
 fn classify_token_change(old: &str, new: &str) -> DetailKind {
@@ -272,6 +318,18 @@ mod tests {
     fn empty_lines_no_details() {
         let details = extract_change_details(&[]);
         assert!(details.is_empty());
+    }
+
+    #[test]
+    fn token_diff_includes_surrounding_context() {
+        let lines = vec![
+            DiffLine { kind: DiffLineKind::Removed, text: "if (typeof window !== 'undefined') {".into() },
+            DiffLine { kind: DiffLineKind::Added, text: "if (typeof window === 'undefined') return;".into() },
+        ];
+        let details = extract_change_details(&lines);
+        assert!(!details.is_empty(), "should produce change details");
+        let desc = &details[0].description;
+        assert!(desc.contains("window"), "token diff should include surrounding context: {}", desc);
     }
 
     #[test]
