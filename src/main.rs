@@ -14,6 +14,7 @@ mod yaml_index;
 mod inline_diff;
 mod matcher;
 mod meta;
+mod output;
 mod query;
 mod signature;
 mod writer;
@@ -218,7 +219,7 @@ fn main() {
         }
         Cli::Diff { ref_spec, files, root, json, pretty, verbose } => {
             let result = if files.len() == 2 {
-                let opts = diff::DiffOptions { include_unchanged: false, verbose };
+                let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context: false };
                 diff::compute_file_diff(&files[0], &files[1], &opts)
                     .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); })
             } else {
@@ -226,7 +227,7 @@ fn main() {
                 let (base_ref, head_ref) = git::parse_ref_spec(&ref_spec)
                     .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
 
-                let opts = diff::DiffOptions { include_unchanged: false, verbose };
+                let opts = diff::DiffOptions { include_unchanged: false, verbose, include_context: false };
                 diff::compute_diff(&root, &base_ref, &head_ref, &opts)
                     .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); })
             };
