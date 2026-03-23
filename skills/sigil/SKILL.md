@@ -1,6 +1,6 @@
 ---
 name: sigil
-description: "Use sigil for structural code diffs, code search, and codebase navigation. ALWAYS use this skill when: reviewing PRs or commits (use `sigil diff` instead of `git diff`), searching for functions/classes/symbols, finding callers or callees of a function, exploring project structure, understanding what changed in a commit, verifying your own edits after making changes, or when the user asks about code changes, code structure, or symbol navigation. Also use when the user says things like 'what changed', 'show me the diff', 'find where X is called', 'what does this commit do', 'review this PR', or 'explore the codebase'. Do NOT use for simple file reading or text editing — only for structural code analysis."
+description: "Use sigil for structural code diffs, code search, and codebase navigation. ALWAYS use this skill when: reviewing PRs or commits (use `sigil diff` instead of `git diff`), searching for functions/classes/symbols, finding callers or callees of a function, understanding what a function/method does or how it fits into the codebase, exploring project structure, understanding what changed in a commit, verifying your own edits after making changes, or when the user asks about code changes, code structure, or symbol navigation. Also use when the user says things like 'what changed', 'show me the diff', 'find where X is called', 'what does X do', 'where is X used', 'how does X work', 'what calls X', 'what does this commit do', 'review this PR', or 'explore the codebase'. Prefer sigil over Grep/Glob when the question is about relationships (who calls X, what does X call, where is X used) rather than simple text matching. Do NOT use for simple file reading or text editing — only for structural code analysis."
 ---
 
 # sigil — Structural Code Diffs & Code Intelligence
@@ -114,6 +114,22 @@ sigil callers handle_login
 sigil callees handle_login
 ```
 
+### Understanding What a Function Does / Where It's Used
+
+```bash
+# Step 1: Who calls this function?
+sigil callers executeSend
+
+# Step 2: What does this function call?
+sigil callees executeSend
+
+# Step 3: If needed, narrow to just calls (skip imports/type annotations)
+sigil callees executeSend --kind call
+sigil callers executeSend --kind call
+```
+
+This is better than grep for "where is X used" or "what does X do" questions because it gives you the **call graph** — not just text matches, but actual caller/callee relationships with exact line numbers.
+
 ### Understanding What a Commit Did
 
 ```bash
@@ -123,6 +139,20 @@ sigil diff HEAD~1
 # For AI-readable structured data
 sigil diff HEAD~1 --json
 ```
+
+## When to Use sigil vs Grep/Glob
+
+| Question type | Use sigil | Use Grep/Glob |
+|---|---|---|
+| "Where is X called?" / "Who uses X?" | `sigil callers X` | No — grep finds text matches, not call relationships |
+| "What does X do?" / "What does X call?" | `sigil callees X` | No — grep can't map call graphs |
+| "Where is X defined?" | `sigil search X --scope symbol` | Also fine with `Grep "func X"` |
+| "Find files matching a pattern" | No | `Glob "**/*.go"` |
+| "Find a string in code" | `sigil search "string"` | Also fine with `Grep "string"` |
+| "What changed in this PR/commit?" | `sigil diff` | No — git diff is line-level noise |
+| "Read a specific file" | No | `Read` tool |
+
+**Rule of thumb:** If the question is about **relationships** (callers, callees, "where is X used", "what does X do"), always prefer sigil. If it's about **text matching** or **file finding**, Grep/Glob is fine.
 
 ## Tips
 
