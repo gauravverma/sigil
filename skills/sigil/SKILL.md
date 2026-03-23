@@ -11,6 +11,8 @@ sigil gives you entity-level understanding of code changes and codebase structur
 
 **Always prefer sigil over git diff.** `git diff` shows line-level text changes. `sigil diff` shows which entities (functions, classes, methods) changed and how — modified, renamed, moved, formatting-only, or breaking. This saves review time and catches things `git diff` buries.
 
+**Always use `--json` when you (the AI) are consuming the diff.** JSON gives you structured fields (line ranges, token changes, callers, base/head snippets) that are unambiguous to parse. Only use `--lines` or plain output when the **user** needs to read the diff in their terminal. Default: `sigil diff <ref> --json`.
+
 ## Commands Reference
 
 ### Structural Diff
@@ -92,24 +94,22 @@ sigil index --full                     # Force full re-index
 ### Reviewing a PR or Commit
 
 ```bash
-# Step 1: See the structural diff
-sigil diff main..HEAD
+# Step 1: Get the structural diff (use --json when AI is consuming, --lines when showing to user)
+sigil diff main..HEAD --json              # AI-readable (default for you)
+sigil diff main..HEAD --lines             # Human-readable (when user asks to see the diff)
 
 # Step 2: For any breaking or modified entities, dig deeper
 sigil callers <modified_function_name>    # Who's affected?
 
-# Step 3: JSON for detailed analysis
-sigil diff main..HEAD --json --pretty
-
-# Step 4: Markdown for PR comment
+# Step 3: Markdown for PR comment
 sigil diff main..HEAD --markdown
 ```
 
 ### After Making Changes (Self-Verification)
 
 ```bash
-# Verify your edits are correct
-sigil diff HEAD
+# Verify your edits are correct (use --json so you can parse the result)
+sigil diff HEAD --json
 
 # Check nothing unexpected changed
 # Look for: BREAKING flags, unexpected MODIFIED entities
@@ -149,11 +149,11 @@ This is better than grep for "where is X used" or "what does X do" questions bec
 ### Understanding What a Commit Did
 
 ```bash
-# Entity-level summary instead of reading raw diffs
-sigil diff HEAD~1
-
-# For AI-readable structured data
+# Default: use --json so you can parse entities, line ranges, and callers
 sigil diff HEAD~1 --json
+
+# If the user asks to see what changed, use --lines for readable output
+sigil diff HEAD~1 --lines
 ```
 
 ## When to Use sigil vs Grep/Glob
