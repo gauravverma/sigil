@@ -1,7 +1,7 @@
 [package]
 name = "sigil"
-version = "0.1.1"
-edition = "2021"
+version = "0.2.0"
+edition = "2024"
 description = "Structural code fingerprinting and diffing CLI"
 repository = "https://github.com/gauravverma/sigil"
 
