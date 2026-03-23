@@ -161,50 +161,58 @@ fn find_flow_end_line(
     let mut string_char = b'"';
 
     // Process from the first content onward
-    for byte in first_content.bytes() {
+    let bytes = first_content.as_bytes();
+    let mut pos = 0;
+    while pos < bytes.len() {
+        let b = bytes[pos];
         if in_string {
-            if byte == b'\\' {
-                continue; // simplified: next char is escaped
-            } else if byte == string_char {
+            if b == b'\\' {
+                pos += 1; // skip escaped character
+            } else if b == string_char {
                 in_string = false;
             }
         } else {
-            if byte == b'"' || byte == b'\'' {
+            if b == b'"' || b == b'\'' {
                 in_string = true;
-                string_char = byte;
-            } else if byte == open {
+                string_char = b;
+            } else if b == open {
                 depth += 1;
-            } else if byte == close {
+            } else if b == close {
                 depth -= 1;
                 if depth == 0 {
                     return (start_line_idx + 1) as u32;
                 }
             }
         }
+        pos += 1;
     }
 
     // Continue on subsequent lines
     for i in (start_line_idx + 1)..lines.len() {
-        for byte in lines[i].bytes() {
+        let bytes = lines[i].as_bytes();
+        let mut pos = 0;
+        while pos < bytes.len() {
+            let b = bytes[pos];
             if in_string {
-                if byte == b'\\' {
-                    continue;
-                } else if byte == string_char {
+                if b == b'\\' {
+                    pos += 1; // skip escaped character
+                } else if b == string_char {
                     in_string = false;
                 }
             } else {
-                if byte == b'"' || byte == b'\'' {
+                if b == b'"' || b == b'\'' {
                     in_string = true;
-                    string_char = byte;
-                } else if byte == open {
+                    string_char = b;
+                } else if b == open {
                     depth += 1;
-                } else if byte == close {
+                } else if b == close {
                     depth -= 1;
                     if depth == 0 {
                         return (i + 1) as u32;
                     }
                 }
             }
+            pos += 1;
         }
     }
 
