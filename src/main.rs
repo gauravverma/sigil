@@ -24,7 +24,7 @@ use clap::Parser;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "sigil", about = "Structural code fingerprinting")]
+#[command(name = "sigil", about = "Structural code fingerprinting", version)]
 enum Cli {
     /// Build the entity index for a project
     Index {
@@ -204,6 +204,8 @@ enum Cli {
         #[arg(long)]
         json: bool,
     },
+    /// Update sigil to the latest release
+    Update,
 }
 
 fn main() {
@@ -374,6 +376,28 @@ fn main() {
                 println!();
             } else {
                 print!("{}", query::format_references(&refs));
+            }
+        }
+        Cli::Update => {
+            eprintln!("Checking for updates...");
+            let mut updater = axoupdater::AxoUpdater::new_for("sigil");
+            let version: axoupdater::Version = env!("CARGO_PKG_VERSION").parse()
+                .unwrap_or_else(|e| { eprintln!("error parsing version: {}", e); std::process::exit(1); });
+            if let Err(e) = updater.set_current_version(version) {
+                eprintln!("Update failed: {}", e);
+                std::process::exit(1);
+            }
+            match updater.run_sync() {
+                Ok(Some(result)) => {
+                    eprintln!("Updated sigil to {}", result.new_version);
+                }
+                Ok(None) => {
+                    eprintln!("Already on the latest version ({})", env!("CARGO_PKG_VERSION"));
+                }
+                Err(e) => {
+                    eprintln!("Update failed: {}", e);
+                    std::process::exit(1);
+                }
             }
         }
     }
