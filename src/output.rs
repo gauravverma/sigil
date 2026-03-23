@@ -644,13 +644,7 @@ fn build_summary_line(
         return None;
     }
 
-    let joined = parts.join("; ");
-    if joined.chars().count() > 120 {
-        let truncated: String = joined.chars().take(117).collect();
-        Some(format!("{}...", truncated))
-    } else {
-        Some(joined)
-    }
+    Some(parts.join("; "))
 }
 
 /// Enrich breaking entries with caller information from the codeix index.
