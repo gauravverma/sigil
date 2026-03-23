@@ -104,7 +104,28 @@ fn line_similarity(a: &str, b: &str) -> f64 {
     if words_a.is_empty() || words_b.is_empty() { return 0.0; }
     let shared = words_a.iter().filter(|w| words_b.contains(w)).count();
     let total = words_a.len().max(words_b.len());
-    shared as f64 / total as f64
+    let word_sim = shared as f64 / total as f64;
+
+    // For single-token lines with low word similarity, use character overlap
+    if words_a.len() == 1 && words_b.len() == 1 && word_sim == 0.0 {
+        return char_similarity(words_a[0], words_b[0]);
+    }
+
+    word_sim
+}
+
+fn char_similarity(a: &str, b: &str) -> f64 {
+    let min_len = a.len().min(b.len()) as f64;
+    if min_len == 0.0 {
+        return 0.0;
+    }
+    let mut matching = 0;
+    for (ca, cb) in a.chars().zip(b.chars()) {
+        if ca == cb {
+            matching += 1;
+        }
+    }
+    matching as f64 / a.len().max(b.len()) as f64
 }
 
 fn diff_line_pair(old_line: &str, new_line: &str) -> Vec<ChangeDetail> {
@@ -344,5 +365,17 @@ mod tests {
         ];
         let pairs = pair_similar_lines(&removed, &added);
         assert_eq!(pairs.len(), 2);
+    }
+
+    #[test]
+    fn config_value_change_produces_token_diff() {
+        let lines = vec![
+            DiffLine { kind: DiffLineKind::Removed, text: "\"PyJWT==2.11.0\",".into() },
+            DiffLine { kind: DiffLineKind::Added, text: "\"PyJWT==2.12.0\",".into() },
+        ];
+        let details = extract_change_details(&lines);
+        assert!(!details.is_empty(), "single value change should produce a token diff");
+        assert!(details.iter().any(|d| d.description.contains("2.11.0") && d.description.contains("2.12.0")),
+            "description should show the version change, got: {:?}", details);
     }
 }
