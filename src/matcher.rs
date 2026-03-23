@@ -1,6 +1,14 @@
 use crate::entity::Entity;
 use std::collections::{HashMap, HashSet};
 
+/// Compute normalized name similarity (0.0–1.0) using character-level diff ratio.
+fn name_similarity(a: &str, b: &str) -> f64 {
+    if a == b { return 1.0; }
+    if a.is_empty() || b.is_empty() { return 0.0; }
+    let diff = similar::TextDiff::from_chars(a, b);
+    diff.ratio() as f64
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MatchKind {
     ExactMatch,   // same file + same name
@@ -24,6 +32,7 @@ pub struct EntityMatch {
 /// 1. Exact match: same (file, name) in both → ExactMatch
 /// 2. Name match across files: same name, different file → Moved
 /// 3. Body hash match: different name, same body_hash (non-null) → Renamed
+/// 3.5. Fuzzy rename: same kind, same file, name similarity >= 0.6 → Renamed
 /// 4. Remaining old → Removed, remaining new → Added
 ///
 /// Entities with identical struct_hash are considered unchanged and excluded.
@@ -103,6 +112,45 @@ pub fn match_entities(old: &[Entity], new: &[Entity]) -> Vec<EntityMatch> {
                 used_old.insert(oi);
                 used_new.insert(ni);
             }
+        }
+    }
+
+    // Pass 3.5: Fuzzy rename — similar name, same kind, same file
+    {
+        let remaining_old_indices: Vec<usize> = (0..old.len())
+            .filter(|i| !used_old.contains(i))
+            .filter(|i| old[*i].kind != "import")
+            .collect();
+        let remaining_new_indices: Vec<usize> = (0..new.len())
+            .filter(|i| !used_new.contains(i))
+            .filter(|i| new[*i].kind != "import")
+            .collect();
+
+        let mut candidates: Vec<(usize, usize, f64)> = Vec::new();
+        for &oi in &remaining_old_indices {
+            for &ni in &remaining_new_indices {
+                let oe = &old[oi];
+                let ne = &new[ni];
+                if oe.kind != ne.kind || oe.file != ne.file { continue; }
+                let sim = name_similarity(&oe.name, &ne.name);
+                if sim >= 0.6 {
+                    candidates.push((oi, ni, sim));
+                }
+            }
+        }
+
+        // Sort by similarity descending, greedily assign best matches
+        candidates.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+        for (oi, ni, sim) in candidates {
+            if used_old.contains(&oi) || used_new.contains(&ni) { continue; }
+            matches.push(EntityMatch {
+                old: Some(old[oi].clone()),
+                new: Some(new[ni].clone()),
+                match_kind: MatchKind::Renamed,
+                confidence: sim,
+            });
+            used_old.insert(oi);
+            used_new.insert(ni);
         }
     }
 
@@ -209,5 +257,50 @@ mod tests {
         let e = entity("a.py", "foo", Some("bh1"), Some("sh1"), "st1");
         let matches = match_entities(&[e.clone()], &[e]);
         assert!(matches.is_empty());
+    }
+
+    #[test]
+    fn fuzzy_rename_detected_by_similar_name() {
+        let old = vec![entity("a.py", "THREAD_STORAGE_KEY", Some("bh1"), Some("sh1"), "st1")];
+        let new = vec![entity("a.py", "THREAD_STORAGE_PREFIX", Some("bh2"), Some("sh2"), "st2")];
+        let matches = match_entities(&old, &new);
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].match_kind, MatchKind::Renamed);
+        assert!(matches[0].confidence < 1.0, "fuzzy rename should have confidence < 1.0");
+    }
+
+    #[test]
+    fn fuzzy_rename_not_triggered_for_unrelated_names() {
+        let old = vec![entity("a.py", "process_payment", Some("bh1"), Some("sh1"), "st1")];
+        let new = vec![entity("a.py", "calculate_tax", Some("bh2"), Some("sh2"), "st2")];
+        let matches = match_entities(&old, &new);
+        let added = matches.iter().filter(|m| m.match_kind == MatchKind::Added).count();
+        let removed = matches.iter().filter(|m| m.match_kind == MatchKind::Removed).count();
+        assert_eq!(added, 1);
+        assert_eq!(removed, 1);
+    }
+
+    #[test]
+    fn fuzzy_rename_requires_same_kind() {
+        let mut old_e = entity("a.py", "STORAGE_KEY", Some("bh1"), Some("sh1"), "st1");
+        old_e.kind = "constant".to_string();
+        let mut new_e = entity("a.py", "STORAGE_PREFIX", Some("bh2"), Some("sh2"), "st2");
+        new_e.kind = "function".to_string();
+        let matches = match_entities(&[old_e], &[new_e]);
+        // Different kinds — should NOT match as rename
+        assert_eq!(matches.len(), 2); // 1 added + 1 removed
+    }
+
+    #[test]
+    fn fuzzy_rename_requires_same_file() {
+        let old = vec![entity("a.py", "THREAD_STORAGE_KEY", Some("bh1"), Some("sh1"), "st1")];
+        let new = vec![entity("b.py", "THREAD_STORAGE_PREFIX", Some("bh2"), Some("sh2"), "st2")];
+        let matches = match_entities(&old, &new);
+        // Different files — should NOT match as fuzzy rename (but may match as Moved if name match)
+        // Since names are different AND files are different → Added + Removed
+        let added = matches.iter().filter(|m| m.match_kind == MatchKind::Added).count();
+        let removed = matches.iter().filter(|m| m.match_kind == MatchKind::Removed).count();
+        assert_eq!(added, 1);
+        assert_eq!(removed, 1);
     }
 }
