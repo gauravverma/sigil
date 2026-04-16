@@ -1,8 +1,18 @@
 use serde::{Serialize, Deserialize};
 use std::collections::{BTreeMap, HashSet};
 use crate::diff_json::{DiffResult, ChangeKind, EntityDiff};
+use crate::entity::Entity;
 use crate::change_detail::DetailKind;
 use crate::inline_diff;
+
+/// Check if an EntityDiff involves a derived entity (meta contains "derived").
+fn is_derived(diff: &EntityDiff) -> bool {
+    let check_meta = |e: &Entity| -> bool {
+        e.meta.as_ref().map_or(false, |m| m.contains(&"derived".to_string()))
+    };
+    diff.new.as_ref().map_or(false, |e| check_meta(e))
+        || diff.old.as_ref().map_or(false, |e| check_meta(e))
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Meta {
@@ -203,6 +213,11 @@ impl DiffOutput {
         let mut file_entities: BTreeMap<String, Vec<OutputEntity>> = BTreeMap::new();
 
         for diff in &result.entities {
+            // Skip derived entities
+            if is_derived(diff) {
+                continue;
+            }
+
             // Determine if this is a true cross-file move vs same-file move
             let is_cross_file_move = diff.change == ChangeKind::Moved
                 && diff.old_file.as_ref().map_or(false, |of| of != &diff.file);
@@ -677,7 +692,6 @@ pub fn enrich_breaking_with_callers(
 mod tests {
     use super::*;
     use crate::diff_json::{DiffResult, CrossFilePattern, EntityDiff, ChangeKind};
-    use crate::entity::Entity;
     use crate::change_detail::{ChangeDetail, DetailKind};
 
     fn make_entity(file: &str, name: &str, kind: &str, line_start: u32, line_end: u32) -> Entity {
@@ -1412,5 +1426,64 @@ mod tests {
         assert_eq!(ctx.language, "python");
         assert!(ctx.base_snippet.contains("return True"));
         assert!(ctx.head_snippet.contains("return True"));
+    }
+
+    #[test]
+    fn derived_entities_excluded_from_output() {
+        let old_entity = make_entity("a.json", "text", "property", 2, 2);
+        let mut new_entity = make_entity("a.json", "text", "property", 2, 2);
+        new_entity.struct_hash = "st_changed".to_string();
+
+        let mut old_derived = make_entity("a.json", "_parsed_text", "property", 3, 3);
+        old_derived.meta = Some(vec!["derived".to_string()]);
+        let mut new_derived = make_entity("a.json", "_parsed_text", "property", 3, 3);
+        new_derived.meta = Some(vec!["derived".to_string()]);
+        new_derived.struct_hash = "st_derived_changed".to_string();
+
+        let entities = vec![
+            EntityDiff {
+                change: ChangeKind::Modified,
+                name: "text".into(),
+                kind: "property".into(),
+                file: "a.json".into(),
+                old_file: None,
+                old_name: None,
+                sig_changed: Some(false),
+                body_changed: Some(true),
+                breaking: false,
+                breaking_reason: None,
+                old: Some(old_entity),
+                new: Some(new_entity),
+                inline_diff: None,
+                change_details: None,
+            },
+            EntityDiff {
+                change: ChangeKind::Modified,
+                name: "_parsed_text".into(),
+                kind: "property".into(),
+                file: "a.json".into(),
+                old_file: None,
+                old_name: None,
+                sig_changed: Some(false),
+                body_changed: Some(true),
+                breaking: false,
+                breaking_reason: None,
+                old: Some(old_derived),
+                new: Some(new_derived),
+                inline_diff: None,
+                change_details: None,
+            },
+        ];
+
+        let result = make_diff_result(entities, vec![]);
+        let output = DiffOutput::from_result(&result, false, 3);
+
+        // Only non-derived entity should appear
+        assert_eq!(output.files.len(), 1);
+        assert_eq!(output.files[0].entities.len(), 1);
+        assert_eq!(output.files[0].entities[0].name, "text");
+
+        // Summary should only count non-derived
+        assert_eq!(output.summary.modified, 1);
     }
 }
