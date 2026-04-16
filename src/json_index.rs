@@ -19,6 +19,7 @@ pub fn parse_json_file(
             file_path,
             map,
             None,
+            false,
             &line_positions,
             &mut search_start,
             &mut entities,
@@ -231,6 +232,7 @@ fn extract_object_entities(
     file_path: &str,
     map: &serde_json::Map<String, serde_json::Value>,
     parent: Option<&str>,
+    parent_derived: bool,
     line_positions: &[usize],
     search_start: &mut usize,
     entities: &mut Vec<Entity>,
@@ -242,6 +244,8 @@ fn extract_object_entities(
 
         // Update search_start so next key search starts after this value
         *search_start = after_value;
+
+        let is_derived = parent_derived || key.starts_with('_');
 
         let kind = entity_kind(value);
         let type_name = json_type_name(value);
@@ -265,7 +269,7 @@ fn extract_object_entities(
             line_end: end_line,
             parent: parent.map(|s| s.to_string()),
             sig: Some(sig),
-            meta: None,
+            meta: if is_derived { Some(vec!["derived".to_string()]) } else { None },
             body_hash,
             sig_hash,
             struct_hash,
@@ -286,6 +290,7 @@ fn extract_object_entities(
                 file_path,
                 nested_map,
                 Some(key),
+                is_derived,
                 line_positions,
                 &mut child_search_start,
                 entities,
@@ -459,10 +464,45 @@ mod tests {
     }
 
     #[test]
-    fn meta_is_always_none() {
+    fn non_underscore_key_has_no_meta() {
         let source = r#"{"key": "value"}"#;
         let (entities, _) = parse_json_file(source, "test.json").unwrap();
         assert!(entities[0].meta.is_none());
+    }
+
+    #[test]
+    fn underscore_prefixed_keys_marked_derived() {
+        let source = r#"{
+  "text": "hello",
+  "_parsed_text": "parsed",
+  "_examples": [1, 2]
+}"#;
+        let (entities, _) = parse_json_file(source, "test.json").unwrap();
+
+        let text = entities.iter().find(|e| e.name == "text").unwrap();
+        assert!(text.meta.is_none());
+
+        let parsed_text = entities.iter().find(|e| e.name == "_parsed_text").unwrap();
+        assert_eq!(parsed_text.meta, Some(vec!["derived".to_string()]));
+
+        let examples = entities.iter().find(|e| e.name == "_examples").unwrap();
+        assert_eq!(examples.meta, Some(vec!["derived".to_string()]));
+    }
+
+    #[test]
+    fn derived_propagates_to_children() {
+        let source = r#"{
+  "_internal": {
+    "key": "value"
+  }
+}"#;
+        let (entities, _) = parse_json_file(source, "test.json").unwrap();
+
+        let internal = entities.iter().find(|e| e.name == "_internal").unwrap();
+        assert_eq!(internal.meta, Some(vec!["derived".to_string()]));
+
+        let key = entities.iter().find(|e| e.name == "key").unwrap();
+        assert_eq!(key.meta, Some(vec!["derived".to_string()]));
     }
 
     #[test]
