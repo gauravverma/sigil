@@ -1,6 +1,9 @@
 use crate::entity::{Entity, Reference};
 use crate::hasher;
 
+/// Identity keys used to name array-of-object items (checked in priority order).
+const IDENTITY_KEYS: &[&str] = &["id", "key", "name", "text", "type"];
+
 /// Parse a JSON file and extract nested keys as entities.
 pub fn parse_json_file(
     source: &str,
@@ -226,6 +229,154 @@ fn entity_kind(value: &serde_json::Value) -> &'static str {
     }
 }
 
+/// Detect the identity key for an array of objects.
+/// Checks the first object in the array for keys in IDENTITY_KEYS priority order.
+/// Returns the key name if found and its value is a string, otherwise None.
+fn detect_identity_key(items: &[serde_json::Value]) -> Option<&'static str> {
+    let first_obj = items.iter().find_map(|v| v.as_object())?;
+    for &candidate in IDENTITY_KEYS {
+        if let Some(val) = first_obj.get(candidate) {
+            if val.is_string() {
+                return Some(candidate);
+            }
+        }
+    }
+    None
+}
+
+/// Extract child entities from a JSON array's items.
+/// For arrays of objects, uses identity key heuristic for naming.
+/// For arrays of primitives, uses positional naming ([0], [1], ...).
+fn extract_array_items(
+    source: &str,
+    file_path: &str,
+    items: &[serde_json::Value],
+    array_name: &str,
+    is_derived: bool,
+    line_positions: &[usize],
+    array_value_start: usize,
+    entities: &mut Vec<Entity>,
+) {
+    if items.is_empty() {
+        return;
+    }
+
+    let identity_key = detect_identity_key(items);
+    let bytes = source.as_bytes();
+
+    // Find the opening '[' of the array
+    let mut pos = array_value_start;
+    while pos < bytes.len() && bytes[pos] != b'[' {
+        pos += 1;
+    }
+    if pos >= bytes.len() {
+        return;
+    }
+    pos += 1; // skip past '['
+
+    for (idx, item) in items.iter().enumerate() {
+        // Skip whitespace and commas to find the start of this item
+        while pos < bytes.len() && (bytes[pos].is_ascii_whitespace() || bytes[pos] == b',') {
+            pos += 1;
+        }
+
+        let item_start_byte = pos;
+        let item_start_line = byte_offset_to_line(line_positions, item_start_byte);
+
+        // Determine item end based on type
+        let (item_end_line, item_end_byte) = match item {
+            serde_json::Value::Object(_) => {
+                if pos < bytes.len() && bytes[pos] == b'{' {
+                    let close = find_matching_close(source, pos, b'{', b'}');
+                    let line = byte_offset_to_line(line_positions, close);
+                    (line, close + 1)
+                } else {
+                    let line = byte_offset_to_line(line_positions, pos);
+                    (line, pos)
+                }
+            }
+            serde_json::Value::Array(_) => {
+                if pos < bytes.len() && bytes[pos] == b'[' {
+                    let close = find_matching_close(source, pos, b'[', b']');
+                    let line = byte_offset_to_line(line_positions, close);
+                    (line, close + 1)
+                } else {
+                    let line = byte_offset_to_line(line_positions, pos);
+                    (line, pos)
+                }
+            }
+            _ => {
+                let end = find_primitive_end(source, pos);
+                let line = byte_offset_to_line(line_positions, pos);
+                (line, end)
+            }
+        };
+
+        // Determine item name
+        let item_name = if let serde_json::Value::Object(obj) = item {
+            if let Some(id_key) = identity_key {
+                if let Some(serde_json::Value::String(s)) = obj.get(id_key) {
+                    s.clone()
+                } else {
+                    format!("[{}]", idx)
+                }
+            } else {
+                format!("[{}]", idx)
+            }
+        } else {
+            format!("[{}]", idx)
+        };
+
+        // Determine kind
+        let kind = match item {
+            serde_json::Value::Object(_) => "object",
+            serde_json::Value::Array(_) => "array",
+            _ => "element",
+        };
+
+        // Build sig
+        let sig = format!("{}[{}]", array_name, idx);
+
+        // Compute hashes
+        let raw = hasher::extract_raw_bytes(source, item_start_line as usize, item_end_line as usize);
+        let struct_hash = hasher::struct_hash(raw.as_bytes());
+        let body_hash = hasher::body_hash_raw(source, item_start_line as usize, item_end_line as usize);
+        let sig_hash = hasher::sig_hash(Some(&sig));
+
+        entities.push(Entity {
+            file: file_path.to_string(),
+            name: item_name.clone(),
+            kind: kind.to_string(),
+            line_start: item_start_line,
+            line_end: item_end_line,
+            parent: Some(array_name.to_string()),
+            sig: Some(sig),
+            meta: if is_derived { Some(vec!["derived".to_string()]) } else { None },
+            body_hash,
+            sig_hash,
+            struct_hash,
+        });
+
+        // Recurse into object items to extract their properties as children
+        if let serde_json::Value::Object(nested_map) = item {
+            let mut child_search_start = item_start_byte + 1; // start after '{'
+            extract_object_entities(
+                source,
+                file_path,
+                nested_map,
+                Some(&item_name),
+                is_derived,
+                line_positions,
+                &mut child_search_start,
+                entities,
+            );
+        }
+
+        // Advance pos past this item
+        pos = item_end_byte;
+    }
+}
+
 /// Recursively extract entities from a JSON object.
 fn extract_object_entities(
     source: &str,
@@ -293,6 +444,20 @@ fn extract_object_entities(
                 is_derived,
                 line_positions,
                 &mut child_search_start,
+                entities,
+            );
+        }
+
+        // Expand array items as child entities
+        if let serde_json::Value::Array(items) = value {
+            extract_array_items(
+                source,
+                file_path,
+                items,
+                key,
+                is_derived,
+                line_positions,
+                after_colon,
                 entities,
             );
         }
@@ -367,6 +532,18 @@ mod tests {
         let tags = entities.iter().find(|e| e.name == "tags").unwrap();
         assert_eq!(tags.kind, "array");
         assert_eq!(tags.sig.as_deref(), Some("\"tags\": array"));
+
+        // Array items are now expanded
+        let tag_children: Vec<&Entity> = entities.iter()
+            .filter(|e| e.parent.as_deref() == Some("tags"))
+            .collect();
+        assert_eq!(tag_children.len(), 2);
+        assert_eq!(tag_children[0].kind, "element");
+
+        let item_children: Vec<&Entity> = entities.iter()
+            .filter(|e| e.parent.as_deref() == Some("items"))
+            .collect();
+        assert_eq!(item_children.len(), 3);
     }
 
     #[test]
@@ -527,5 +704,114 @@ mod tests {
         assert_eq!(entities.len(), 1);
         assert_eq!(entities[0].name, r#"say "hello""#);
         assert_eq!(entities[0].line_start, 2);
+    }
+
+    #[test]
+    fn array_of_objects_expanded_with_identity_key() {
+        let source = r#"{
+  "buttons": [{"text": "Location", "type": "URL"}, {"text": "Call", "type": "PHONE"}]
+}"#;
+        let (entities, _) = parse_json_file(source, "test.json").unwrap();
+
+        // buttons array entity
+        let buttons = entities.iter().find(|e| e.name == "buttons").unwrap();
+        assert_eq!(buttons.kind, "array");
+
+        // Children of buttons: Location and Call (named by "text" identity key)
+        let button_children: Vec<&Entity> = entities.iter()
+            .filter(|e| e.parent.as_deref() == Some("buttons"))
+            .collect();
+        assert_eq!(button_children.len(), 2);
+
+        let location = entities.iter().find(|e| e.name == "Location").unwrap();
+        assert_eq!(location.kind, "object");
+        assert_eq!(location.parent.as_deref(), Some("buttons"));
+
+        let call = entities.iter().find(|e| e.name == "Call").unwrap();
+        assert_eq!(call.kind, "object");
+        assert_eq!(call.parent.as_deref(), Some("buttons"));
+
+        // Each object item should have children (text, type properties)
+        let location_children: Vec<&Entity> = entities.iter()
+            .filter(|e| e.parent.as_deref() == Some("Location"))
+            .collect();
+        assert_eq!(location_children.len(), 2);
+
+        let call_children: Vec<&Entity> = entities.iter()
+            .filter(|e| e.parent.as_deref() == Some("Call"))
+            .collect();
+        assert_eq!(call_children.len(), 2);
+    }
+
+    #[test]
+    fn array_of_objects_falls_back_to_positional() {
+        let source = r#"{
+  "items": [{"value": 1}, {"value": 2}]
+}"#;
+        let (entities, _) = parse_json_file(source, "test.json").unwrap();
+
+        // "value" is a number, not a string, so no identity key matches
+        let item_children: Vec<&Entity> = entities.iter()
+            .filter(|e| e.parent.as_deref() == Some("items"))
+            .collect();
+        assert_eq!(item_children.len(), 2);
+        assert_eq!(item_children[0].name, "[0]");
+        assert_eq!(item_children[0].kind, "object");
+        assert_eq!(item_children[1].name, "[1]");
+        assert_eq!(item_children[1].kind, "object");
+    }
+
+    #[test]
+    fn array_of_primitives_expanded_positionally() {
+        let source = r#"{
+  "tags": ["alpha", "beta", "gamma"]
+}"#;
+        let (entities, _) = parse_json_file(source, "test.json").unwrap();
+
+        let tag_children: Vec<&Entity> = entities.iter()
+            .filter(|e| e.parent.as_deref() == Some("tags"))
+            .collect();
+        assert_eq!(tag_children.len(), 3);
+        assert_eq!(tag_children[0].name, "[0]");
+        assert_eq!(tag_children[0].kind, "element");
+        assert_eq!(tag_children[0].parent.as_deref(), Some("tags"));
+        assert_eq!(tag_children[1].name, "[1]");
+        assert_eq!(tag_children[2].name, "[2]");
+    }
+
+    #[test]
+    fn identity_key_priority_order() {
+        let source = r#"{
+  "users": [{"id": "u1", "text": "Alice"}]
+}"#;
+        let (entities, _) = parse_json_file(source, "test.json").unwrap();
+
+        // "id" should be preferred over "text"
+        let user_children: Vec<&Entity> = entities.iter()
+            .filter(|e| e.parent.as_deref() == Some("users"))
+            .collect();
+        assert_eq!(user_children.len(), 1);
+        assert_eq!(user_children[0].name, "u1");
+        assert_eq!(user_children[0].kind, "object");
+    }
+
+    #[test]
+    fn derived_array_items_inherit_derived() {
+        let source = r#"{
+  "_examples": ["a", "b"]
+}"#;
+        let (entities, _) = parse_json_file(source, "test.json").unwrap();
+
+        let examples = entities.iter().find(|e| e.name == "_examples").unwrap();
+        assert_eq!(examples.meta, Some(vec!["derived".to_string()]));
+
+        let children: Vec<&Entity> = entities.iter()
+            .filter(|e| e.parent.as_deref() == Some("_examples"))
+            .collect();
+        assert_eq!(children.len(), 2);
+        for child in &children {
+            assert_eq!(child.meta, Some(vec!["derived".to_string()]),
+                "child {} should be derived", child.name);
+        }
     }
 }
