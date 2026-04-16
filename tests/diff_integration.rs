@@ -327,6 +327,95 @@ fn markdown_no_emoji_combined() {
 }
 
 #[test]
+fn json_diff_with_derived_and_arrays() {
+    let dir = std::env::temp_dir().join(format!(
+        "sigil_json_diff_test_{}_{:?}",
+        std::process::id(),
+        std::thread::current().id()
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+
+    run_git(&dir, &["init"]);
+    run_git(&dir, &["config", "user.email", "test@test.com"]);
+    run_git(&dir, &["config", "user.name", "Test"]);
+
+    // Initial commit
+    let old_json = r#"{
+  "body": {
+    "text": "Hello world",
+    "_parsed_text": "Hello {{1}}"
+  },
+  "header": {
+    "text": "",
+    "_parsed_text": ""
+  },
+  "buttons": [
+    {
+      "text": "Click",
+      "type": "URL"
+    }
+  ]
+}"#;
+    std::fs::write(dir.join("template.json"), old_json).unwrap();
+    run_git(&dir, &["add", "."]);
+    run_git(&dir, &["commit", "-m", "initial"]);
+
+    // Second commit: modify body.text only
+    let new_json = r#"{
+  "body": {
+    "text": "Hello universe",
+    "_parsed_text": "Hello {{1}} universe"
+  },
+  "header": {
+    "text": "",
+    "_parsed_text": ""
+  },
+  "buttons": [
+    {
+      "text": "Click",
+      "type": "URL"
+    }
+  ]
+}"#;
+    std::fs::write(dir.join("template.json"), new_json).unwrap();
+    run_git(&dir, &["add", "."]);
+    run_git(&dir, &["commit", "-m", "update body text"]);
+
+    // Run sigil diff --json
+    let bin = env!("CARGO_BIN_EXE_sigil");
+    let output = Command::new(bin)
+        .args(&["diff", "HEAD~1", "--json"])
+        .current_dir(&dir)
+        .output()
+        .expect("sigil failed");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout)
+        .unwrap_or_else(|e| panic!("invalid JSON output: {}\n{}", e, stdout));
+
+    // Check entities — should NOT contain _parsed_text (derived)
+    let entities = json["files"].as_array().unwrap()
+        .iter()
+        .flat_map(|f| f["entities"].as_array().unwrap())
+        .collect::<Vec<_>>();
+
+    let names: Vec<&str> = entities.iter()
+        .map(|e| e["name"].as_str().unwrap())
+        .collect();
+
+    // body should show as modified (its child text changed)
+    assert!(names.contains(&"body"), "body should be in diff output, got: {:?}", names);
+    // text (under body) should show
+    assert!(names.contains(&"text"), "text should be in diff output, got: {:?}", names);
+    // _parsed_text should NOT appear (derived)
+    assert!(!names.contains(&"_parsed_text"), "_parsed_text should be suppressed, got: {:?}", names);
+
+    // Cleanup
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn no_color_lines_combined() {
     let dir = make_diff_repo();
     let output = run_sigil_diff_raw(&dir, "HEAD~1", &["--no-color", "--lines"]);

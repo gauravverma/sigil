@@ -3984,12 +3984,48 @@
 {"file":"tests/diff_integration.rs","caller":"markdown_no_emoji_combined","name":"String::from_utf8","ref_kind":"call","line":318}
 {"file":"tests/diff_integration.rs","caller":"markdown_no_emoji_combined","name":"std::fs::remove_dir_all(&dir).ok","ref_kind":"call","line":326}
 {"file":"tests/diff_integration.rs","caller":"markdown_no_emoji_combined","name":"std::fs::remove_dir_all","ref_kind":"call","line":326}
-{"file":"tests/diff_integration.rs","caller":"no_color_lines_combined","name":"make_diff_repo","ref_kind":"call","line":331}
-{"file":"tests/diff_integration.rs","caller":"no_color_lines_combined","name":"run_sigil_diff_raw","ref_kind":"call","line":332}
-{"file":"tests/diff_integration.rs","caller":"no_color_lines_combined","name":"String::from_utf8(output.stdout).unwrap","ref_kind":"call","line":333}
-{"file":"tests/diff_integration.rs","caller":"no_color_lines_combined","name":"String::from_utf8","ref_kind":"call","line":333}
-{"file":"tests/diff_integration.rs","caller":"no_color_lines_combined","name":"std::fs::remove_dir_all(&dir).ok","ref_kind":"call","line":340}
-{"file":"tests/diff_integration.rs","caller":"no_color_lines_combined","name":"std::fs::remove_dir_all","ref_kind":"call","line":340}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"std::env::temp_dir().join","ref_kind":"call","line":331}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"std::env::temp_dir","ref_kind":"call","line":331}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"std::fs::remove_dir_all","ref_kind":"call","line":336}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"std::fs::create_dir_all(&dir).unwrap","ref_kind":"call","line":337}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"std::fs::create_dir_all","ref_kind":"call","line":337}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"run_git","ref_kind":"call","line":339}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"run_git","ref_kind":"call","line":340}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"run_git","ref_kind":"call","line":341}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"std::fs::write(dir.join(\"template.json\"), old_json).unwrap","ref_kind":"call","line":360}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"dir.join","ref_kind":"call","line":360}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"run_git","ref_kind":"call","line":361}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"run_git","ref_kind":"call","line":362}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"std::fs::write(dir.join(\"template.json\"), new_json).unwrap","ref_kind":"call","line":381}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"dir.join","ref_kind":"call","line":381}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"run_git","ref_kind":"call","line":382}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"run_git","ref_kind":"call","line":383}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"Command::new(bin)\n        .args(&[\"diff\", \"HEAD~1\", \"--json\"])\n        .current_dir(&dir)\n        .output()\n        .expect","ref_kind":"call","line":387}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"Command::new(bin)\n        .args(&[\"diff\", \"HEAD~1\", \"--json\"])\n        .current_dir(&dir)\n        .output","ref_kind":"call","line":387}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"Command::new(bin)\n        .args(&[\"diff\", \"HEAD~1\", \"--json\"])\n        .current_dir","ref_kind":"call","line":387}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"Command::new(bin)\n        .args","ref_kind":"call","line":387}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"Command::new","ref_kind":"call","line":387}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"String::from_utf8_lossy","ref_kind":"call","line":393}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"serde_json::from_str(&stdout)\n        .unwrap_or_else","ref_kind":"call","line":394}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"serde_json::from_str","ref_kind":"call","line":394}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"json[\"files\"].as_array().unwrap()\n        .iter()\n        .flat_map","ref_kind":"call","line":398}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"json[\"files\"].as_array().unwrap()\n        .iter","ref_kind":"call","line":398}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"json[\"files\"].as_array().unwrap","ref_kind":"call","line":398}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"json[\"files\"].as_array","ref_kind":"call","line":398}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"f[\"entities\"].as_array().unwrap","ref_kind":"call","line":400}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"f[\"entities\"].as_array","ref_kind":"call","line":400}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"entities.iter()\n        .map(|e| e[\"name\"].as_str().unwrap())\n        .collect","ref_kind":"call","line":403}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"entities.iter()\n        .map","ref_kind":"call","line":403}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"entities.iter","ref_kind":"call","line":403}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"e[\"name\"].as_str().unwrap","ref_kind":"call","line":404}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"e[\"name\"].as_str","ref_kind":"call","line":404}
+{"file":"tests/diff_integration.rs","caller":"json_diff_with_derived_and_arrays","name":"std::fs::remove_dir_all","ref_kind":"call","line":415}
+{"file":"tests/diff_integration.rs","caller":"no_color_lines_combined","name":"make_diff_repo","ref_kind":"call","line":420}
+{"file":"tests/diff_integration.rs","caller":"no_color_lines_combined","name":"run_sigil_diff_raw","ref_kind":"call","line":421}
+{"file":"tests/diff_integration.rs","caller":"no_color_lines_combined","name":"String::from_utf8(output.stdout).unwrap","ref_kind":"call","line":422}
+{"file":"tests/diff_integration.rs","caller":"no_color_lines_combined","name":"String::from_utf8","ref_kind":"call","line":422}
+{"file":"tests/diff_integration.rs","caller":"no_color_lines_combined","name":"std::fs::remove_dir_all(&dir).ok","ref_kind":"call","line":429}
+{"file":"tests/diff_integration.rs","caller":"no_color_lines_combined","name":"std::fs::remove_dir_all","ref_kind":"call","line":429}
 {"file":"tests/fixtures/sample.go","caller":null,"name":"fmt","ref_kind":"import","line":3}
 {"file":"tests/fixtures/sample.go","caller":"NewConfig","name":"Config","ref_kind":"type_annotation","line":10}
 {"file":"tests/fixtures/sample.go","caller":"Config.Validate","name":"fmt.Errorf","ref_kind":"call","line":16}
