@@ -4,9 +4,20 @@ use crate::hasher;
 /// Identity keys used to name array-of-object items (checked in priority order).
 const IDENTITY_KEYS: &[&str] = &["id", "key", "name", "text", "type"];
 
+/// Pretty-print minified JSON so line-based hashing produces distinct hashes per entity.
+/// Returns the formatted string if reformatting was needed, or `None` if the source is already multi-line.
+pub fn normalize_json_source(source: &str) -> Option<String> {
+    let line_count = source.lines().count();
+    if line_count < 3 && source.len() > 80 {
+        let value: serde_json::Value = serde_json::from_str(source).ok()?;
+        serde_json::to_string_pretty(&value).ok()
+    } else {
+        None
+    }
+}
+
 /// Parse a JSON file and extract nested keys as entities.
-/// Minified JSON (few lines relative to size) is auto-formatted before parsing
-/// so that line-based hashing produces distinct hashes per entity.
+/// Callers should pass pre-normalized source (via `normalize_json_source`) for minified JSON.
 pub fn parse_json_file(
     source: &str,
     file_path: &str,
@@ -14,35 +25,13 @@ pub fn parse_json_file(
     let value: serde_json::Value =
         serde_json::from_str(source).map_err(|e| format!("JSON parse error: {}", e))?;
 
-    // Auto-format minified JSON: if fewer than 3 lines but > 80 bytes, pretty-print
-    let line_count = source.lines().count();
-    let needs_format = line_count < 3 && source.len() > 80;
-    let formatted;
-    let effective_source = if needs_format {
-        formatted = serde_json::to_string_pretty(&value)
-            .map_err(|e| format!("JSON format error: {}", e))?;
-        &formatted
-    } else {
-        source
-    };
-
-    // Re-parse if we reformatted (to get the correct Map iteration order on the pretty source)
-    let effective_value: serde_json::Value;
-    let map_ref = if needs_format {
-        effective_value = serde_json::from_str(effective_source)
-            .map_err(|e| format!("JSON re-parse error: {}", e))?;
-        &effective_value
-    } else {
-        &value
-    };
-
     let mut entities = Vec::new();
-    let line_positions = build_line_index(effective_source);
+    let line_positions = build_line_index(source);
 
-    if let serde_json::Value::Object(map) = map_ref {
+    if let serde_json::Value::Object(map) = &value {
         let mut search_start = 0usize;
         extract_object_entities(
-            effective_source,
+            source,
             file_path,
             map,
             None,

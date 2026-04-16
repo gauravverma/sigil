@@ -68,6 +68,7 @@ pub fn compute_diff(
             match git::file_at_ref(root, base_ref, &change.path) {
                 Ok(bytes) => {
                     if let Ok(source) = String::from_utf8(bytes) {
+                        let source = normalize_source_if_needed(&source, lang);
                         if let Ok((entities, _)) = index::parse_single_file(&source, &change.path, lang) {
                             old_entities.extend(entities);
                         }
@@ -84,6 +85,7 @@ pub fn compute_diff(
             match git::file_at_ref(root, head_ref, &change.path) {
                 Ok(bytes) => {
                     if let Ok(source) = String::from_utf8(bytes) {
+                        let source = normalize_source_if_needed(&source, lang);
                         if let Ok((entities, _)) = index::parse_single_file(&source, &change.path, lang) {
                             new_entities.extend(entities);
                         }
@@ -145,10 +147,13 @@ pub fn compute_file_diff(
         ));
     }
 
-    let old_source = std::fs::read_to_string(old_path)
+    let old_source_raw = std::fs::read_to_string(old_path)
         .map_err(|e| format!("cannot read {}: {}", old_path.display(), e))?;
-    let new_source = std::fs::read_to_string(new_path)
+    let new_source_raw = std::fs::read_to_string(new_path)
         .map_err(|e| format!("cannot read {}: {}", new_path.display(), e))?;
+
+    let old_source = normalize_source_if_needed(&old_source_raw, old_lang);
+    let new_source = normalize_source_if_needed(&new_source_raw, new_lang);
 
     let old_path_str = old_path.to_string_lossy().to_string();
     let new_path_str = new_path.to_string_lossy().to_string();
@@ -186,6 +191,17 @@ pub fn compute_file_diff(
         old_sources: if opts.include_context { Some(old_sources) } else { None },
         new_sources: if opts.include_context { Some(new_sources) } else { None },
     })
+}
+
+/// Normalize source for languages that need it (e.g., minified JSON).
+/// Returns the normalized source or the original if no normalization was needed.
+fn normalize_source_if_needed(source: &str, lang: &str) -> String {
+    if lang == "json" {
+        if let Some(formatted) = crate::json_index::normalize_json_source(source) {
+            return formatted;
+        }
+    }
+    source.to_string()
 }
 
 /// Detect language from file extension.
