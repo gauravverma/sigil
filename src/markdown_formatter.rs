@@ -286,21 +286,24 @@ fn render_entity(md: &mut String, entity: &OutputEntity, opts: &MarkdownOptions)
         pat_suffix,
     ));
 
-    // Token changes as blockquote
+    // Token changes: one per line as blockquote for readability
     if !entity.token_changes.is_empty() {
-        let tokens: Vec<String> = entity.token_changes.iter()
-            .map(|tc| {
-                if tc.from.is_empty() {
-                    format!("+`{}`", tc.to)
-                } else if tc.to.is_empty() {
-                    format!("-`{}`", tc.from)
-                } else {
-                    format!("`{}` \u{2192} `{}`", tc.from, tc.to)
-                }
-            })
-            .collect();
-        let token_line = tokens.join(" \u{00B7} ");
-        md.push_str(&format!("  > {}\n", token_line));
+        let max_tokens = 4;
+        let max_token_len = 60;
+        for (i, tc) in entity.token_changes.iter().enumerate() {
+            if i >= max_tokens {
+                md.push_str(&format!("  > +{} more\n", entity.token_changes.len() - max_tokens));
+                break;
+            }
+            let desc = if tc.from.is_empty() {
+                format!("+`{}`", truncate_md(& tc.to, max_token_len))
+            } else if tc.to.is_empty() {
+                format!("-`{}`", truncate_md(&tc.from, max_token_len))
+            } else {
+                format!("`{}` \u{2192} `{}`", truncate_md(&tc.from, max_token_len), truncate_md(&tc.to, max_token_len))
+            };
+            md.push_str(&format!("  > {}\n", desc));
+        }
     }
 
     // Context code block
@@ -323,20 +326,50 @@ fn build_change_detail_suffix(entity: &OutputEntity) -> String {
     }
 }
 
+/// Truncate a string for markdown display.
+fn truncate_md(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        return s.to_string();
+    }
+    let end = s.char_indices()
+        .nth(max_len.saturating_sub(3))
+        .map(|(i, _)| i)
+        .unwrap_or(s.len());
+    format!("{}...", &s[..end])
+}
+
+/// Check if a context line references a derived JSON key.
+fn is_derived_md_line(text: &str) -> bool {
+    let trimmed = text.trim();
+    trimmed.starts_with("\"_") && trimmed.contains("\":")
+}
+
 /// Render a fenced context code block for a snippet.
 fn render_context_block(md: &mut String, ctx: &SnippetContext) {
+    let max_line_width = 100;
+    let is_json = ctx.language == "json";
+
     if let Some(ref hunks) = ctx.hunks {
+        let filtered: Vec<&crate::inline_diff::DiffLine> = if is_json {
+            hunks.iter().filter(|line| !is_derived_md_line(&line.text)).collect()
+        } else {
+            hunks.iter().collect()
+        };
+        if filtered.is_empty() {
+            return;
+        }
         md.push_str("  ```diff\n");
-        for line in hunks {
+        for line in &filtered {
+            let text = truncate_md(&line.text, max_line_width);
             match line.kind {
                 crate::inline_diff::DiffLineKind::Context => {
-                    md.push_str(&format!("   {}\n", line.text));
+                    md.push_str(&format!("   {}\n", text));
                 }
                 crate::inline_diff::DiffLineKind::Removed => {
-                    md.push_str(&format!("  -{}\n", line.text));
+                    md.push_str(&format!("  -{}\n", text));
                 }
                 crate::inline_diff::DiffLineKind::Added => {
-                    md.push_str(&format!("  +{}\n", line.text));
+                    md.push_str(&format!("  +{}\n", text));
                 }
                 crate::inline_diff::DiffLineKind::Separator => {
                     md.push_str("  ...\n");
@@ -350,11 +383,11 @@ fn render_context_block(md: &mut String, ctx: &SnippetContext) {
     md.push_str(&format!("  ```{}\n", ctx.language));
     md.push_str("  # before\n");
     for line in ctx.base_snippet.lines() {
-        md.push_str(&format!("  {}\n", line));
+        md.push_str(&format!("  {}\n", truncate_md(line, max_line_width)));
     }
     md.push_str("  # after\n");
     for line in ctx.head_snippet.lines() {
-        md.push_str(&format!("  {}\n", line));
+        md.push_str(&format!("  {}\n", truncate_md(line, max_line_width)));
     }
     md.push_str("  ```\n");
 }
@@ -583,8 +616,8 @@ mod tests {
         // Modified entity
         assert!(md.contains("~ modified `execute_payment` (function) \u{2014} sig+body"));
         assert!(md.contains("\u{2282} pat_1"));
-        // Token change blockquote
-        assert!(md.contains("> `true` \u{2192} `false`"));
+        // Token change blockquote (one per line)
+        assert!(md.contains("  > `true` \u{2192} `false`"));
         // Added entity
         assert!(md.contains("\u{2726} added `PaymentAuditLog` (class)"));
         // Removed entity
