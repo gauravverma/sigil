@@ -24,7 +24,7 @@ jobs:
           command: build
           args: --release --manifest-path python/Cargo.toml --out dist --find-interpreter
           target: ${{ matrix.target }}
-          manylinux: auto
+          manylinux: 2_28
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-linux-${{ matrix.target }}
