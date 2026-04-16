@@ -212,10 +212,34 @@ impl DiffOutput {
         // Use BTreeMap for deterministic file ordering
         let mut file_entities: BTreeMap<String, Vec<OutputEntity>> = BTreeMap::new();
 
+        // Collect parent names that have non-derived children in the diff,
+        // so we can suppress redundant parent entities for JSON files.
+        let mut parents_with_children: HashSet<(String, String)> = HashSet::new(); // (file, parent_name)
+        for diff in &result.entities {
+            if is_derived(diff) { continue; }
+            let entity = diff.new.as_ref().or(diff.old.as_ref());
+            if let Some(e) = entity {
+                if let Some(ref parent) = e.parent {
+                    parents_with_children.insert((diff.file.clone(), parent.clone()));
+                }
+            }
+        }
+
         for diff in &result.entities {
             // Skip derived entities
             if is_derived(diff) {
                 continue;
+            }
+
+            // For JSON: suppress parent object/array entities when their children
+            // already appear in the diff (the children carry the specific detail).
+            let is_json = diff.file.ends_with(".json");
+            if is_json {
+                let entity_name = &diff.name;
+                let is_parent_with_children = parents_with_children.contains(&(diff.file.clone(), entity_name.clone()));
+                if is_parent_with_children && (diff.kind == "object" || diff.kind == "array") {
+                    continue;
+                }
             }
 
             // Determine if this is a true cross-file move vs same-file move
@@ -290,9 +314,25 @@ impl DiffOutput {
                     None
                 };
 
+                // For JSON: use qualified name (parent.name) for clarity
+                let display_name = if is_json {
+                    let entity = diff.new.as_ref().or(diff.old.as_ref());
+                    if let Some(e) = entity {
+                        if let Some(ref parent) = e.parent {
+                            format!("{}.{}", parent, diff.name)
+                        } else {
+                            diff.name.clone()
+                        }
+                    } else {
+                        diff.name.clone()
+                    }
+                } else {
+                    diff.name.clone()
+                };
+
                 let output_entity = OutputEntity {
                     change: change_str,
-                    name: diff.name.clone(),
+                    name: display_name,
                     kind: diff.kind.clone(),
                     line,
                     line_end,

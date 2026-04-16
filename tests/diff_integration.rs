@@ -404,10 +404,10 @@ fn json_diff_with_derived_and_arrays() {
         .map(|e| e["name"].as_str().unwrap())
         .collect();
 
-    // body should show as modified (its child text changed)
-    assert!(names.contains(&"body"), "body should be in diff output, got: {:?}", names);
-    // text (under body) should show
-    assert!(names.contains(&"text"), "text should be in diff output, got: {:?}", names);
+    // body.text should show as modified (qualified name, parent suppressed)
+    assert!(names.contains(&"body.text"), "body.text should be in diff output, got: {:?}", names);
+    // body parent should be suppressed (children carry the detail)
+    assert!(!names.contains(&"body"), "body parent should be suppressed, got: {:?}", names);
     // _parsed_text should NOT appear (derived)
     assert!(!names.contains(&"_parsed_text"), "_parsed_text should be suppressed, got: {:?}", names);
 

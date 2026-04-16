@@ -375,6 +375,18 @@ fn render_entity_row(out: &mut String, entity: &OutputEntity, opts: &FormatOptio
     }
 }
 
+/// Truncate a token change value to a max length, adding ellipsis.
+fn truncate_token(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        return s.to_string();
+    }
+    let end = s.char_indices()
+        .nth(max_len.saturating_sub(3))
+        .map(|(i, _)| i)
+        .unwrap_or(s.len());
+    format!("{}...", &s[..end])
+}
+
 fn render_modified_continuation(out: &mut String, entity: &OutputEntity) {
     let hash_dim = match (entity.sig_changed, entity.body_changed) {
         (Some(true), Some(true)) => "sig+body",
@@ -383,53 +395,80 @@ fn render_modified_continuation(out: &mut String, entity: &OutputEntity) {
         _ => "sig+body",
     };
 
-    let mut parts: Vec<String> = vec![hash_dim.dimmed().to_string()];
+    // First line: change type + pattern ref
+    let mut first_line = hash_dim.dimmed().to_string();
+    if let Some(ref pat_ref) = entity.pattern_ref {
+        first_line.push_str(&format!("  {}  {}", GLYPH_FORMAT, format!("\u{2282} {}", pat_ref).cyan()));
+    }
+    out.push_str(&format!("     {}\n", first_line));
 
-    // Token diffs (max 4)
+    // Token diffs: one per line for readability
     let max_tokens = 4;
+    let max_token_len = 60;
     for (i, tc) in entity.token_changes.iter().enumerate() {
         if i >= max_tokens {
-            parts.push(format!("+{} more", entity.token_changes.len() - max_tokens).dimmed().to_string());
+            out.push_str(&format!("       {}\n", format!("+{} more", entity.token_changes.len() - max_tokens).dimmed()));
             break;
         }
         let desc = if !tc.from.is_empty() && !tc.to.is_empty() {
             format!(
                 "{} {} {}",
-                format!("\"{}\"", tc.from).dimmed(),
+                format!("\"{}\"", truncate_token(&tc.from, max_token_len)).dimmed(),
                 GLYPH_ARROW,
-                format!("\"{}\"", tc.to).dimmed(),
+                format!("\"{}\"", truncate_token(&tc.to, max_token_len)).dimmed(),
             )
         } else if tc.from.is_empty() {
-            format!("+{}", tc.to).green().to_string()
+            format!("+{}", truncate_token(&tc.to, max_token_len)).green().to_string()
         } else {
-            format!("-{}", tc.from).red().to_string()
+            format!("-{}", truncate_token(&tc.from, max_token_len)).red().to_string()
         };
-        parts.push(desc);
-    }
-
-    // Pattern reference
-    if let Some(ref pat_ref) = entity.pattern_ref {
-        parts.push(format!("\u{2282} {}", pat_ref).cyan().to_string());
-    }
-
-    if !parts.is_empty() {
-        let joined = parts.join(&format!("  {}  ", GLYPH_FORMAT));
-        out.push_str(&format!("     {}\n", joined));
+        out.push_str(&format!("       {}\n", desc));
     }
 }
 
+/// Truncate a line to fit terminal width, preserving the changed region where possible.
+fn truncate_context_line(text: &str, max_width: usize) -> String {
+    if text.len() <= max_width {
+        return text.to_string();
+    }
+    // Show first max_width-3 chars + ellipsis
+    let end = text.char_indices()
+        .nth(max_width.saturating_sub(3))
+        .map(|(i, _)| i)
+        .unwrap_or(text.len());
+    format!("{}...", &text[..end])
+}
+
+/// Check if a context line references a derived (underscore-prefixed) JSON key.
+fn is_derived_context_line(text: &str) -> bool {
+    let trimmed = text.trim();
+    // Match patterns like: "_parsed_text": ..., "_examples": ..., "_parsed_url_dynamic_part": ...
+    trimmed.starts_with("\"_") && trimmed.contains("\":")
+}
+
 fn render_context(out: &mut String, ctx: &SnippetContext) {
+    let max_line_width = 100;
+
     if let Some(ref hunks) = ctx.hunks {
-        for line in hunks {
+        // Filter: skip derived field lines and their adjacent context in JSON
+        let is_json = ctx.language == "json";
+        let filtered: Vec<&crate::inline_diff::DiffLine> = if is_json {
+            hunks.iter().filter(|line| !is_derived_context_line(&line.text)).collect()
+        } else {
+            hunks.iter().collect()
+        };
+
+        for line in &filtered {
+            let text = truncate_context_line(&line.text, max_line_width);
             match line.kind {
                 crate::inline_diff::DiffLineKind::Context => {
-                    out.push_str(&format!("       {}\n", line.text.dimmed()));
+                    out.push_str(&format!("       {}\n", text.dimmed()));
                 }
                 crate::inline_diff::DiffLineKind::Removed => {
-                    out.push_str(&format!("       {}\n", format!("-  {}", line.text).red()));
+                    out.push_str(&format!("       {}\n", format!("-  {}", text).red()));
                 }
                 crate::inline_diff::DiffLineKind::Added => {
-                    out.push_str(&format!("       {}\n", format!("+  {}", line.text).green()));
+                    out.push_str(&format!("       {}\n", format!("+  {}", text).green()));
                 }
                 crate::inline_diff::DiffLineKind::Separator => {
                     out.push_str(&format!("       {}\n", "\u{22EF}".dimmed())); // ⋯
@@ -441,12 +480,14 @@ fn render_context(out: &mut String, ctx: &SnippetContext) {
     // Fallback for old-style base/head snippets (backward compat)
     if !ctx.base_snippet.is_empty() {
         for line in ctx.base_snippet.lines() {
-            out.push_str(&format!("       {}\n", format!("- {}", line).red()));
+            let text = truncate_context_line(line, max_line_width);
+            out.push_str(&format!("       {}\n", format!("- {}", text).red()));
         }
     }
     if !ctx.head_snippet.is_empty() {
         for line in ctx.head_snippet.lines() {
-            out.push_str(&format!("       {}\n", format!("+ {}", line).green()));
+            let text = truncate_context_line(line, max_line_width);
+            out.push_str(&format!("       {}\n", format!("+ {}", text).green()));
         }
     }
 }
