@@ -58,6 +58,22 @@ sigil update
 cargo install --git https://github.com/gauravverma/sigil
 ```
 
+### Python (via PyO3)
+
+```bash
+pip install sigil-diff
+```
+
+```python
+import sigil
+
+result = sigil.diff_json(old_json_str, new_json_str)
+result = sigil.diff_files("old.json", "new.json")
+result = sigil.diff_refs(".", "HEAD~1", "HEAD")
+```
+
+See [python/README.md](python/README.md) for full Python API documentation.
+
 ### Build from source
 
 ```bash
