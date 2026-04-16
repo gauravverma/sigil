@@ -1,0 +1,14 @@
+[package]
+name = "sigil-python"
+version = "0.2.3"
+edition = "2024"
+publish = false
+
+[lib]
+name = "sigil"
+crate-type = ["cdylib"]
+
+[dependencies]
+sigil_core = { path = "..", package = "sigil" }
+pyo3 = { version = "0.24", features = ["extension-module"] }
+serde_json = { version = "1", features = ["preserve_order"] }

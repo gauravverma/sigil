@@ -5,6 +5,14 @@ edition = "2024"
 description = "Structural code fingerprinting and diffing CLI"
 repository = "https://github.com/gauravverma/sigil"
 
+[lib]
+name = "sigil"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sigil"
+path = "src/main.rs"
+
 [dependencies]
 codeix = { git = "https://github.com/montanetech/codeix", tag = "v0.5.0" }
 anyhow = "1"
