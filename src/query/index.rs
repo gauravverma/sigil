@@ -140,6 +140,77 @@ impl Index {
             .iter()
             .map(move |&i| &self.references[i])
     }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // Public query API — mirrors codeix::SearchDb methods used by main.rs.
+    // Return sigil's own `Entity` / `Reference` types; the day-6 switch in
+    // main.rs swaps these in and deletes the codeix-backed functions in
+    // src/query/mod.rs.
+    //
+    // `kind_filter`: exact-match filter on ref_kind (for refs) or kind (for
+    // entities). None = no filter. Matches codeix's behavior.
+    //
+    // `limit`: 0 = unlimited. Positive = take at most `limit` results.
+    // Results are returned in insertion order (which, for sigil's index, is
+    // sorted by (file, line_start) per the project convention — so this
+    // ordering is stable across runs).
+    // ──────────────────────────────────────────────────────────────────────
+
+    /// All references targeting `name`, optionally filtered by ref kind.
+    pub fn get_callers(&self, name: &str, kind_filter: Option<&str>, limit: usize) -> Vec<&Reference> {
+        let iter = self.refs_to(name).filter(|r| match kind_filter {
+            Some(k) => r.ref_kind == k,
+            None => true,
+        });
+        apply_limit(iter, limit)
+    }
+
+    /// All references made by `caller`, optionally filtered by ref kind.
+    pub fn get_callees(&self, caller: &str, kind_filter: Option<&str>, limit: usize) -> Vec<&Reference> {
+        let iter = self.refs_from(caller).filter(|r| match kind_filter {
+            Some(k) => r.ref_kind == k,
+            None => true,
+        });
+        apply_limit(iter, limit)
+    }
+
+    /// All entities defined in `file`, optionally filtered by entity kind.
+    pub fn get_file_symbols(&self, file: &str, kind_filter: Option<&str>, limit: usize) -> Vec<&Entity> {
+        let iter = self.entities_by_file(file).filter(|e| match kind_filter {
+            Some(k) => e.kind == k,
+            None => true,
+        });
+        apply_limit(iter, limit)
+    }
+
+    /// All entities in `file` whose `parent` matches `parent`.
+    pub fn get_children(
+        &self,
+        file: &str,
+        parent: &str,
+        kind_filter: Option<&str>,
+        limit: usize,
+    ) -> Vec<&Entity> {
+        let iter = self.entities_by_file(file).filter(|e| {
+            e.parent.as_deref() == Some(parent)
+                && match kind_filter {
+                    Some(k) => e.kind == k,
+                    None => true,
+                }
+        });
+        apply_limit(iter, limit)
+    }
+}
+
+fn apply_limit<'a, T, I>(iter: I, limit: usize) -> Vec<&'a T>
+where
+    I: Iterator<Item = &'a T>,
+{
+    if limit == 0 {
+        iter.collect()
+    } else {
+        iter.take(limit).collect()
+    }
 }
 
 fn read_jsonl<T: for<'de> serde::Deserialize<'de>>(path: &Path) -> Result<Vec<T>> {
@@ -303,6 +374,136 @@ mod tests {
         let idx = Index::load(&tmp).expect("missing jsonl should load as empty");
         assert!(idx.is_empty());
         std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Day-4 public API: get_callers / get_callees / get_file_symbols /
+    // get_children — kind filter + limit semantics.
+    // ──────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn get_callers_filters_by_kind() {
+        let idx = Index::build(
+            vec![],
+            vec![
+                refr("a.rs", Some("m"), "foo", "call"),
+                refr("b.rs", Some("m"), "foo", "import"),
+                refr("c.rs", Some("m"), "foo", "call"),
+            ],
+        );
+        assert_eq!(idx.get_callers("foo", None, 0).len(), 3);
+        assert_eq!(idx.get_callers("foo", Some("call"), 0).len(), 2);
+        assert_eq!(idx.get_callers("foo", Some("import"), 0).len(), 1);
+        assert_eq!(idx.get_callers("foo", Some("nope"), 0).len(), 0);
+    }
+
+    #[test]
+    fn get_callers_respects_limit() {
+        let idx = Index::build(
+            vec![],
+            (0..10)
+                .map(|i| refr(&format!("f{i}.rs"), Some("m"), "foo", "call"))
+                .collect(),
+        );
+        assert_eq!(idx.get_callers("foo", None, 0).len(), 10, "limit 0 = unlimited");
+        assert_eq!(idx.get_callers("foo", None, 3).len(), 3);
+        assert_eq!(idx.get_callers("foo", None, 100).len(), 10, "limit > total returns all");
+    }
+
+    #[test]
+    fn get_callees_filters_and_limits() {
+        let idx = Index::build(
+            vec![],
+            vec![
+                refr("a.rs", Some("main"), "foo", "call"),
+                refr("a.rs", Some("main"), "Bar", "instantiation"),
+                refr("a.rs", Some("main"), "baz", "call"),
+                refr("a.rs", Some("helper"), "foo", "call"),
+            ],
+        );
+        assert_eq!(idx.get_callees("main", None, 0).len(), 3);
+        assert_eq!(idx.get_callees("main", Some("call"), 0).len(), 2);
+        assert_eq!(idx.get_callees("main", None, 1).len(), 1);
+        assert_eq!(idx.get_callees("unknown", None, 0).len(), 0);
+    }
+
+    #[test]
+    fn get_file_symbols_filters_by_kind() {
+        let idx = Index::build(
+            vec![
+                ent("a.rs", "Foo", "struct"),
+                ent("a.rs", "foo", "function"),
+                ent("a.rs", "bar", "function"),
+                ent("b.rs", "Baz", "struct"),
+            ],
+            vec![],
+        );
+        assert_eq!(idx.get_file_symbols("a.rs", None, 0).len(), 3);
+        assert_eq!(idx.get_file_symbols("a.rs", Some("function"), 0).len(), 2);
+        assert_eq!(idx.get_file_symbols("a.rs", Some("struct"), 0).len(), 1);
+        assert_eq!(idx.get_file_symbols("missing.rs", None, 0).len(), 0);
+    }
+
+    #[test]
+    fn get_children_filters_by_parent() {
+        let mut parent_foo = ent("a.rs", "method1", "method");
+        parent_foo.parent = Some("Foo".to_string());
+        let mut parent_foo_2 = ent("a.rs", "method2", "method");
+        parent_foo_2.parent = Some("Foo".to_string());
+        let mut parent_bar = ent("a.rs", "other", "method");
+        parent_bar.parent = Some("Bar".to_string());
+
+        let idx = Index::build(
+            vec![
+                ent("a.rs", "Foo", "struct"),
+                parent_foo,
+                parent_foo_2,
+                parent_bar,
+            ],
+            vec![],
+        );
+        assert_eq!(idx.get_children("a.rs", "Foo", None, 0).len(), 2);
+        assert_eq!(idx.get_children("a.rs", "Bar", None, 0).len(), 1);
+        assert_eq!(idx.get_children("a.rs", "Nobody", None, 0).len(), 0);
+        // Top-level entities (parent: None) are not children of anything.
+        assert_eq!(idx.get_children("a.rs", "", None, 0).len(), 0);
+    }
+
+    #[test]
+    fn get_children_respects_kind_filter_and_limit() {
+        let mk = |name: &str, kind: &str, parent: &str| {
+            let mut e = ent("a.rs", name, kind);
+            e.parent = Some(parent.to_string());
+            e
+        };
+        let idx = Index::build(
+            vec![
+                mk("m1", "method", "C"),
+                mk("m2", "method", "C"),
+                mk("f", "field", "C"),
+                mk("m3", "method", "C"),
+            ],
+            vec![],
+        );
+        assert_eq!(idx.get_children("a.rs", "C", None, 0).len(), 4);
+        assert_eq!(idx.get_children("a.rs", "C", Some("method"), 0).len(), 3);
+        assert_eq!(idx.get_children("a.rs", "C", Some("method"), 2).len(), 2);
+    }
+
+    #[test]
+    fn get_returns_results_in_insertion_order() {
+        // Callers listed in the order they appear in refs.jsonl — sigil writes
+        // refs sorted by (file, line) so this matters for stable CLI output.
+        let idx = Index::build(
+            vec![],
+            vec![
+                refr("a.rs", Some("m"), "foo", "call"),
+                refr("b.rs", Some("m"), "foo", "call"),
+                refr("c.rs", Some("m"), "foo", "call"),
+            ],
+        );
+        let callers: Vec<&str> = idx.get_callers("foo", None, 0).iter().map(|r| r.file.as_str()).collect();
+        assert_eq!(callers, vec!["a.rs", "b.rs", "c.rs"]);
     }
 
     #[test]
