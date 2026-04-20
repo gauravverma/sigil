@@ -874,3 +874,81 @@ The JSONL artifacts stay committable; the derived DB never enters git.
 4. Parity tests: every query returns identical results (modulo stable ordering) between in-memory and DuckDB backends.
 5. `.sigil/index.duckdb` is correctly invalidated when JSONL changes.
 6. `sigil query 'SQL'` is documented as unstable/power-user; output format is tabular markdown.
+
+---
+
+## 15. Command surface: agent-facing vs script-facing
+
+**Decision.** Keep the pre-decodeix navigation commands (`search`, `symbols`,
+`children`, `callers`, `callees`, `explore`) alongside the Phase-1 narrated
+commands (`map`, `context`, `review`). They serve different consumers and
+different granularity needs. Do not deprecate at 0.3.0.
+
+### 15.1 Taxonomy
+
+Two explicit tiers, surfaced in `--help` and README:
+
+**Agent-facing — narrated, budget-aware, markdown-first:**
+
+| Command | Purpose |
+|---|---|
+| `sigil map` | Ranked codebase digest within a token budget |
+| `sigil context <sym>` | Minimum-viable context bundle for a symbol |
+| `sigil review A..B` | PR artifact: diff + rank + blast + co-change |
+
+These are the primitives the hook installers (§4.4) point agents toward.
+They carry rank, blast, token budgets, and markdown rendering because
+their consumer is an LLM.
+
+**Script-facing — raw, unbounded, JSON-friendly:**
+
+| Command | Purpose |
+|---|---|
+| `sigil search <q>` | Substring match over symbol names + file paths |
+| `sigil symbols FILE` | All entities in a file |
+| `sigil children FILE PARENT` | Entities under a parent |
+| `sigil callers <sym>` | All refs targeting a symbol (unbounded) |
+| `sigil callees <caller>` | All refs made by a caller |
+| `sigil explore [--path X]` | Directory overview |
+
+Thin dispatches over `Index::get_*` methods. Pipe-composable with `jq`,
+`xargs`, `sort`, etc. Different consumers than the narrated tier.
+
+### 15.2 Why keep both
+
+1. **Near-zero maintenance cost.** Each legacy command is a ~10-line
+   `main.rs` dispatch over an existing `Index` method. No algorithmic
+   complexity; no schema churn.
+2. **Different granularity matters for different consumers.** `context`
+   is budget-capped and bundles callers + callees + types; `callers
+   <sym> --limit 0` gives unbounded exact data for enumeration.
+   `map --focus X` is a narrated overview; `explore --path X --json`
+   is a flat file list for scripting.
+3. **Breaking-change cost at 0.3.0 is real.** Phase 0 kept them so
+   decodeix was invisible to users. Removing them now would break
+   scripts and CI flows built on 0.2.x for zero product win.
+4. **Unix-tool composability.** `sigil callers foo --json | jq
+   '.[].file' | sort -u` is a cleaner flow than parsing `sigil
+   context`'s markdown.
+
+### 15.3 The one deprecation candidate (later, not now)
+
+`sigil explore` overlaps most with `sigil map --focus PATH --depth 1
+--format json`. If we ever trim the surface, this is the first
+candidate. Keep through 0.3.x, consider deprecation warning at 0.3.5,
+remove at 0.4.0. Not a priority — see (1) above.
+
+### 15.4 Action items
+
+- **Week 11 or 12:** taxonomy section in README splitting the two
+  tiers. Same grouping in `sigil --help` output (clap supports grouped
+  help via `help_heading`).
+- **No code changes** to drop or rename commands.
+- **Hook installer text (§4.4)** surfaces only the agent-facing tier,
+  since those are the ones tuned for LLM ingestion. The raw tier
+  remains discoverable via `sigil --help` for humans who want it.
+
+### 15.5 One-line verdict
+
+Keep all nine commands. Document the split. Let consumers pick the
+right tier for their workflow.
