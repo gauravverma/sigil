@@ -6,22 +6,22 @@ sigil is a Rust CLI tool with two main capabilities:
 
 1. **Structural indexing** — parse source files into entities with content hashes
 2. **Structural diffing** — compare entities across git refs, classify changes
-3. **Code intelligence** — search, navigate, and explore codebases (powered by codeix)
+3. **Code intelligence** — search, navigate, and explore codebases via the in-house `query::index::Index`
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                          sigil CLI                              │
 │  ┌──────────┐  ┌──────────┐  ┌────────────────────────────────┐│
 │  │  index   │  │   diff   │  │  explore/search/symbols/       ││
-│  │          │  │          │  │  callers/callees/children        ││
+│  │          │  │          │  │  callers/callees/children      ││
 │  └────┬─────┘  └────┬─────┘  └──────────────┬─────────────────┘│
 │       │              │                       │                  │
 │  ┌────┴─────┐  ┌────┴──────────────┐  ┌────┴─────────────┐    │
-│  │ index.rs │  │ diff.rs           │  │ query.rs         │    │
-│  │          │  │ matcher.rs        │  │ (codeix SearchDb) │    │
-│  │          │  │ classifier.rs     │  │                   │    │
-│  │          │  │ inline_diff.rs    │  └───────────────────┘    │
-│  │          │  │ change_detail.rs  │                            │
+│  │ index.rs │  │ diff.rs           │  │ query/mod.rs     │    │
+│  │          │  │ matcher.rs        │  │ query/index.rs   │    │
+│  │          │  │ classifier.rs     │  │ (Index loader +  │    │
+│  │          │  │ inline_diff.rs    │  │  hash-map queries)│    │
+│  │          │  │ change_detail.rs  │  └───────────────────┘    │
 │  │          │  │ formatter.rs      │                            │
 │  └────┬─────┘  └────┬─────────────┘                            │
 │       │              │                                          │
@@ -32,8 +32,10 @@ sigil is a Rust CLI tool with two main capabilities:
 │  └──────────────────┬───────────────────────────────┘          │
 │                     │                                           │
 │  ┌──────────────────┴───────────────────────────────┐          │
-│  │              codeix (dependency)                   │          │
-│  │  tree-sitter parsing · SearchDb · MountTable      │          │
+│  │       parser/  (vendored tree-sitter layer)       │          │
+│  │  treesitter.rs  languages.rs  helpers.rs          │          │
+│  │  + 11 language extractors (rust, python, ts, …)   │          │
+│  │       see src/parser/NOTICE for attribution       │          │
 │  └───────────────────────────────────────────────────┘          │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -75,7 +77,9 @@ sigil is a Rust CLI tool with two main capabilities:
 
 | Module | Responsibility |
 |---|---|
-| `query.rs` | Wraps codeix's `SearchDb`. Loads/builds the codeix index, provides formatted output for explore, search, symbols, children, callers, callees. |
+| `query/mod.rs` | Loads the in-house Index and renders CLI output (`explore_text`, `format_entities`, `format_refs`, `format_search_hits`). |
+| `query/index.rs` | The `Index` struct: loads `.sigil/entities.jsonl` + `refs.jsonl` into in-memory hash maps, exposes `get_callers`, `get_callees`, `get_file_symbols`, `get_children`, `search`, `explore_dir_overview`, `explore_files_capped`, `list_projects`. |
+| `parser/` | Vendored tree-sitter extractors for 11 languages (originally forked from codeix v0.5.0 under Apache-2.0; see `src/parser/NOTICE`). |
 
 ## Data Flow
 
@@ -83,7 +87,7 @@ sigil is a Rust CLI tool with two main capabilities:
 
 ```
 discover files (ignore crate, .gitignore-aware)
-  → for each file: codeix parse → signature extract → meta detect → hash
+  → for each file: tree-sitter parse (src/parser/) → signature extract → meta detect → hash
   → sort by (file, line_start)
   → write .sigil/entities.jsonl, refs.jsonl, cache.json
 ```
@@ -104,18 +108,22 @@ git diff --name-status base..head → changed files
 ### `sigil search/symbols/callers/callees`
 
 ```
-build_index_to_db(root, fts=true, cache=true)
-  → loads .codeindex/ if available, parses otherwise
-  → creates in-memory SQLite with FTS5
-  → db.search() / db.get_file_symbols() / db.get_callers() / db.get_callees()
+Index::load(root)
+  → read .sigil/entities.jsonl + refs.jsonl into Vec<Entity> / Vec<Reference>
+  → precompute 5 lookup maps (by name, by file, ref target, ref caller, ref file)
+  → idx.search() / get_file_symbols() / get_callers() / get_callees() / get_children()
   → format output: terminal or JSON
 ```
+
+No `.codeindex/` directory. No external indexer. The in-memory Index fits
+comfortably up to ~500k entities; above that, Phase 0.5 of the adoption
+plan adds a DuckDB-backed backend built lazily from the same JSONL.
 
 ## Key Design Decisions
 
 1. **No git2 dependency** — shell out to `git` commands. Simpler, always available, no C bindings.
 2. **Three hashes per entity** — `struct_hash` (any change), `body_hash` (logic changes), `sig_hash` (API changes). The hash matrix enables precise change classification.
-3. **codeix as library dependency** — reuse tree-sitter parsing and SearchDb. Don't reinvent the parser.
+3. **Self-contained parsing + code intelligence** — tree-sitter grammars are direct dependencies; symbol extraction and queries live in `src/parser/` and `src/query/`. No external indexer, no SQLite file, no .codeindex/ directory.
 4. **Incremental by default** — `.sigil/cache.json` tracks file hashes. Only re-parses changed files.
 5. **JSON-first for AI** — every command supports `--json`. The terminal output is for humans; the JSON output is for AI agents and CI.
 
@@ -123,11 +131,11 @@ build_index_to_db(root, fts=true, cache=true)
 
 | Crate | Purpose |
 |---|---|
-| `codeix` | Tree-sitter parsing, SearchDb (in-memory SQLite + FTS5), code intelligence |
+| `tree-sitter` + `tree-sitter-<lang>` | AST parsing (feature-gated per language) |
 | `blake3` | Content hashing (fast, 16 hex char truncation) |
 | `similar` | Line-level and word-level diffing |
 | `clap` | CLI argument parsing (derive macros) |
 | `colored` | Terminal color output |
 | `serde` / `serde_json` | JSON serialization |
 | `ignore` | .gitignore-aware file walking |
-| `anyhow` | Error handling (codeix Result types) |
+| `anyhow` | Error handling |

@@ -215,7 +215,7 @@ pub fn build_index(
     IndexResult { entities: all_entities, refs: all_refs }
 }
 
-/// Check if a codeix entity kind represents an import.
+/// Check if a parser-emitted entity kind represents an import.
 fn is_import_kind(kind: &str) -> bool {
     kind == "import" || kind == "use" || kind == "package"
 }

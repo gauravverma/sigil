@@ -6,4 +6,10 @@ docs/
 docs/superpowers/
 docs/superpowers/plans/
 skills/sigil-workspace/
-.codeindexpython/.venv/
+.codeindex/
+python/.venv/
+
+# Phase 0.5 — derived DuckDB index built from .sigil/*.jsonl (not source of truth)
+.sigil/index.duckdb
+.sigil/index.duckdb.stamp
+.sigil/index.duckdb.wal

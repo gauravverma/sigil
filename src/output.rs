@@ -702,7 +702,7 @@ fn build_summary_line(
     Some(parts.join("; "))
 }
 
-/// Enrich breaking entries with caller information from the codeix index.
+/// Enrich breaking entries with caller information from the sigil index.
 /// `callers_fn` maps an entity name to a list of (file, line, caller_name) tuples.
 /// `diff_files` is the set of files touched by the diff.
 pub fn enrich_breaking_with_callers(

@@ -280,14 +280,12 @@ fn main() {
                     .collect();
 
                 // Try to load index for caller queries
-                match query::load_index(&root) {
-                    Ok((_mt, db)) => {
-                        let db = db.lock().unwrap();
+                match query::load(&root) {
+                    Ok(idx) => {
                         let callers_fn = |name: &str| -> Vec<(String, u32, String)> {
-                            db.get_callers(name, None, None, None, 100, 0)
-                                .unwrap_or_default()
+                            idx.get_callers(name, None, 100)
                                 .into_iter()
-                                .map(|r| (r.file.clone(), r.line.first().copied().unwrap_or(0) as u32, r.caller.clone().unwrap_or_default()))
+                                .map(|r| (r.file.clone(), r.line, r.caller.clone().unwrap_or_default()))
                                 .collect()
                         };
                         output::enrich_breaking_with_callers(&mut output.breaking, &callers_fn, &diff_files);
@@ -333,86 +331,96 @@ fn main() {
 
         }
         Cli::Explore { root, path, max_entries, json } => {
-            let (_mt, db) = query::load_index(&root)
-                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
-            let db = db.lock().unwrap();
-            let result = query::explore(&db, None, path.as_deref(), max_entries)
+            let idx = query::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             if json {
-                // For JSON, output the raw file listing
-                let files = db.explore_files_capped("", path.as_deref(), None, max_entries)
-                    .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+                let files = idx.explore_files_capped(path.as_deref(), max_entries);
                 serde_json::to_writer_pretty(std::io::stdout(), &files.iter().map(|(dir, path, lang)| {
                     serde_json::json!({"directory": dir, "path": path, "language": lang})
                 }).collect::<Vec<_>>()).ok();
                 println!();
             } else {
-                print!("{}", result);
+                print!("{}", query::explore_text(&idx, path.as_deref(), max_entries));
             }
         }
         Cli::Search { query: q, root, scope, kind, path, limit, json } => {
-            let (_mt, db) = query::load_index(&root)
+            let idx = query::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
-            let db = db.lock().unwrap();
-            let results = db.search(&q, &scope, &kind, path.as_deref(), None, None, limit, 0)
-                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+            // `scope` / `kind` are Vec<String> for CLI multi-arg compatibility;
+            // first value wins for filtering (matches codeix's prior behavior).
+            let scope_enum = scope
+                .first()
+                .map(|s| query::index::Scope::from_str(s))
+                .unwrap_or(query::index::Scope::All);
+            let kind_filter = kind.first().map(|s| s.as_str());
+            let results = idx.search(&q, scope_enum, kind_filter, path.as_deref(), limit as usize);
             if json {
-                serde_json::to_writer_pretty(std::io::stdout(), &results).ok();
+                // Serialize as a flat list with a `type` discriminator so the
+                // shape is stable for scripts/agents consuming the output.
+                let json_hits: Vec<serde_json::Value> = results.iter().map(|h| match h {
+                    query::index::SearchHit::Symbol(e) => serde_json::json!({
+                        "type": "symbol",
+                        "file": e.file,
+                        "name": e.name,
+                        "kind": e.kind,
+                        "line": [e.line_start, e.line_end],
+                        "parent": e.parent,
+                    }),
+                    query::index::SearchHit::File(f) => serde_json::json!({
+                        "type": "file",
+                        "path": f.path,
+                        "lang": f.lang,
+                        "entity_count": f.entity_count,
+                    }),
+                }).collect();
+                serde_json::to_writer_pretty(std::io::stdout(), &json_hits).ok();
                 println!();
             } else {
-                print!("{}", query::format_search_results(&results));
+                print!("{}", query::format_search_hits(&results));
             }
         }
         Cli::Symbols { file, root, limit, json } => {
-            let (_mt, db) = query::load_index(&root)
+            let idx = query::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
-            let db = db.lock().unwrap();
-            let symbols = db.get_file_symbols(&file, None, limit, 0)
-                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+            let symbols = idx.get_file_symbols(&file, None, limit as usize);
             if json {
                 serde_json::to_writer_pretty(std::io::stdout(), &symbols).ok();
                 println!();
             } else {
-                print!("{}", query::format_symbols(&symbols));
+                print!("{}", query::format_entities(&symbols));
             }
         }
         Cli::Children { file, parent, root, limit, json } => {
-            let (_mt, db) = query::load_index(&root)
+            let idx = query::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
-            let db = db.lock().unwrap();
-            let children = db.get_children(&file, &parent, None, limit, 0)
-                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+            let children = idx.get_children(&file, &parent, None, limit as usize);
             if json {
                 serde_json::to_writer_pretty(std::io::stdout(), &children).ok();
                 println!();
             } else {
-                print!("{}", query::format_symbols(&children));
+                print!("{}", query::format_entities(&children));
             }
         }
         Cli::Callers { name, root, kind, limit, json } => {
-            let (_mt, db) = query::load_index(&root)
+            let idx = query::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
-            let db = db.lock().unwrap();
-            let refs = db.get_callers(&name, kind.as_deref(), None, None, limit, 0)
-                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+            let refs = idx.get_callers(&name, kind.as_deref(), limit as usize);
             if json {
                 serde_json::to_writer_pretty(std::io::stdout(), &refs).ok();
                 println!();
             } else {
-                print!("{}", query::format_references(&refs));
+                print!("{}", query::format_refs(&refs));
             }
         }
         Cli::Callees { caller, root, kind, limit, json } => {
-            let (_mt, db) = query::load_index(&root)
+            let idx = query::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
-            let db = db.lock().unwrap();
-            let refs = db.get_callees(&caller, kind.as_deref(), None, None, limit, 0)
-                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+            let refs = idx.get_callees(&caller, kind.as_deref(), limit as usize);
             if json {
                 serde_json::to_writer_pretty(std::io::stdout(), &refs).ok();
                 println!();
             } else {
-                print!("{}", query::format_references(&refs));
+                print!("{}", query::format_refs(&refs));
             }
         }
         Cli::Update => {

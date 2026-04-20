@@ -14,11 +14,6 @@ name = "sigil"
 path = "src/main.rs"
 
 [dependencies]
-# Transitional: kept in place during Phase 0 migration. Call sites switch
-# over to the vendored src/parser/ module over days 2–6, then this dep is
-# removed on day 6 of Phase 0.
-codeix = { git = "https://github.com/montanetech/codeix", tag = "v0.5.0" }
-
 anyhow = "1"
 blake3 = "1"
 clap = { version = "4", features = ["derive"] }

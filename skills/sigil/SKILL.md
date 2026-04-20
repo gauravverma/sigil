@@ -178,4 +178,4 @@ sigil diff HEAD~1 --lines
 - `sigil diff` automatically skips formatting-only changes in the summary
 - `sigil search` uses FTS5 syntax — `*` wildcards, quoted phrases work
 - `sigil symbols` and `sigil search --path` support GLOB patterns
-- First run of search/explore/callers/callees builds the codeix index (~1-3s), subsequent runs are instant
+- Run `sigil index` once after pulling/editing before using search/explore/callers/callees; the in-house Index loads from `.sigil/` on each invocation

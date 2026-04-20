@@ -2,7 +2,7 @@
 
 Structural code fingerprinting and diffing. **See what actually changed.**
 
-sigil parses source files using [tree-sitter](https://tree-sitter.github.io/) (via [codeix](https://github.com/montanetech/codeix)), extracts code entities (functions, classes, methods, types), computes content hashes, and produces structural diffs that tell you *what kind of change* happened — not just which lines changed.
+sigil parses source files using [tree-sitter](https://tree-sitter.github.io/), extracts code entities (functions, classes, methods, types), computes content hashes, and produces structural diffs that tell you *what kind of change* happened — not just which lines changed.
 
 ## Why
 
@@ -290,7 +290,7 @@ sigil callees process_event --json
 
 ## Supported Languages
 
-Tree-sitter grammars via [codeix](https://github.com/montanetech/codeix):
+Tree-sitter grammars are bundled directly (feature-gated in `Cargo.toml`):
 
 | Language | Extensions |
 |---|---|

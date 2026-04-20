@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-sigil is a Rust CLI tool for structural code fingerprinting and diffing. It uses tree-sitter (via codeix) to parse source files, extract code entities (functions, classes, methods), compute content hashes, and produce entity-level diffs.
+sigil is a Rust CLI tool for structural code fingerprinting and diffing. It uses tree-sitter to parse source files, extract code entities (functions, classes, methods), compute content hashes, and produce entity-level diffs. Parsing and code-intelligence queries are fully in-house — no external indexer required.
 
 ## Build & Test
 
@@ -32,7 +32,9 @@ src/
   yaml_index.rs    — YAML file parsing (custom parser, not tree-sitter)
   toml_index.rs    — TOML file parsing (custom parser, not tree-sitter)
   markdown_index.rs — Markdown file parsing (custom parser: headings, code blocks, tables, lists, blockquotes, paragraphs, front matter)
-  query.rs         — codeix SearchDb wrapper (load_index, explore, search, format helpers)
+  query/mod.rs     — Query helpers (load, explore_text, format_* for CLI output)
+  query/index.rs   — In-house Index: loads .sigil/ jsonl, in-memory hash maps, callers/callees/search/explore
+  parser/          — Vendored tree-sitter parser layer (11 languages); see src/parser/NOTICE
   git.rs           — Git operations (changed_files, file_at_ref)
   matcher.rs       — Entity matching across versions (exact/moved/renamed); parent-aware matching keys
   classifier.rs    — Change classification (sig/body hash matrix)
@@ -53,8 +55,8 @@ python/
 
 ## Key Dependencies
 
-- **codeix** — tree-sitter parser + SearchDb code intelligence (git dependency from github.com/montanetech/codeix)
-- **anyhow** — error handling (used by codeix Result types)
+- **tree-sitter** — AST parsing (vendored language parsers live in `src/parser/`, originally forked from codeix v0.5.0 under Apache-2.0; see `src/parser/NOTICE`)
+- **anyhow** — error handling
 - **blake3** — content hashing
 - **similar** — line and word diffing
 - **clap** — CLI argument parsing
@@ -94,7 +96,7 @@ sigil diff HEAD~1 --lines --context
 # Compare two files directly (no git required)
 sigil diff --files old.py new.py
 
-# Code intelligence queries (powered by codeix SearchDb)
+# Code intelligence queries (powered by the in-house Index over .sigil/)
 sigil explore                            # Project structure overview
 sigil search "parse_file"                # Full-text search across symbols, files, texts
 sigil symbols src/main.rs                # List symbols in a file
