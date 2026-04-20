@@ -38,49 +38,98 @@ Measured with the GPT-4o/o3 BPE tokenizer. Reproduce with `sigil benchmark` on y
 **For scripts & CI:**
 - `sigil diff --json` / `sigil query "SELECT ..."` (DuckDB, `--features db`) / every command supports `--json`.
 
-### `git sigil` alias — piggyback on git's pretrained name recognition
+### `git sigil` — the git-native alias
 
-Agents that know `git diff` discover `git sigil diff` naturally. Git's built-in extension mechanism auto-wires any `git-<name>` on PATH:
+Agents that know `git diff` / `git log` discover `git sigil diff` / `git sigil map` naturally. Git auto-wires any `git-<name>` executable on `PATH` as a `git <name>` subcommand — no extra config, no aliases to maintain.
+
+**Setup** — pick one:
 
 ```bash
-ln -s "$(which sigil)" /usr/local/bin/git-sigil
-# now: git sigil diff HEAD~1 / git sigil map / git sigil review — all work
+# 1. Symlink the sigil binary (simplest).
+#    Works because `exec`-ing through the symlink leaves argv[0] == "git-sigil"
+#    but sigil's clap parser ignores it.
+sudo ln -s "$(which sigil)" /usr/local/bin/git-sigil
+
+# 2. Copy the shim that ships in the repo (explicit `exec sigil "$@"`).
+sudo install -m 0755 scripts/git-sigil /usr/local/bin/git-sigil
+
+# 3. Put ~/.local/bin on PATH and install there (no sudo).
+mkdir -p ~/.local/bin
+ln -s "$(which sigil)" ~/.local/bin/git-sigil
+# make sure ~/.local/bin is on PATH in your shell rc file
 ```
 
-A ready-made shim ships in `scripts/git-sigil`.
+Verify:
+
+```bash
+git sigil --version
+git sigil diff HEAD~1
+git sigil map --tokens 2000
+git sigil review main..HEAD --markdown
+```
+
+Every `sigil <cmd>` works as `git sigil <cmd>`.
 
 ---
 
 ## Install
 
+Both builds ship as pre-built archives on the [Releases page](https://github.com/gauravverma/sigil/releases/latest). No Rust toolchain required.
+
 ### Option 1 — lean default (recommended for most users)
 
-One-liner installer (macOS / Linux):
+**macOS / Linux** (one-liner):
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gauravverma/sigil/releases/latest/download/sigil-installer.sh | sh
 ```
 
-Or via Cargo:
+**Windows** (PowerShell):
+
+```powershell
+irm https://github.com/gauravverma/sigil/releases/latest/download/sigil-installer.ps1 | iex
+```
+
+**Manual** — grab the right archive for your platform from [Releases](https://github.com/gauravverma/sigil/releases/latest), untar it, and drop the `sigil` binary anywhere on `PATH`:
 
 ```bash
-cargo install --git https://github.com/gauravverma/sigil
+# Example: aarch64 macOS
+curl -LO https://github.com/gauravverma/sigil/releases/latest/download/sigil-aarch64-apple-darwin.tar.gz
+tar -xzf sigil-aarch64-apple-darwin.tar.gz
+sudo mv sigil-aarch64-apple-darwin/sigil /usr/local/bin/
 ```
+
+Available archives: `sigil-aarch64-apple-darwin.tar.gz`, `sigil-x86_64-apple-darwin.tar.gz`, `sigil-aarch64-unknown-linux-gnu.tar.gz`, `sigil-x86_64-unknown-linux-gnu.tar.gz`, `sigil-x86_64-pc-windows-msvc.zip`.
 
 Lean binary (~20 MB). Covers `sigil index` / `diff` / `map` / `context` / `review` / `blast` / and every query command. All 8 platform installers included. Fast on small-to-medium repos.
 
 ### Option 2 — full build for monorepo scale
 
+Same Releases page, different archive prefix. Grab the matching `sigil-full-<target>` archive:
+
 ```bash
-cargo install --git https://github.com/gauravverma/sigil --features db,tokenizer
+# Example: x86_64 Linux
+curl -LO https://github.com/gauravverma/sigil/releases/latest/download/sigil-full-x86_64-unknown-linux-gnu.tar.gz
+tar -xzf sigil-full-x86_64-unknown-linux-gnu.tar.gz
+sudo mv sigil-full-x86_64-unknown-linux-gnu/sigil /usr/local/bin/
 ```
+
+Available archives: `sigil-full-aarch64-apple-darwin.tar.gz`, `sigil-full-x86_64-apple-darwin.tar.gz`, `sigil-full-x86_64-unknown-linux-gnu.tar.gz`, `sigil-full-x86_64-pc-windows-msvc.zip`.
 
 ~70 MB binary. Adds:
 - **DuckDB backend** — persistent materialized index for codebases above ~5 MB of JSONL. Auto-engages; you don't have to ask. Critical if you're working on fastapi / zod / Linux-kernel-scale codebases.
 - **BPE-accurate tokenizer** — `sigil benchmark --tokenizer o200k_base` publishes honest token counts instead of a bytes/4 proxy. Matters if you're citing numbers.
 - **`sigil query 'SQL'`** — run arbitrary SQL against the materialized index.
 
-Requires a working C++17 toolchain to compile (Xcode CLT / `build-essential` / MSVC).
+### Building from source (optional)
+
+```bash
+git clone https://github.com/gauravverma/sigil && cd sigil
+cargo build --release                          # lean
+cargo build --release --features db,tokenizer  # full (requires C++17 toolchain)
+```
+
+The compiled binary lands at `target/release/sigil`. Full-feature builds need a C++17 toolchain (Xcode CLT / `build-essential` / MSVC) because DuckDB is bundled from source.
 
 ### Python bindings
 
