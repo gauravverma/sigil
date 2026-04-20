@@ -1837,130 +1837,420 @@
 {"file":"src/main.rs","name":"sigil::writer","ref_kind":"import","line":9}
 {"file":"src/main.rs","name":"clap::Parser","ref_kind":"import","line":11}
 {"file":"src/main.rs","name":"std::path::PathBuf","ref_kind":"import","line":12}
-{"file":"src/main.rs","caller":"main","name":"Cli::parse","ref_kind":"call","line":221}
-{"file":"src/main.rs","caller":"main","name":"files.is_empty","ref_kind":"call","line":225}
-{"file":"src/main.rs","caller":"main","name":"files.as_slice","ref_kind":"call","line":225}
-{"file":"src/main.rs","caller":"main","name":"index::build_index","ref_kind":"call","line":226}
-{"file":"src/main.rs","caller":"main","name":"result.refs.is_empty","ref_kind":"call","line":232}
-{"file":"src/main.rs","caller":"main","name":"sigil::rank::RankConfig::default","ref_kind":"call","line":233}
-{"file":"src/main.rs","caller":"main","name":"sigil::rank::rank_with_config","ref_kind":"call","line":234}
-{"file":"src/main.rs","caller":"main","name":"sigil::rank::apply_blast_radius","ref_kind":"call","line":235}
-{"file":"src/main.rs","caller":"main","name":"sigil::rank::RankManifest::from_ranked","ref_kind":"call","line":236}
-{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":249}
-{"file":"src/main.rs","caller":"main","name":"out.lock","ref_kind":"call","line":250}
-{"file":"src/main.rs","caller":"main","name":"writer::write_entities_jsonl(&result.entities, &mut out, pretty)\n                    .expect","ref_kind":"call","line":251}
-{"file":"src/main.rs","caller":"main","name":"writer::write_entities_jsonl","ref_kind":"call","line":251}
-{"file":"src/main.rs","caller":"main","name":"result.refs.is_empty","ref_kind":"call","line":254}
-{"file":"src/main.rs","caller":"main","name":"std::io::stderr","ref_kind":"call","line":255}
-{"file":"src/main.rs","caller":"main","name":"err.lock","ref_kind":"call","line":256}
-{"file":"src/main.rs","caller":"main","name":"writer::write_refs_jsonl(&result.refs, &mut err, pretty)\n                        .expect","ref_kind":"call","line":257}
-{"file":"src/main.rs","caller":"main","name":"writer::write_refs_jsonl","ref_kind":"call","line":257}
-{"file":"src/main.rs","caller":"main","name":"writer::write_to_files(&result.entities, &result.refs, &root, pretty)\n                    .expect","ref_kind":"call","line":263}
-{"file":"src/main.rs","caller":"main","name":"writer::write_to_files","ref_kind":"call","line":263}
-{"file":"src/main.rs","caller":"main","name":"writer::write_rank_json(m, &root, pretty)\n                        .expect","ref_kind":"call","line":266}
-{"file":"src/main.rs","caller":"main","name":"writer::write_rank_json","ref_kind":"call","line":266}
-{"file":"src/main.rs","caller":"main","name":"writer::remove_rank_json","ref_kind":"call","line":271}
-{"file":"src/main.rs","caller":"main","name":"\" (rank skipped)\".to_string","ref_kind":"call","line":277}
-{"file":"src/main.rs","caller":"main","name":"colored::control::set_override","ref_kind":"call","line":291}
-{"file":"src/main.rs","caller":"main","name":"files.len","ref_kind":"call","line":297}
-{"file":"src/main.rs","caller":"main","name":"diff::compute_file_diff(&files[0], &files[1], &opts)\n                    .unwrap_or_else","ref_kind":"call","line":299}
-{"file":"src/main.rs","caller":"main","name":"diff::compute_file_diff","ref_kind":"call","line":299}
-{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":300}
-{"file":"src/main.rs","caller":"main","name":"ref_spec.unwrap","ref_kind":"call","line":302}
-{"file":"src/main.rs","caller":"main","name":"git::parse_ref_spec(&ref_spec)\n                    .unwrap_or_else","ref_kind":"call","line":303}
-{"file":"src/main.rs","caller":"main","name":"git::parse_ref_spec","ref_kind":"call","line":303}
-{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":304}
-{"file":"src/main.rs","caller":"main","name":"diff::compute_diff(&root, &base_ref, &head_ref, &opts)\n                    .unwrap_or_else","ref_kind":"call","line":306}
-{"file":"src/main.rs","caller":"main","name":"diff::compute_diff","ref_kind":"call","line":306}
-{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":307}
-{"file":"src/main.rs","caller":"main","name":"output::DiffOutput::from_result","ref_kind":"call","line":311}
-{"file":"src/main.rs","caller":"main","name":"output.files.iter()\n                    .map(|f| f.file.clone())\n                    .collect","ref_kind":"call","line":319}
-{"file":"src/main.rs","caller":"main","name":"output.files.iter()\n                    .map","ref_kind":"call","line":319}
-{"file":"src/main.rs","caller":"main","name":"output.files.iter","ref_kind":"call","line":319}
-{"file":"src/main.rs","caller":"main","name":"f.file.clone","ref_kind":"call","line":320}
-{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":324}
-{"file":"src/main.rs","caller":"main","name":"idx.get_callers(name, None, 100)\n                                .into_iter()\n                                .map(|r| (r.file.clone(), r.line, r.caller.clone().unwrap_or_default()))\n                                .collect","ref_kind":"call","line":327}
-{"file":"src/main.rs","caller":"main","name":"idx.get_callers(name, None, 100)\n                                .into_iter()\n                                .map","ref_kind":"call","line":327}
-{"file":"src/main.rs","caller":"main","name":"idx.get_callers(name, None, 100)\n                                .into_iter","ref_kind":"call","line":327}
-{"file":"src/main.rs","caller":"main","name":"idx.get_callers","ref_kind":"call","line":327}
-{"file":"src/main.rs","caller":"main","name":"r.file.clone","ref_kind":"call","line":329}
-{"file":"src/main.rs","caller":"main","name":"r.caller.clone().unwrap_or_default","ref_kind":"call","line":329}
-{"file":"src/main.rs","caller":"main","name":"r.caller.clone","ref_kind":"call","line":329}
-{"file":"src/main.rs","caller":"main","name":"output::enrich_breaking_with_callers","ref_kind":"call","line":332}
-{"file":"src/main.rs","caller":"main","name":"grouping::compute_groups","ref_kind":"call","line":345}
-{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":350}
-{"file":"src/main.rs","caller":"main","name":"out.lock","ref_kind":"call","line":351}
-{"file":"src/main.rs","caller":"main","name":"if pretty {\n                    serde_json::to_writer_pretty(&mut out, &output)\n                } else {\n                    serde_json::to_writer(&mut out, &output)\n                }.expect","ref_kind":"call","line":352}
-{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":353}
-{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer","ref_kind":"call","line":355}
-{"file":"src/main.rs","caller":"main","name":"query::load(&root)\n                .unwrap_or_else","ref_kind":"call","line":375}
-{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":375}
-{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":376}
-{"file":"src/main.rs","caller":"main","name":"idx.explore_files_capped","ref_kind":"call","line":378}
-{"file":"src/main.rs","caller":"main","name":"path.as_deref","ref_kind":"call","line":378}
-{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty(std::io::stdout(), &files.iter().map(|(dir, path, lang)| {\n                    serde_json::json!({\"directory\": dir, \"path\": path, \"language\": lang})\n                }).collect::<Vec<_>>()).ok","ref_kind":"call","line":379}
-{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":379}
-{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":379}
-{"file":"src/main.rs","caller":"main","name":"files.iter().map","ref_kind":"call","line":379}
-{"file":"src/main.rs","caller":"main","name":"files.iter","ref_kind":"call","line":379}
-{"file":"src/main.rs","caller":"main","name":"query::load(&root)\n                .unwrap_or_else","ref_kind":"call","line":388}
-{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":388}
-{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":389}
-{"file":"src/main.rs","caller":"main","name":"scope\n                .first()\n                .map(|s| query::index::Scope::parse(s))\n                .unwrap_or","ref_kind":"call","line":392}
-{"file":"src/main.rs","caller":"main","name":"scope\n                .first()\n                .map","ref_kind":"call","line":392}
-{"file":"src/main.rs","caller":"main","name":"scope\n                .first","ref_kind":"call","line":392}
-{"file":"src/main.rs","caller":"main","name":"query::index::Scope::parse","ref_kind":"call","line":394}
-{"file":"src/main.rs","caller":"main","name":"kind.first().map","ref_kind":"call","line":396}
-{"file":"src/main.rs","caller":"main","name":"kind.first","ref_kind":"call","line":396}
-{"file":"src/main.rs","caller":"main","name":"s.as_str","ref_kind":"call","line":396}
-{"file":"src/main.rs","caller":"main","name":"idx.search","ref_kind":"call","line":397}
-{"file":"src/main.rs","caller":"main","name":"path.as_deref","ref_kind":"call","line":397}
-{"file":"src/main.rs","caller":"main","name":"results.iter().map(|h| match h {\n                    query::index::SearchHit::Symbol(e) => serde_json::json!({\n                        \"type\": \"symbol\",\n                        \"file\": e.file,\n                        \"name\": e.name,\n                        \"kind\": e.kind,\n                        \"line\": [e.line_start, e.line_end],\n                        \"parent\": e.parent,\n                    }),\n                    query::index::SearchHit::File(f) => serde_json::json!({\n                        \"type\": \"file\",\n                        \"path\": f.path,\n                        \"lang\": f.lang,\n                        \"entity_count\": f.entity_count,\n                    }),\n                }).collect","ref_kind":"call","line":401}
-{"file":"src/main.rs","caller":"main","name":"results.iter().map","ref_kind":"call","line":401}
-{"file":"src/main.rs","caller":"main","name":"results.iter","ref_kind":"call","line":401}
-{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty(std::io::stdout(), &json_hits).ok","ref_kind":"call","line":417}
-{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":417}
-{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":417}
-{"file":"src/main.rs","caller":"main","name":"query::load(&root)\n                .unwrap_or_else","ref_kind":"call","line":424}
-{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":424}
-{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":425}
-{"file":"src/main.rs","caller":"main","name":"idx.get_file_symbols","ref_kind":"call","line":426}
-{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty(std::io::stdout(), &symbols).ok","ref_kind":"call","line":428}
-{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":428}
-{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":428}
-{"file":"src/main.rs","caller":"main","name":"query::load(&root)\n                .unwrap_or_else","ref_kind":"call","line":435}
-{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":435}
-{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":436}
-{"file":"src/main.rs","caller":"main","name":"idx.get_children","ref_kind":"call","line":437}
-{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty(std::io::stdout(), &children).ok","ref_kind":"call","line":439}
-{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":439}
-{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":439}
-{"file":"src/main.rs","caller":"main","name":"query::load(&root)\n                .unwrap_or_else","ref_kind":"call","line":446}
-{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":446}
-{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":447}
-{"file":"src/main.rs","caller":"main","name":"idx.get_callers","ref_kind":"call","line":448}
-{"file":"src/main.rs","caller":"main","name":"kind.as_deref","ref_kind":"call","line":448}
-{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty(std::io::stdout(), &refs).ok","ref_kind":"call","line":450}
-{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":450}
-{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":450}
-{"file":"src/main.rs","caller":"main","name":"query::load(&root)\n                .unwrap_or_else","ref_kind":"call","line":457}
-{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":457}
-{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":458}
-{"file":"src/main.rs","caller":"main","name":"idx.get_callees","ref_kind":"call","line":459}
-{"file":"src/main.rs","caller":"main","name":"kind.as_deref","ref_kind":"call","line":459}
-{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty(std::io::stdout(), &refs).ok","ref_kind":"call","line":461}
-{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":461}
-{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":461}
-{"file":"src/main.rs","caller":"main","name":"axoupdater::AxoUpdater::new_for","ref_kind":"call","line":469}
-{"file":"src/main.rs","caller":"main","name":"env!(\"CARGO_PKG_VERSION\").parse()\n                .unwrap_or_else","ref_kind":"call","line":470}
-{"file":"src/main.rs","caller":"main","name":"env!(\"CARGO_PKG_VERSION\").parse","ref_kind":"call","line":470}
+{"file":"src/main.rs","caller":"main","name":"Cli::parse","ref_kind":"call","line":245}
+{"file":"src/main.rs","caller":"main","name":"files.is_empty","ref_kind":"call","line":249}
+{"file":"src/main.rs","caller":"main","name":"files.as_slice","ref_kind":"call","line":249}
+{"file":"src/main.rs","caller":"main","name":"index::build_index","ref_kind":"call","line":250}
+{"file":"src/main.rs","caller":"main","name":"result.refs.is_empty","ref_kind":"call","line":256}
+{"file":"src/main.rs","caller":"main","name":"sigil::rank::RankConfig::default","ref_kind":"call","line":257}
+{"file":"src/main.rs","caller":"main","name":"sigil::rank::rank_with_config","ref_kind":"call","line":258}
+{"file":"src/main.rs","caller":"main","name":"sigil::rank::apply_blast_radius","ref_kind":"call","line":259}
+{"file":"src/main.rs","caller":"main","name":"sigil::rank::RankManifest::from_ranked","ref_kind":"call","line":260}
+{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":273}
+{"file":"src/main.rs","caller":"main","name":"out.lock","ref_kind":"call","line":274}
+{"file":"src/main.rs","caller":"main","name":"writer::write_entities_jsonl(&result.entities, &mut out, pretty)\n                    .expect","ref_kind":"call","line":275}
+{"file":"src/main.rs","caller":"main","name":"writer::write_entities_jsonl","ref_kind":"call","line":275}
+{"file":"src/main.rs","caller":"main","name":"result.refs.is_empty","ref_kind":"call","line":278}
+{"file":"src/main.rs","caller":"main","name":"std::io::stderr","ref_kind":"call","line":279}
+{"file":"src/main.rs","caller":"main","name":"err.lock","ref_kind":"call","line":280}
+{"file":"src/main.rs","caller":"main","name":"writer::write_refs_jsonl(&result.refs, &mut err, pretty)\n                        .expect","ref_kind":"call","line":281}
+{"file":"src/main.rs","caller":"main","name":"writer::write_refs_jsonl","ref_kind":"call","line":281}
+{"file":"src/main.rs","caller":"main","name":"writer::write_to_files(&result.entities, &result.refs, &root, pretty)\n                    .expect","ref_kind":"call","line":287}
+{"file":"src/main.rs","caller":"main","name":"writer::write_to_files","ref_kind":"call","line":287}
+{"file":"src/main.rs","caller":"main","name":"writer::write_rank_json(m, &root, pretty)\n                        .expect","ref_kind":"call","line":290}
+{"file":"src/main.rs","caller":"main","name":"writer::write_rank_json","ref_kind":"call","line":290}
+{"file":"src/main.rs","caller":"main","name":"writer::remove_rank_json","ref_kind":"call","line":295}
+{"file":"src/main.rs","caller":"main","name":"\" (rank skipped)\".to_string","ref_kind":"call","line":301}
+{"file":"src/main.rs","caller":"main","name":"colored::control::set_override","ref_kind":"call","line":315}
+{"file":"src/main.rs","caller":"main","name":"files.len","ref_kind":"call","line":321}
+{"file":"src/main.rs","caller":"main","name":"diff::compute_file_diff(&files[0], &files[1], &opts)\n                    .unwrap_or_else","ref_kind":"call","line":323}
+{"file":"src/main.rs","caller":"main","name":"diff::compute_file_diff","ref_kind":"call","line":323}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":324}
+{"file":"src/main.rs","caller":"main","name":"ref_spec.unwrap","ref_kind":"call","line":326}
+{"file":"src/main.rs","caller":"main","name":"git::parse_ref_spec(&ref_spec)\n                    .unwrap_or_else","ref_kind":"call","line":327}
+{"file":"src/main.rs","caller":"main","name":"git::parse_ref_spec","ref_kind":"call","line":327}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":328}
+{"file":"src/main.rs","caller":"main","name":"diff::compute_diff(&root, &base_ref, &head_ref, &opts)\n                    .unwrap_or_else","ref_kind":"call","line":330}
+{"file":"src/main.rs","caller":"main","name":"diff::compute_diff","ref_kind":"call","line":330}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":331}
+{"file":"src/main.rs","caller":"main","name":"output::DiffOutput::from_result","ref_kind":"call","line":335}
+{"file":"src/main.rs","caller":"main","name":"output.files.iter()\n                    .map(|f| f.file.clone())\n                    .collect","ref_kind":"call","line":343}
+{"file":"src/main.rs","caller":"main","name":"output.files.iter()\n                    .map","ref_kind":"call","line":343}
+{"file":"src/main.rs","caller":"main","name":"output.files.iter","ref_kind":"call","line":343}
+{"file":"src/main.rs","caller":"main","name":"f.file.clone","ref_kind":"call","line":344}
+{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":348}
+{"file":"src/main.rs","caller":"main","name":"idx.get_callers(name, None, 100)\n                                .into_iter()\n                                .map(|r| (r.file.clone(), r.line, r.caller.clone().unwrap_or_default()))\n                                .collect","ref_kind":"call","line":351}
+{"file":"src/main.rs","caller":"main","name":"idx.get_callers(name, None, 100)\n                                .into_iter()\n                                .map","ref_kind":"call","line":351}
+{"file":"src/main.rs","caller":"main","name":"idx.get_callers(name, None, 100)\n                                .into_iter","ref_kind":"call","line":351}
+{"file":"src/main.rs","caller":"main","name":"idx.get_callers","ref_kind":"call","line":351}
+{"file":"src/main.rs","caller":"main","name":"r.file.clone","ref_kind":"call","line":353}
+{"file":"src/main.rs","caller":"main","name":"r.caller.clone().unwrap_or_default","ref_kind":"call","line":353}
+{"file":"src/main.rs","caller":"main","name":"r.caller.clone","ref_kind":"call","line":353}
+{"file":"src/main.rs","caller":"main","name":"output::enrich_breaking_with_callers","ref_kind":"call","line":356}
+{"file":"src/main.rs","caller":"main","name":"grouping::compute_groups","ref_kind":"call","line":369}
+{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":374}
+{"file":"src/main.rs","caller":"main","name":"out.lock","ref_kind":"call","line":375}
+{"file":"src/main.rs","caller":"main","name":"if pretty {\n                    serde_json::to_writer_pretty(&mut out, &output)\n                } else {\n                    serde_json::to_writer(&mut out, &output)\n                }.expect","ref_kind":"call","line":376}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":377}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer","ref_kind":"call","line":379}
+{"file":"src/main.rs","caller":"main","name":"query::load(&root)\n                .unwrap_or_else","ref_kind":"call","line":399}
+{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":399}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":400}
+{"file":"src/main.rs","caller":"main","name":"idx.explore_files_capped","ref_kind":"call","line":402}
+{"file":"src/main.rs","caller":"main","name":"path.as_deref","ref_kind":"call","line":402}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty(std::io::stdout(), &files.iter().map(|(dir, path, lang)| {\n                    serde_json::json!({\"directory\": dir, \"path\": path, \"language\": lang})\n                }).collect::<Vec<_>>()).ok","ref_kind":"call","line":403}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":403}
+{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":403}
+{"file":"src/main.rs","caller":"main","name":"files.iter().map","ref_kind":"call","line":403}
+{"file":"src/main.rs","caller":"main","name":"files.iter","ref_kind":"call","line":403}
+{"file":"src/main.rs","caller":"main","name":"query::load(&root)\n                .unwrap_or_else","ref_kind":"call","line":412}
+{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":412}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":413}
+{"file":"src/main.rs","caller":"main","name":"scope\n                .first()\n                .map(|s| query::index::Scope::parse(s))\n                .unwrap_or","ref_kind":"call","line":416}
+{"file":"src/main.rs","caller":"main","name":"scope\n                .first()\n                .map","ref_kind":"call","line":416}
+{"file":"src/main.rs","caller":"main","name":"scope\n                .first","ref_kind":"call","line":416}
+{"file":"src/main.rs","caller":"main","name":"query::index::Scope::parse","ref_kind":"call","line":418}
+{"file":"src/main.rs","caller":"main","name":"kind.first().map","ref_kind":"call","line":420}
+{"file":"src/main.rs","caller":"main","name":"kind.first","ref_kind":"call","line":420}
+{"file":"src/main.rs","caller":"main","name":"s.as_str","ref_kind":"call","line":420}
+{"file":"src/main.rs","caller":"main","name":"idx.search","ref_kind":"call","line":421}
+{"file":"src/main.rs","caller":"main","name":"path.as_deref","ref_kind":"call","line":421}
+{"file":"src/main.rs","caller":"main","name":"results.iter().map(|h| match h {\n                    query::index::SearchHit::Symbol(e) => serde_json::json!({\n                        \"type\": \"symbol\",\n                        \"file\": e.file,\n                        \"name\": e.name,\n                        \"kind\": e.kind,\n                        \"line\": [e.line_start, e.line_end],\n                        \"parent\": e.parent,\n                    }),\n                    query::index::SearchHit::File(f) => serde_json::json!({\n                        \"type\": \"file\",\n                        \"path\": f.path,\n                        \"lang\": f.lang,\n                        \"entity_count\": f.entity_count,\n                    }),\n                }).collect","ref_kind":"call","line":425}
+{"file":"src/main.rs","caller":"main","name":"results.iter().map","ref_kind":"call","line":425}
+{"file":"src/main.rs","caller":"main","name":"results.iter","ref_kind":"call","line":425}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty(std::io::stdout(), &json_hits).ok","ref_kind":"call","line":441}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":441}
+{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":441}
+{"file":"src/main.rs","caller":"main","name":"query::load(&root)\n                .unwrap_or_else","ref_kind":"call","line":448}
+{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":448}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":449}
+{"file":"src/main.rs","caller":"main","name":"idx.get_file_symbols","ref_kind":"call","line":450}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty(std::io::stdout(), &symbols).ok","ref_kind":"call","line":452}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":452}
+{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":452}
+{"file":"src/main.rs","caller":"main","name":"query::load(&root)\n                .unwrap_or_else","ref_kind":"call","line":459}
+{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":459}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":460}
+{"file":"src/main.rs","caller":"main","name":"idx.get_children","ref_kind":"call","line":461}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty(std::io::stdout(), &children).ok","ref_kind":"call","line":463}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":463}
+{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":463}
+{"file":"src/main.rs","caller":"main","name":"query::load(&root)\n                .unwrap_or_else","ref_kind":"call","line":470}
+{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":470}
 {"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":471}
-{"file":"src/main.rs","caller":"main","name":"updater.set_current_version","ref_kind":"call","line":472}
-{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":474}
-{"file":"src/main.rs","caller":"main","name":"updater.load_receipt","ref_kind":"call","line":476}
-{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":480}
-{"file":"src/main.rs","caller":"main","name":"updater.run_sync","ref_kind":"call","line":482}
-{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":491}
+{"file":"src/main.rs","caller":"main","name":"idx.get_callers","ref_kind":"call","line":472}
+{"file":"src/main.rs","caller":"main","name":"kind.as_deref","ref_kind":"call","line":472}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty(std::io::stdout(), &refs).ok","ref_kind":"call","line":474}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":474}
+{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":474}
+{"file":"src/main.rs","caller":"main","name":"query::load(&root)\n                .unwrap_or_else","ref_kind":"call","line":481}
+{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":481}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":482}
+{"file":"src/main.rs","caller":"main","name":"idx.get_callees","ref_kind":"call","line":483}
+{"file":"src/main.rs","caller":"main","name":"kind.as_deref","ref_kind":"call","line":483}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty(std::io::stdout(), &refs).ok","ref_kind":"call","line":485}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":485}
+{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":485}
+{"file":"src/main.rs","caller":"main","name":"query::load(&root)\n                .unwrap_or_else","ref_kind":"call","line":492}
+{"file":"src/main.rs","caller":"main","name":"query::load","ref_kind":"call","line":492}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":493}
+{"file":"src/main.rs","caller":"main","name":"sigil::map::load_rank_manifest(&root)\n                .unwrap_or_else","ref_kind":"call","line":494}
+{"file":"src/main.rs","caller":"main","name":"sigil::map::load_rank_manifest","ref_kind":"call","line":494}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":495}
+{"file":"src/main.rs","caller":"main","name":"rank_manifest.file_rank.is_empty","ref_kind":"call","line":496}
+{"file":"src/main.rs","caller":"main","name":"sigil::map::MapOptions::default","ref_kind":"call","line":505}
+{"file":"src/main.rs","caller":"main","name":"sigil::map::build_map","ref_kind":"call","line":507}
+{"file":"src/main.rs","caller":"main","name":"format.as_str","ref_kind":"call","line":509}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty(std::io::stdout(), &map).ok","ref_kind":"call","line":511}
+{"file":"src/main.rs","caller":"main","name":"serde_json::to_writer_pretty","ref_kind":"call","line":511}
+{"file":"src/main.rs","caller":"main","name":"std::io::stdout","ref_kind":"call","line":511}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":519}
+{"file":"src/main.rs","caller":"main","name":"sigil::map::write_sigil_map(&map, &root)\n                    .unwrap_or_else","ref_kind":"call","line":524}
+{"file":"src/main.rs","caller":"main","name":"sigil::map::write_sigil_map","ref_kind":"call","line":524}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":525}
+{"file":"src/main.rs","caller":"main","name":"axoupdater::AxoUpdater::new_for","ref_kind":"call","line":530}
+{"file":"src/main.rs","caller":"main","name":"env!(\"CARGO_PKG_VERSION\").parse()\n                .unwrap_or_else","ref_kind":"call","line":531}
+{"file":"src/main.rs","caller":"main","name":"env!(\"CARGO_PKG_VERSION\").parse","ref_kind":"call","line":531}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":532}
+{"file":"src/main.rs","caller":"main","name":"updater.set_current_version","ref_kind":"call","line":533}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":535}
+{"file":"src/main.rs","caller":"main","name":"updater.load_receipt","ref_kind":"call","line":537}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":541}
+{"file":"src/main.rs","caller":"main","name":"updater.run_sync","ref_kind":"call","line":543}
+{"file":"src/main.rs","caller":"main","name":"std::process::exit","ref_kind":"call","line":552}
+{"file":"src/map.rs","name":"std::collections::HashMap","ref_kind":"import","line":19}
+{"file":"src/map.rs","name":"std::path::Path","ref_kind":"import","line":20}
+{"file":"src/map.rs","name":"anyhow::{Context, Result}","ref_kind":"import","line":22}
+{"file":"src/map.rs","name":"serde::Serialize","ref_kind":"import","line":23}
+{"file":"src/map.rs","name":"crate::entity::Entity","ref_kind":"import","line":25}
+{"file":"src/map.rs","name":"crate::query::index::Index","ref_kind":"import","line":26}
+{"file":"src/map.rs","name":"crate::rank::RankManifest","ref_kind":"import","line":27}
+{"file":"src/map.rs","caller":"estimate_tokens","name":"s.len","ref_kind":"call","line":35}
+{"file":"src/map.rs","caller":"MapOptions","name":"Option","ref_kind":"type_annotation","line":45}
+{"file":"src/map.rs","caller":"MapOptions","name":"String","ref_kind":"type_annotation","line":45}
+{"file":"src/map.rs","caller":"MapEntity","name":"String","ref_kind":"type_annotation","line":67}
+{"file":"src/map.rs","caller":"MapEntity","name":"String","ref_kind":"type_annotation","line":68}
+{"file":"src/map.rs","caller":"MapEntity","name":"Option","ref_kind":"type_annotation","line":72}
+{"file":"src/map.rs","caller":"MapEntity","name":"String","ref_kind":"type_annotation","line":72}
+{"file":"src/map.rs","caller":"MapEntity","name":"Option","ref_kind":"type_annotation","line":74}
+{"file":"src/map.rs","caller":"MapEntity","name":"String","ref_kind":"type_annotation","line":74}
+{"file":"src/map.rs","caller":"MapEntity","name":"Option","ref_kind":"type_annotation","line":76}
+{"file":"src/map.rs","caller":"MapEntity","name":"String","ref_kind":"type_annotation","line":76}
+{"file":"src/map.rs","caller":"MapFile","name":"String","ref_kind":"type_annotation","line":87}
+{"file":"src/map.rs","caller":"MapFile","name":"Option","ref_kind":"type_annotation","line":89}
+{"file":"src/map.rs","caller":"MapFile","name":"String","ref_kind":"type_annotation","line":89}
+{"file":"src/map.rs","caller":"MapFile","name":"Vec","ref_kind":"type_annotation","line":90}
+{"file":"src/map.rs","caller":"MapFile","name":"MapEntity","ref_kind":"type_annotation","line":90}
+{"file":"src/map.rs","caller":"Map","name":"MapMeta","ref_kind":"type_annotation","line":96}
+{"file":"src/map.rs","caller":"Map","name":"Vec","ref_kind":"type_annotation","line":97}
+{"file":"src/map.rs","caller":"Map","name":"MapFile","ref_kind":"type_annotation","line":97}
+{"file":"src/map.rs","caller":"MapMeta","name":"String","ref_kind":"type_annotation","line":103}
+{"file":"src/map.rs","caller":"MapMeta","name":"Option","ref_kind":"type_annotation","line":109}
+{"file":"src/map.rs","caller":"MapMeta","name":"String","ref_kind":"type_annotation","line":109}
+{"file":"src/map.rs","caller":"build_map","name":"MapOptions","ref_kind":"type_annotation","line":114}
+{"file":"src/map.rs","caller":"build_map","name":"RankManifest","ref_kind":"type_annotation","line":114}
+{"file":"src/map.rs","caller":"build_map","name":"Index","ref_kind":"type_annotation","line":114}
+{"file":"src/map.rs","caller":"build_map","name":"Map","ref_kind":"type_annotation","line":114}
+{"file":"src/map.rs","caller":"build_map","name":"opts.focus.as_deref","ref_kind":"call","line":117}
+{"file":"src/map.rs","caller":"build_map","name":"opts.focus_boost.max","ref_kind":"call","line":118}
+{"file":"src/map.rs","caller":"build_map","name":"HashMap::new","ref_kind":"call","line":120}
+{"file":"src/map.rs","caller":"build_map","name":"by_file.entry(e.file.as_str()).or_default().push","ref_kind":"call","line":127}
+{"file":"src/map.rs","caller":"build_map","name":"by_file.entry(e.file.as_str()).or_default","ref_kind":"call","line":127}
+{"file":"src/map.rs","caller":"build_map","name":"by_file.entry","ref_kind":"call","line":127}
+{"file":"src/map.rs","caller":"build_map","name":"e.file.as_str","ref_kind":"call","line":127}
+{"file":"src/map.rs","caller":"build_map","name":"by_file\n        .keys()\n        .map(|f| {\n            let base = rank.file_rank.get(*f).copied().unwrap_or(0.0);\n            let score = if focus.is_some_and(|p| f.starts_with(p)) {\n                base * focus_boost\n            } else {\n                base\n            };\n            (*f, score)\n        })\n        .collect","ref_kind":"call","line":133}
+{"file":"src/map.rs","caller":"build_map","name":"by_file\n        .keys()\n        .map","ref_kind":"call","line":133}
+{"file":"src/map.rs","caller":"build_map","name":"by_file\n        .keys","ref_kind":"call","line":133}
+{"file":"src/map.rs","caller":"build_map","name":"rank.file_rank.get(*f).copied().unwrap_or","ref_kind":"call","line":136}
+{"file":"src/map.rs","caller":"build_map","name":"rank.file_rank.get(*f).copied","ref_kind":"call","line":136}
+{"file":"src/map.rs","caller":"build_map","name":"rank.file_rank.get","ref_kind":"call","line":136}
+{"file":"src/map.rs","caller":"build_map","name":"focus.is_some_and","ref_kind":"call","line":137}
+{"file":"src/map.rs","caller":"build_map","name":"f.starts_with","ref_kind":"call","line":137}
+{"file":"src/map.rs","caller":"build_map","name":"files_ranked.sort_by","ref_kind":"call","line":145}
+{"file":"src/map.rs","caller":"build_map","name":"b.1.partial_cmp(&a.1).unwrap_or","ref_kind":"call","line":145}
+{"file":"src/map.rs","caller":"build_map","name":"b.1.partial_cmp","ref_kind":"call","line":145}
+{"file":"src/map.rs","caller":"build_map","name":"Vec::new","ref_kind":"call","line":148}
+{"file":"src/map.rs","caller":"build_map","name":"out_files.is_empty","ref_kind":"call","line":157}
+{"file":"src/map.rs","caller":"build_map","name":"by_file.get(*file).cloned().unwrap_or_default","ref_kind":"call","line":161}
+{"file":"src/map.rs","caller":"build_map","name":"by_file.get(*file).cloned","ref_kind":"call","line":161}
+{"file":"src/map.rs","caller":"build_map","name":"by_file.get","ref_kind":"call","line":161}
+{"file":"src/map.rs","caller":"build_map","name":"ents.sort_by","ref_kind":"call","line":162}
+{"file":"src/map.rs","caller":"build_map","name":"entity_score(b, focus, focus_boost).partial_cmp(&entity_score(a, focus, focus_boost)).unwrap_or","ref_kind":"call","line":162}
+{"file":"src/map.rs","caller":"build_map","name":"entity_score(b, focus, focus_boost).partial_cmp","ref_kind":"call","line":162}
+{"file":"src/map.rs","caller":"build_map","name":"entity_score","ref_kind":"call","line":162}
+{"file":"src/map.rs","caller":"build_map","name":"entity_score","ref_kind":"call","line":162}
+{"file":"src/map.rs","caller":"build_map","name":"ents.truncate","ref_kind":"call","line":163}
+{"file":"src/map.rs","caller":"build_map","name":"opts.depth.max","ref_kind":"call","line":163}
+{"file":"src/map.rs","caller":"build_map","name":"ents\n            .iter()\n            .map(|e| {\n                let br = e.blast_radius.as_ref();\n                MapEntity {\n                    name: e.name.clone(),\n                    kind: e.kind.clone(),\n                    line_start: e.line_start,\n                    line_end: e.line_end,\n                    parent: e.parent.clone(),\n                    sig: e.sig.clone(),\n                    visibility: e.visibility.clone(),\n                    impact_files: br.map(|b| b.direct_files).unwrap_or(0),\n                    direct_callers: br.map(|b| b.direct_callers).unwrap_or(0),\n                    transitive_callers: br.map(|b| b.transitive_callers).unwrap_or(0),\n                }\n            })\n            .collect","ref_kind":"call","line":165}
+{"file":"src/map.rs","caller":"build_map","name":"ents\n            .iter()\n            .map","ref_kind":"call","line":165}
+{"file":"src/map.rs","caller":"build_map","name":"ents\n            .iter","ref_kind":"call","line":165}
+{"file":"src/map.rs","caller":"build_map","name":"e.blast_radius.as_ref","ref_kind":"call","line":168}
+{"file":"src/map.rs","caller":"build_map","name":"e.name.clone","ref_kind":"call","line":170}
+{"file":"src/map.rs","caller":"build_map","name":"e.kind.clone","ref_kind":"call","line":171}
+{"file":"src/map.rs","caller":"build_map","name":"e.parent.clone","ref_kind":"call","line":174}
+{"file":"src/map.rs","caller":"build_map","name":"e.sig.clone","ref_kind":"call","line":175}
+{"file":"src/map.rs","caller":"build_map","name":"e.visibility.clone","ref_kind":"call","line":176}
+{"file":"src/map.rs","caller":"build_map","name":"br.map(|b| b.direct_files).unwrap_or","ref_kind":"call","line":177}
+{"file":"src/map.rs","caller":"build_map","name":"br.map","ref_kind":"call","line":177}
+{"file":"src/map.rs","caller":"build_map","name":"br.map(|b| b.direct_callers).unwrap_or","ref_kind":"call","line":178}
+{"file":"src/map.rs","caller":"build_map","name":"br.map","ref_kind":"call","line":178}
+{"file":"src/map.rs","caller":"build_map","name":"br.map(|b| b.transitive_callers).unwrap_or","ref_kind":"call","line":179}
+{"file":"src/map.rs","caller":"build_map","name":"br.map","ref_kind":"call","line":179}
+{"file":"src/map.rs","caller":"build_map","name":"file.to_string","ref_kind":"call","line":185}
+{"file":"src/map.rs","caller":"build_map","name":"lang_for(file).map","ref_kind":"call","line":187}
+{"file":"src/map.rs","caller":"build_map","name":"lang_for","ref_kind":"call","line":187}
+{"file":"src/map.rs","caller":"build_map","name":"s.to_string","ref_kind":"call","line":187}
+{"file":"src/map.rs","caller":"build_map","name":"render_file_block","ref_kind":"call","line":192}
+{"file":"src/map.rs","caller":"build_map","name":"estimate_tokens","ref_kind":"call","line":193}
+{"file":"src/map.rs","caller":"build_map","name":"out_files.is_empty","ref_kind":"call","line":194}
+{"file":"src/map.rs","caller":"build_map","name":"out_files.push","ref_kind":"call","line":200}
+{"file":"src/map.rs","caller":"build_map","name":"files_ranked.len().saturating_sub","ref_kind":"call","line":203}
+{"file":"src/map.rs","caller":"build_map","name":"files_ranked.len","ref_kind":"call","line":203}
+{"file":"src/map.rs","caller":"build_map","name":"out_files.len","ref_kind":"call","line":203}
+{"file":"src/map.rs","caller":"build_map","name":"idx.len","ref_kind":"call","line":204}
+{"file":"src/map.rs","caller":"build_map","name":"env!(\"CARGO_PKG_VERSION\").to_string","ref_kind":"call","line":208}
+{"file":"src/map.rs","caller":"build_map","name":"files_ranked.len","ref_kind":"call","line":209}
+{"file":"src/map.rs","caller":"build_map","name":"opts.focus.clone","ref_kind":"call","line":214}
+{"file":"src/map.rs","caller":"entity_score","name":"Option","ref_kind":"type_annotation","line":224}
+{"file":"src/map.rs","caller":"entity_score","name":"Entity","ref_kind":"type_annotation","line":224}
+{"file":"src/map.rs","caller":"entity_score","name":"e\n        .blast_radius\n        .as_ref()\n        .map(|b| (b.direct_files as f64 + 1.0).ln() * 10.0 + b.direct_callers as f64)\n        .unwrap_or","ref_kind":"call","line":225}
+{"file":"src/map.rs","caller":"entity_score","name":"e\n        .blast_radius\n        .as_ref()\n        .map","ref_kind":"call","line":225}
+{"file":"src/map.rs","caller":"entity_score","name":"e\n        .blast_radius\n        .as_ref","ref_kind":"call","line":225}
+{"file":"src/map.rs","caller":"entity_score","name":"(b.direct_files as f64 + 1.0).ln","ref_kind":"call","line":228}
+{"file":"src/map.rs","caller":"entity_score","name":"e.visibility.as_deref","ref_kind":"call","line":230}
+{"file":"src/map.rs","caller":"entity_score","name":"focus.is_some_and","ref_kind":"call","line":235}
+{"file":"src/map.rs","caller":"entity_score","name":"e.file.starts_with","ref_kind":"call","line":235}
+{"file":"src/map.rs","caller":"render_markdown","name":"Map","ref_kind":"type_annotation","line":245}
+{"file":"src/map.rs","caller":"render_markdown","name":"String","ref_kind":"type_annotation","line":245}
+{"file":"src/map.rs","caller":"render_markdown","name":"String::with_capacity","ref_kind":"call","line":246}
+{"file":"src/map.rs","caller":"render_markdown","name":"out.push_str","ref_kind":"call","line":247}
+{"file":"src/map.rs","caller":"render_markdown","name":"out.push_str","ref_kind":"call","line":248}
+{"file":"src/map.rs","caller":"render_markdown","name":"out.push_str","ref_kind":"call","line":253}
+{"file":"src/map.rs","caller":"render_markdown","name":"out.push_str","ref_kind":"call","line":255}
+{"file":"src/map.rs","caller":"render_markdown","name":"out.push_str","ref_kind":"call","line":264}
+{"file":"src/map.rs","caller":"render_markdown","name":"out.push_str","ref_kind":"call","line":267}
+{"file":"src/map.rs","caller":"render_markdown","name":"render_file_block","ref_kind":"call","line":267}
+{"file":"src/map.rs","caller":"render_markdown","name":"out.push_str","ref_kind":"call","line":271}
+{"file":"src/map.rs","caller":"render_file_block","name":"MapFile","ref_kind":"type_annotation","line":280}
+{"file":"src/map.rs","caller":"render_file_block","name":"String","ref_kind":"type_annotation","line":280}
+{"file":"src/map.rs","caller":"render_file_block","name":"String::with_capacity","ref_kind":"call","line":281}
+{"file":"src/map.rs","caller":"render_file_block","name":"f.lang.as_deref().unwrap_or","ref_kind":"call","line":282}
+{"file":"src/map.rs","caller":"render_file_block","name":"f.lang.as_deref","ref_kind":"call","line":282}
+{"file":"src/map.rs","caller":"render_file_block","name":"out.push_str","ref_kind":"call","line":283}
+{"file":"src/map.rs","caller":"render_file_block","name":"f.entities.is_empty","ref_kind":"call","line":287}
+{"file":"src/map.rs","caller":"render_file_block","name":"out.push_str","ref_kind":"call","line":288}
+{"file":"src/map.rs","caller":"render_file_block","name":"e\n            .visibility\n            .as_deref()\n            .filter(|v| !v.is_empty())\n            .map(|v| format!(\" [{}]\", v))\n            .unwrap_or_default","ref_kind":"call","line":292}
+{"file":"src/map.rs","caller":"render_file_block","name":"e\n            .visibility\n            .as_deref()\n            .filter(|v| !v.is_empty())\n            .map","ref_kind":"call","line":292}
+{"file":"src/map.rs","caller":"render_file_block","name":"e\n            .visibility\n            .as_deref()\n            .filter","ref_kind":"call","line":292}
+{"file":"src/map.rs","caller":"render_file_block","name":"e\n            .visibility\n            .as_deref","ref_kind":"call","line":292}
+{"file":"src/map.rs","caller":"render_file_block","name":"v.is_empty","ref_kind":"call","line":295}
+{"file":"src/map.rs","caller":"render_file_block","name":"e\n            .parent\n            .as_deref()\n            .map(|p| format!(\" (in {})\", p))\n            .unwrap_or_default","ref_kind":"call","line":298}
+{"file":"src/map.rs","caller":"render_file_block","name":"e\n            .parent\n            .as_deref()\n            .map","ref_kind":"call","line":298}
+{"file":"src/map.rs","caller":"render_file_block","name":"e\n            .parent\n            .as_deref","ref_kind":"call","line":298}
+{"file":"src/map.rs","caller":"render_file_block","name":"e\n            .sig\n            .as_deref()\n            .map(|s| format!(\"  `{}`\", s.trim()))\n            .unwrap_or_default","ref_kind":"call","line":303}
+{"file":"src/map.rs","caller":"render_file_block","name":"e\n            .sig\n            .as_deref()\n            .map","ref_kind":"call","line":303}
+{"file":"src/map.rs","caller":"render_file_block","name":"e\n            .sig\n            .as_deref","ref_kind":"call","line":303}
+{"file":"src/map.rs","caller":"render_file_block","name":"out.push_str","ref_kind":"call","line":309}
+{"file":"src/map.rs","caller":"render_file_block","name":"sig_line.is_empty","ref_kind":"call","line":313}
+{"file":"src/map.rs","caller":"render_file_block","name":"out.push_str","ref_kind":"call","line":314}
+{"file":"src/map.rs","caller":"render_file_block","name":"out.push","ref_kind":"call","line":317}
+{"file":"src/map.rs","caller":"load_rank_manifest","name":"Path","ref_kind":"type_annotation","line":328}
+{"file":"src/map.rs","caller":"load_rank_manifest","name":"Result","ref_kind":"type_annotation","line":328}
+{"file":"src/map.rs","caller":"load_rank_manifest","name":"RankManifest","ref_kind":"type_annotation","line":328}
+{"file":"src/map.rs","caller":"load_rank_manifest","name":"root.join(\".sigil\").join","ref_kind":"call","line":329}
+{"file":"src/map.rs","caller":"load_rank_manifest","name":"root.join","ref_kind":"call","line":329}
+{"file":"src/map.rs","caller":"load_rank_manifest","name":"path.exists","ref_kind":"call","line":330}
+{"file":"src/map.rs","caller":"load_rank_manifest","name":"\"1\".to_string","ref_kind":"call","line":332}
+{"file":"src/map.rs","caller":"load_rank_manifest","name":"env!(\"CARGO_PKG_VERSION\").to_string","ref_kind":"call","line":333}
+{"file":"src/map.rs","caller":"load_rank_manifest","name":"HashMap::new","ref_kind":"call","line":338}
+{"file":"src/map.rs","caller":"load_rank_manifest","name":"std::fs::read_to_string(&path).with_context","ref_kind":"call","line":342}
+{"file":"src/map.rs","caller":"load_rank_manifest","name":"std::fs::read_to_string","ref_kind":"call","line":342}
+{"file":"src/map.rs","caller":"load_rank_manifest","name":"serde_json::from_str(&content)\n        .with_context","ref_kind":"call","line":343}
+{"file":"src/map.rs","caller":"load_rank_manifest","name":"serde_json::from_str","ref_kind":"call","line":343}
+{"file":"src/map.rs","caller":"write_sigil_map","name":"Path","ref_kind":"type_annotation","line":348}
+{"file":"src/map.rs","caller":"write_sigil_map","name":"Map","ref_kind":"type_annotation","line":348}
+{"file":"src/map.rs","caller":"write_sigil_map","name":"Result","ref_kind":"type_annotation","line":348}
+{"file":"src/map.rs","caller":"write_sigil_map","name":"root.join","ref_kind":"call","line":349}
+{"file":"src/map.rs","caller":"write_sigil_map","name":"std::fs::create_dir_all","ref_kind":"call","line":350}
+{"file":"src/map.rs","caller":"write_sigil_map","name":"dir.join","ref_kind":"call","line":351}
+{"file":"src/map.rs","caller":"write_sigil_map","name":"render_markdown","ref_kind":"call","line":351}
+{"file":"src/map.rs","caller":"lang_for","name":"Option","ref_kind":"type_annotation","line":355}
+{"file":"src/map.rs","caller":"lang_for","name":"file.rsplit_once('.').map","ref_kind":"call","line":356}
+{"file":"src/map.rs","caller":"lang_for","name":"file.rsplit_once","ref_kind":"call","line":356}
+{"file":"src/map.rs","caller":"lang_for","name":"crate::parser::languages::detect_language","ref_kind":"call","line":357}
+{"file":"src/map.rs","name":"super::*","ref_kind":"import","line":370}
+{"file":"src/map.rs","name":"crate::entity::{BlastRadius, Entity}","ref_kind":"import","line":371}
+{"file":"src/map.rs","name":"crate::query::index::Index","ref_kind":"import","line":372}
+{"file":"src/map.rs","name":"std::collections::HashMap","ref_kind":"import","line":373}
+{"file":"src/map.rs","caller":"ent","name":"Entity","ref_kind":"type_annotation","line":375}
+{"file":"src/map.rs","caller":"ent","name":"file.to_string","ref_kind":"call","line":377}
+{"file":"src/map.rs","caller":"ent","name":"name.to_string","ref_kind":"call","line":378}
+{"file":"src/map.rs","caller":"ent","name":"kind.to_string","ref_kind":"call","line":379}
+{"file":"src/map.rs","caller":"ent","name":"\"deadbeef\".to_string","ref_kind":"call","line":387}
+{"file":"src/map.rs","caller":"manifest","name":"RankManifest","ref_kind":"type_annotation","line":398}
+{"file":"src/map.rs","caller":"manifest","name":"\"1\".to_string","ref_kind":"call","line":400}
+{"file":"src/map.rs","caller":"manifest","name":"\"test\".to_string","ref_kind":"call","line":401}
+{"file":"src/map.rs","caller":"manifest","name":"file_rank.len","ref_kind":"call","line":405}
+{"file":"src/map.rs","caller":"manifest","name":"file_rank\n                .iter()\n                .map(|(f, r)| (f.to_string(), *r))\n                .collect","ref_kind":"call","line":406}
+{"file":"src/map.rs","caller":"manifest","name":"file_rank\n                .iter()\n                .map","ref_kind":"call","line":406}
+{"file":"src/map.rs","caller":"manifest","name":"file_rank\n                .iter","ref_kind":"call","line":406}
+{"file":"src/map.rs","caller":"manifest","name":"f.to_string","ref_kind":"call","line":408}
+{"file":"src/map.rs","caller":"empty_index_produces_empty_map","name":"Index::default","ref_kind":"call","line":415}
+{"file":"src/map.rs","caller":"empty_index_produces_empty_map","name":"manifest","ref_kind":"call","line":416}
+{"file":"src/map.rs","caller":"empty_index_produces_empty_map","name":"build_map","ref_kind":"call","line":417}
+{"file":"src/map.rs","caller":"empty_index_produces_empty_map","name":"MapOptions::default","ref_kind":"call","line":417}
+{"file":"src/map.rs","caller":"files_ordered_by_rank_desc","name":"Index::build","ref_kind":"call","line":424}
+{"file":"src/map.rs","caller":"files_ordered_by_rank_desc","name":"manifest","ref_kind":"call","line":432}
+{"file":"src/map.rs","caller":"files_ordered_by_rank_desc","name":"build_map","ref_kind":"call","line":433}
+{"file":"src/map.rs","caller":"files_ordered_by_rank_desc","name":"MapOptions::default","ref_kind":"call","line":433}
+{"file":"src/map.rs","caller":"files_ordered_by_rank_desc","name":"m.files.iter().map(|f| f.path.as_str()).collect","ref_kind":"call","line":434}
+{"file":"src/map.rs","caller":"files_ordered_by_rank_desc","name":"m.files.iter().map","ref_kind":"call","line":434}
+{"file":"src/map.rs","caller":"files_ordered_by_rank_desc","name":"m.files.iter","ref_kind":"call","line":434}
+{"file":"src/map.rs","caller":"files_ordered_by_rank_desc","name":"f.path.as_str","ref_kind":"call","line":434}
+{"file":"src/map.rs","caller":"depth_caps_entities_per_file","name":"Index::build","ref_kind":"call","line":440}
+{"file":"src/map.rs","caller":"depth_caps_entities_per_file","name":"(0..10)\n                .map(|i| ent(\"a.rs\", &format!(\"sym{i}\"), \"function\", 5, 10))\n                .collect","ref_kind":"call","line":441}
+{"file":"src/map.rs","caller":"depth_caps_entities_per_file","name":"(0..10)\n                .map","ref_kind":"call","line":441}
+{"file":"src/map.rs","caller":"depth_caps_entities_per_file","name":"ent","ref_kind":"call","line":442}
+{"file":"src/map.rs","caller":"depth_caps_entities_per_file","name":"manifest","ref_kind":"call","line":446}
+{"file":"src/map.rs","caller":"depth_caps_entities_per_file","name":"build_map","ref_kind":"call","line":447}
+{"file":"src/map.rs","caller":"depth_caps_entities_per_file","name":"MapOptions::default","ref_kind":"call","line":453}
+{"file":"src/map.rs","caller":"entities_within_file_sorted_by_blast","name":"Index::build","ref_kind":"call","line":462}
+{"file":"src/map.rs","caller":"entities_within_file_sorted_by_blast","name":"manifest","ref_kind":"call","line":470}
+{"file":"src/map.rs","caller":"entities_within_file_sorted_by_blast","name":"build_map","ref_kind":"call","line":471}
+{"file":"src/map.rs","caller":"entities_within_file_sorted_by_blast","name":"MapOptions::default","ref_kind":"call","line":471}
+{"file":"src/map.rs","caller":"entities_within_file_sorted_by_blast","name":"m.files[0].entities.iter().map(|e| e.name.as_str()).collect","ref_kind":"call","line":472}
+{"file":"src/map.rs","caller":"entities_within_file_sorted_by_blast","name":"m.files[0].entities.iter().map","ref_kind":"call","line":472}
+{"file":"src/map.rs","caller":"entities_within_file_sorted_by_blast","name":"m.files[0].entities.iter","ref_kind":"call","line":472}
+{"file":"src/map.rs","caller":"entities_within_file_sorted_by_blast","name":"e.name.as_str","ref_kind":"call","line":472}
+{"file":"src/map.rs","caller":"import_kind_entities_excluded_from_map","name":"Index::build","ref_kind":"call","line":478}
+{"file":"src/map.rs","caller":"import_kind_entities_excluded_from_map","name":"manifest","ref_kind":"call","line":485}
+{"file":"src/map.rs","caller":"import_kind_entities_excluded_from_map","name":"build_map","ref_kind":"call","line":486}
+{"file":"src/map.rs","caller":"import_kind_entities_excluded_from_map","name":"MapOptions::default","ref_kind":"call","line":486}
+{"file":"src/map.rs","caller":"import_kind_entities_excluded_from_map","name":"m.files[0].entities.iter().map(|e| e.name.as_str()).collect","ref_kind":"call","line":487}
+{"file":"src/map.rs","caller":"import_kind_entities_excluded_from_map","name":"m.files[0].entities.iter().map","ref_kind":"call","line":487}
+{"file":"src/map.rs","caller":"import_kind_entities_excluded_from_map","name":"m.files[0].entities.iter","ref_kind":"call","line":487}
+{"file":"src/map.rs","caller":"import_kind_entities_excluded_from_map","name":"e.name.as_str","ref_kind":"call","line":487}
+{"file":"src/map.rs","caller":"token_budget_truncates_files","name":"Index::build","ref_kind":"call","line":493}
+{"file":"src/map.rs","caller":"token_budget_truncates_files","name":"(0..20)\n                .map(|i| ent(&format!(\"f{i}.rs\"), \"sym\", \"function\", 5, 10))\n                .collect","ref_kind":"call","line":494}
+{"file":"src/map.rs","caller":"token_budget_truncates_files","name":"(0..20)\n                .map","ref_kind":"call","line":494}
+{"file":"src/map.rs","caller":"token_budget_truncates_files","name":"ent","ref_kind":"call","line":495}
+{"file":"src/map.rs","caller":"token_budget_truncates_files","name":"manifest","ref_kind":"call","line":499}
+{"file":"src/map.rs","caller":"token_budget_truncates_files","name":"(0..20)\n                .map","ref_kind":"call","line":500}
+{"file":"src/map.rs","caller":"token_budget_truncates_files","name":"Box::leak","ref_kind":"call","line":501}
+{"file":"src/map.rs","caller":"token_budget_truncates_files","name":"format!(\"f{i}.rs\").into_boxed_str","ref_kind":"call","line":501}
+{"file":"src/map.rs","caller":"token_budget_truncates_files","name":"build_map","ref_kind":"call","line":504}
+{"file":"src/map.rs","caller":"token_budget_truncates_files","name":"MapOptions::default","ref_kind":"call","line":510}
+{"file":"src/map.rs","caller":"first_file_always_shown_even_on_tiny_budget","name":"Index::build","ref_kind":"call","line":521}
+{"file":"src/map.rs","caller":"first_file_always_shown_even_on_tiny_budget","name":"manifest","ref_kind":"call","line":522}
+{"file":"src/map.rs","caller":"first_file_always_shown_even_on_tiny_budget","name":"build_map","ref_kind":"call","line":523}
+{"file":"src/map.rs","caller":"first_file_always_shown_even_on_tiny_budget","name":"MapOptions::default","ref_kind":"call","line":523}
+{"file":"src/map.rs","caller":"focus_prefix_boosts_matching_files","name":"Index::build","ref_kind":"call","line":529}
+{"file":"src/map.rs","caller":"focus_prefix_boosts_matching_files","name":"manifest","ref_kind":"call","line":536}
+{"file":"src/map.rs","caller":"focus_prefix_boosts_matching_files","name":"build_map","ref_kind":"call","line":537}
+{"file":"src/map.rs","caller":"focus_prefix_boosts_matching_files","name":"MapOptions::default","ref_kind":"call","line":537}
+{"file":"src/map.rs","caller":"focus_prefix_boosts_matching_files","name":"build_map","ref_kind":"call","line":540}
+{"file":"src/map.rs","caller":"focus_prefix_boosts_matching_files","name":"\"core/\".to_string","ref_kind":"call","line":545}
+{"file":"src/map.rs","caller":"focus_prefix_boosts_matching_files","name":"MapOptions::default","ref_kind":"call","line":547}
+{"file":"src/map.rs","caller":"render_markdown_contains_header_and_file_blocks","name":"Index::build","ref_kind":"call","line":555}
+{"file":"src/map.rs","caller":"render_markdown_contains_header_and_file_blocks","name":"manifest","ref_kind":"call","line":556}
+{"file":"src/map.rs","caller":"render_markdown_contains_header_and_file_blocks","name":"build_map","ref_kind":"call","line":557}
+{"file":"src/map.rs","caller":"render_markdown_contains_header_and_file_blocks","name":"MapOptions::default","ref_kind":"call","line":557}
+{"file":"src/map.rs","caller":"render_markdown_contains_header_and_file_blocks","name":"render_markdown","ref_kind":"call","line":558}
+{"file":"src/map.rs","caller":"estimated_tokens_roughly_matches_output_length","name":"Index::build","ref_kind":"call","line":567}
+{"file":"src/map.rs","caller":"estimated_tokens_roughly_matches_output_length","name":"(0..5)\n                .map(|i| ent(&format!(\"f{i}.rs\"), \"sym\", \"function\", 5, 10))\n                .collect","ref_kind":"call","line":568}
+{"file":"src/map.rs","caller":"estimated_tokens_roughly_matches_output_length","name":"(0..5)\n                .map","ref_kind":"call","line":568}
+{"file":"src/map.rs","caller":"estimated_tokens_roughly_matches_output_length","name":"ent","ref_kind":"call","line":569}
+{"file":"src/map.rs","caller":"estimated_tokens_roughly_matches_output_length","name":"manifest","ref_kind":"call","line":573}
+{"file":"src/map.rs","caller":"estimated_tokens_roughly_matches_output_length","name":"(0..5)\n                .map","ref_kind":"call","line":574}
+{"file":"src/map.rs","caller":"estimated_tokens_roughly_matches_output_length","name":"Box::leak","ref_kind":"call","line":575}
+{"file":"src/map.rs","caller":"estimated_tokens_roughly_matches_output_length","name":"format!(\"f{i}.rs\").into_boxed_str","ref_kind":"call","line":575}
+{"file":"src/map.rs","caller":"estimated_tokens_roughly_matches_output_length","name":"build_map","ref_kind":"call","line":578}
+{"file":"src/map.rs","caller":"estimated_tokens_roughly_matches_output_length","name":"MapOptions::default","ref_kind":"call","line":578}
+{"file":"src/map.rs","caller":"estimated_tokens_roughly_matches_output_length","name":"render_markdown","ref_kind":"call","line":579}
+{"file":"src/map.rs","caller":"estimated_tokens_roughly_matches_output_length","name":"estimate_tokens","ref_kind":"call","line":580}
+{"file":"src/map.rs","caller":"estimated_tokens_roughly_matches_output_length","name":"(actual as i64 - tracked).abs","ref_kind":"call","line":584}
+{"file":"src/map.rs","caller":"load_rank_manifest_missing_returns_empty","name":"std::env::temp_dir().join","ref_kind":"call","line":590}
+{"file":"src/map.rs","caller":"load_rank_manifest_missing_returns_empty","name":"std::env::temp_dir","ref_kind":"call","line":590}
+{"file":"src/map.rs","caller":"load_rank_manifest_missing_returns_empty","name":"std::fs::create_dir_all(&tmp).unwrap","ref_kind":"call","line":591}
+{"file":"src/map.rs","caller":"load_rank_manifest_missing_returns_empty","name":"std::fs::create_dir_all","ref_kind":"call","line":591}
+{"file":"src/map.rs","caller":"load_rank_manifest_missing_returns_empty","name":"load_rank_manifest(&tmp).expect","ref_kind":"call","line":592}
+{"file":"src/map.rs","caller":"load_rank_manifest_missing_returns_empty","name":"load_rank_manifest","ref_kind":"call","line":592}
+{"file":"src/map.rs","caller":"load_rank_manifest_missing_returns_empty","name":"std::fs::remove_dir_all(&tmp).ok","ref_kind":"call","line":594}
+{"file":"src/map.rs","caller":"load_rank_manifest_missing_returns_empty","name":"std::fs::remove_dir_all","ref_kind":"call","line":594}
+{"file":"src/map.rs","caller":"load_rank_manifest_roundtrips","name":"std::env::temp_dir().join","ref_kind":"call","line":599}
+{"file":"src/map.rs","caller":"load_rank_manifest_roundtrips","name":"std::env::temp_dir","ref_kind":"call","line":599}
+{"file":"src/map.rs","caller":"load_rank_manifest_roundtrips","name":"std::fs::create_dir_all(tmp.join(\".sigil\")).unwrap","ref_kind":"call","line":600}
+{"file":"src/map.rs","caller":"load_rank_manifest_roundtrips","name":"std::fs::create_dir_all","ref_kind":"call","line":600}
+{"file":"src/map.rs","caller":"load_rank_manifest_roundtrips","name":"tmp.join","ref_kind":"call","line":600}
+{"file":"src/map.rs","caller":"load_rank_manifest_roundtrips","name":"manifest","ref_kind":"call","line":601}
+{"file":"src/map.rs","caller":"load_rank_manifest_roundtrips","name":"std::fs::write(\n            tmp.join(\".sigil/rank.json\"),\n            serde_json::to_string(&m).unwrap(),\n        )\n        .unwrap","ref_kind":"call","line":602}
+{"file":"src/map.rs","caller":"load_rank_manifest_roundtrips","name":"tmp.join","ref_kind":"call","line":603}
+{"file":"src/map.rs","caller":"load_rank_manifest_roundtrips","name":"serde_json::to_string(&m).unwrap","ref_kind":"call","line":604}
+{"file":"src/map.rs","caller":"load_rank_manifest_roundtrips","name":"serde_json::to_string","ref_kind":"call","line":604}
+{"file":"src/map.rs","caller":"load_rank_manifest_roundtrips","name":"load_rank_manifest(&tmp).unwrap","ref_kind":"call","line":608}
+{"file":"src/map.rs","caller":"load_rank_manifest_roundtrips","name":"load_rank_manifest","ref_kind":"call","line":608}
+{"file":"src/map.rs","caller":"load_rank_manifest_roundtrips","name":"std::fs::remove_dir_all(&tmp).ok","ref_kind":"call","line":611}
+{"file":"src/map.rs","caller":"load_rank_manifest_roundtrips","name":"std::fs::remove_dir_all","ref_kind":"call","line":611}
 {"file":"src/markdown_formatter.rs","name":"crate::output::*","ref_kind":"import","line":1}
 {"file":"src/markdown_formatter.rs","caller":"format_markdown","name":"MarkdownOptions","ref_kind":"type_annotation","line":29}
 {"file":"src/markdown_formatter.rs","caller":"format_markdown","name":"DiffOutput","ref_kind":"type_annotation","line":29}

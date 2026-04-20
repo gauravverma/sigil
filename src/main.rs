@@ -213,6 +213,30 @@ enum Cli {
         #[arg(long)]
         json: bool,
     },
+    /// Budget-aware ranked digest of the codebase — drop into an agent's
+    /// context for cold-start orientation.
+    Map {
+        /// Project root directory
+        #[arg(short, long, default_value = ".")]
+        root: PathBuf,
+        /// Token budget. 0 = unlimited.
+        #[arg(long, default_value = "4000")]
+        tokens: usize,
+        /// Boost entities under this path prefix so the digest centers on
+        /// that subtree (useful for subsystem-focused runs).
+        #[arg(long)]
+        focus: Option<String>,
+        /// Max entities surfaced per file.
+        #[arg(long, default_value = "5")]
+        depth: usize,
+        /// Output format: markdown (default) or json.
+        #[arg(long, default_value = "markdown")]
+        format: String,
+        /// Also write the Markdown form to .sigil/SIGIL_MAP.md for the
+        /// agent-platform hook installers to point at.
+        #[arg(long)]
+        write: bool,
+    },
     /// Update sigil to the latest release
     Update,
 }
@@ -462,6 +486,43 @@ fn main() {
                 println!();
             } else {
                 print!("{}", query::format_refs(&refs));
+            }
+        }
+        Cli::Map { root, tokens, focus, depth, format, write } => {
+            let idx = query::load(&root)
+                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+            let rank_manifest = sigil::map::load_rank_manifest(&root)
+                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+            if rank_manifest.file_rank.is_empty() {
+                eprintln!("note: .sigil/rank.json not found — files will be listed without rank ordering");
+                eprintln!("      run `sigil index` (rank is on by default) to populate it");
+            }
+
+            let opts = sigil::map::MapOptions {
+                tokens,
+                focus,
+                depth,
+                ..sigil::map::MapOptions::default()
+            };
+            let map = sigil::map::build_map(&idx, &rank_manifest, &opts);
+
+            match format.as_str() {
+                "json" => {
+                    serde_json::to_writer_pretty(std::io::stdout(), &map).ok();
+                    println!();
+                }
+                "markdown" | "md" => {
+                    print!("{}", sigil::map::render_markdown(&map));
+                }
+                other => {
+                    eprintln!("error: unknown --format {}. expected `markdown` or `json`", other);
+                    std::process::exit(1);
+                }
+            }
+
+            if write {
+                sigil::map::write_sigil_map(&map, &root)
+                    .unwrap_or_else(|e| { eprintln!("error writing .sigil/SIGIL_MAP.md: {}", e); std::process::exit(1); });
             }
         }
         Cli::Update => {
