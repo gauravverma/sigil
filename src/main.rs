@@ -12,7 +12,38 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "sigil", about = "Structural code fingerprinting", version)]
+#[command(
+    name = "sigil",
+    about = "Deterministic structural code intelligence for AI coding agents",
+    long_about = "\
+Deterministic structural code intelligence for AI coding agents.
+
+sigil groups commands into two tiers (see `agent-adoption-plan.md` §15):
+
+  AGENT-FACING (narrated, budget-aware, markdown-first):
+    map         Ranked codebase digest for cold-start orientation
+    context     Signature + callers + callees + related types, budget-capped
+    review      PR review: structural diff + rank + blast + co-change misses
+    blast       Impact summary — callers, files, transitive reach
+    benchmark   Publishes median token reduction vs raw alternatives
+
+  SCRIPT-FACING (raw, unbounded, JSON-friendly):
+    search      Substring search over symbols + file paths
+    symbols     All entities in a file
+    children    Entities under a parent
+    callers     All refs targeting a symbol (unbounded)
+    callees     What a symbol calls
+    explore     Directory overview
+    duplicates  Clone report across the codebase
+    cochange    Git-history file-pair co-change miner
+
+  INSTALLERS (platform integrations, all idempotent):
+    claude · cursor · codex · gemini · opencode · aider · copilot · hook
+
+Plus `index` (build the .sigil/ index), `diff` (the 0.2.x structural diff
+engine), `update` (self-update via axoupdater).",
+    version
+)]
 enum Cli {
     /// Build the entity index for a project
     Index {
@@ -229,6 +260,9 @@ enum Cli {
         /// Pretty-print when --format=json.
         #[arg(long)]
         pretty: bool,
+        /// Drop test-file callers and test-file candidates.
+        #[arg(long)]
+        exclude_tests: bool,
     },
     /// Clone report — groups entities by body_hash to surface duplicated code.
     Duplicates {
@@ -326,6 +360,9 @@ enum Cli {
         /// Pretty-print when --format=json. Ignored otherwise.
         #[arg(long)]
         pretty: bool,
+        /// Drop test-file candidates and test-file callers from the bundle.
+        #[arg(long)]
+        exclude_tests: bool,
     },
     /// Budget-aware ranked digest of the codebase — drop into an agent's
     /// context for cold-start orientation.
@@ -350,6 +387,10 @@ enum Cli {
         /// agent-platform hook installers to point at.
         #[arg(long)]
         write: bool,
+        /// Drop test-file entities (matching `tests/`, `*_test.rs`,
+        /// `*.spec.ts`, etc.) from the map output.
+        #[arg(long)]
+        exclude_tests: bool,
     },
     /// Install or uninstall the Claude Code integration
     /// (CLAUDE.md capability block + PreToolUse hint hook).
@@ -663,7 +704,7 @@ fn main() {
                 print!("{}", query::format_refs(&refs));
             }
         }
-        Cli::Blast { symbol, root, depth, format, pretty } => {
+        Cli::Blast { symbol, root, depth, format, pretty, exclude_tests } => {
             let idx = query::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let rank = sigil::map::load_rank_manifest(&root).unwrap_or_default();
@@ -674,6 +715,7 @@ fn main() {
             let opts = sigil::blast::BlastOptions {
                 depth,
                 format: fmt,
+                exclude_tests,
             };
             let Some(report) = sigil::blast::run_blast(&idx, &rank, &symbol, &opts) else {
                 eprintln!("no entity named `{}` (skipping imports)", symbol);
@@ -781,7 +823,7 @@ fn main() {
                 }
             }
         }
-        Cli::Context { query: q, root, budget, depth, format, pretty } => {
+        Cli::Context { query: q, root, budget, depth, format, pretty, exclude_tests } => {
             let idx = query::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let Some(fmt) = sigil::context::ContextFormat::parse(&format) else {
@@ -792,6 +834,7 @@ fn main() {
                 budget,
                 depth,
                 format: fmt,
+                exclude_tests,
             };
             let Some(ctx) = sigil::context::build_context(&idx, &q, &opts) else {
                 eprintln!("no entity matches `{}`", q);
@@ -810,7 +853,7 @@ fn main() {
                 }
             }
         }
-        Cli::Map { root, tokens, focus, depth, format, write } => {
+        Cli::Map { root, tokens, focus, depth, format, write, exclude_tests } => {
             let idx = query::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let rank_manifest = sigil::map::load_rank_manifest(&root)
@@ -824,6 +867,7 @@ fn main() {
                 tokens,
                 focus,
                 depth,
+                exclude_tests,
                 ..sigil::map::MapOptions::default()
             };
             let map = sigil::map::build_map(&idx, &rank_manifest, &opts);

@@ -229,6 +229,10 @@ fn find_cochange_misses(
 // Renderers
 // ──────────────────────────────────────────────────────────────────────────
 
+fn is_import_kind(kind: &str) -> bool {
+    matches!(kind, "import" | "use" | "package")
+}
+
 fn change_tag(k: &ChangeKind) -> &'static str {
     match k {
         ChangeKind::Added => "added",
@@ -294,9 +298,18 @@ fn render_markdown(
     out.push_str("\n\n");
 
     // Section 1: Most impactful changes (top-K by impact score).
-    if !enriched.is_empty() {
-        out.push_str(&format!("## Most impactful ({})\n\n", opts.top_k.min(enriched.len())));
-        for entry in enriched.iter().take(opts.top_k) {
+    // Imports are excluded — they carry the blast radius of whatever they
+    // pull in (Entity, std types, etc.) and flood the section with what is
+    // structurally noise for a human reviewer. Imports still surface in the
+    // per-file structural deltas section below.
+    let impactful: Vec<&ReviewEntry<'_>> = enriched
+        .iter()
+        .filter(|e| !is_import_kind(&e.diff.kind))
+        .take(opts.top_k)
+        .collect();
+    if !impactful.is_empty() {
+        out.push_str(&format!("## Most impactful ({})\n\n", impactful.len()));
+        for entry in &impactful {
             out.push_str(&format!(
                 "- `{}` — {} in `{}` · rank {:.4}{}{}\n",
                 entry.diff.name,

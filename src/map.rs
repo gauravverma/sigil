@@ -48,6 +48,9 @@ pub struct MapOptions {
     /// When `focus` is set, multiply rank/blast scores for matching entities
     /// by this factor. 1.0 = no effect.
     pub focus_boost: f64,
+    /// Drop entities whose file path matches common test-file conventions
+    /// (`tests/`, `*_test.rs`, `*.spec.ts`, etc.). Default off — opt-in.
+    pub exclude_tests: bool,
 }
 
 impl Default for MapOptions {
@@ -57,6 +60,7 @@ impl Default for MapOptions {
             focus: None,
             depth: 5,
             focus_boost: 2.0,
+            exclude_tests: false,
         }
     }
 }
@@ -122,6 +126,9 @@ pub fn build_map(idx: &Index, rank: &RankManifest, opts: &MapOptions) -> Map {
         // Skip imports in the map — they're noise at this view level. Real
         // consumers query `get_file_symbols` directly when they want them.
         if e.kind == "import" {
+            continue;
+        }
+        if opts.exclude_tests && crate::entity::is_test_path(&e.file) {
             continue;
         }
         by_file.entry(e.file.as_str()).or_default().push(e);

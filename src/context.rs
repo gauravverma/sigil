@@ -32,6 +32,9 @@ pub struct ContextOptions {
     /// How many callers / callees / related types to include.
     pub depth: usize,
     pub format: ContextFormat,
+    /// When true, filter candidates whose file looks like test code and
+    /// also drop test-file callers from the output. Default off — opt-in.
+    pub exclude_tests: bool,
 }
 
 impl Default for ContextOptions {
@@ -40,6 +43,7 @@ impl Default for ContextOptions {
             budget: 1500,
             depth: 10,
             format: ContextFormat::Markdown,
+            exclude_tests: false,
         }
     }
 }
@@ -202,6 +206,14 @@ pub fn resolve<'a>(idx: &'a Index, query: &str) -> Vec<&'a Entity> {
 /// Primary entry point. Pure over `Index`.
 pub fn build_context(idx: &Index, query: &str, opts: &ContextOptions) -> Option<Context> {
     let resolved = resolve(idx, query);
+    let resolved: Vec<_> = if opts.exclude_tests {
+        resolved
+            .into_iter()
+            .filter(|e| !crate::entity::is_test_path(&e.file))
+            .collect()
+    } else {
+        resolved
+    };
     let chosen_entity = resolved.first()?;
     let chosen = SymbolRef::from_entity(chosen_entity);
     let alternatives: Vec<SymbolRef> = resolved
@@ -219,6 +231,7 @@ pub fn build_context(idx: &Index, query: &str, opts: &ContextOptions) -> Option<
     let callers_all: Vec<&Reference> = idx
         .refs_to(&chosen.name)
         .filter(|r| seen.insert((r.file.clone(), r.line)))
+        .filter(|r| !opts.exclude_tests || !crate::entity::is_test_path(&r.file))
         .collect();
     let callers: Vec<Edge> = callers_all
         .iter()
@@ -680,7 +693,7 @@ mod tests {
                 refr("a.rs", Some("process"), "helper", "call", 3),
             ],
         );
-        let ctx = build_context(&idx, "process", &ContextOptions { budget: 0, depth: 10, format: ContextFormat::Markdown }).unwrap();
+        let ctx = build_context(&idx, "process", &ContextOptions { budget: 0, depth: 10, format: ContextFormat::Markdown, exclude_tests: false }).unwrap();
         assert_eq!(ctx.chosen.name, "process");
         assert_eq!(ctx.callers.len(), 2);
         assert_eq!(ctx.callees.len(), 1, "only `helper` is a pure callee");
@@ -707,7 +720,7 @@ mod tests {
             ],
             vec![],
         );
-        let ctx = build_context(&idx, "Config", &ContextOptions { budget: 0, depth: 10, format: ContextFormat::Markdown }).unwrap();
+        let ctx = build_context(&idx, "Config", &ContextOptions { budget: 0, depth: 10, format: ContextFormat::Markdown, exclude_tests: false }).unwrap();
         assert_eq!(ctx.chosen.file, "a.rs");
         assert_eq!(ctx.alternatives.len(), 2);
     }
@@ -726,7 +739,7 @@ mod tests {
                 })
                 .collect(),
         );
-        let ctx = build_context(&idx, "foo", &ContextOptions { budget: 0, depth: 3, format: ContextFormat::Markdown }).unwrap();
+        let ctx = build_context(&idx, "foo", &ContextOptions { budget: 0, depth: 3, format: ContextFormat::Markdown, exclude_tests: false }).unwrap();
         assert_eq!(ctx.callers.len(), 3);
         assert_eq!(ctx.callees.len(), 3);
         assert_eq!(ctx.related_types.len(), 3);
@@ -749,7 +762,7 @@ mod tests {
                 .collect(),
         );
         // Absurdly small budget — implementation must keep at least 1 caller.
-        let ctx = build_context(&idx, "foo", &ContextOptions { budget: 50, depth: 50, format: ContextFormat::Markdown }).unwrap();
+        let ctx = build_context(&idx, "foo", &ContextOptions { budget: 50, depth: 50, format: ContextFormat::Markdown, exclude_tests: false }).unwrap();
         assert_eq!(ctx.chosen.name, "foo");
         assert!(ctx.callers.len() >= 1);
         assert!(ctx.callees.is_empty() || ctx.callees.len() < 50);
@@ -774,7 +787,7 @@ mod tests {
                 refr("a.rs", Some("foo"), "helper", "call", 2),
             ],
         );
-        let ctx = build_context(&idx, "foo", &ContextOptions { budget: 0, depth: 10, format: ContextFormat::Markdown }).unwrap();
+        let ctx = build_context(&idx, "foo", &ContextOptions { budget: 0, depth: 10, format: ContextFormat::Markdown, exclude_tests: false }).unwrap();
         let md = render_markdown(&ctx);
         assert!(md.starts_with("# `foo`"));
         assert!(md.contains("## Signature"));
@@ -814,7 +827,7 @@ mod tests {
         let ctx = build_context(
             &idx,
             "foo",
-            &ContextOptions { budget: 0, depth: 10, format: ContextFormat::Agent },
+            &ContextOptions { budget: 0, depth: 10, format: ContextFormat::Agent, exclude_tests: false },
         )
         .unwrap();
         let agent = render_agent_json(&ctx);

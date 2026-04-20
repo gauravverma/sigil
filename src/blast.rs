@@ -25,6 +25,9 @@ pub struct BlastOptions {
     /// How many top callers to surface. 0 = all.
     pub depth: usize,
     pub format: BlastFormat,
+    /// Drop test-file callers from the output and from resolution. Default
+    /// off — opt-in via `--exclude-tests`.
+    pub exclude_tests: bool,
 }
 
 impl Default for BlastOptions {
@@ -32,6 +35,7 @@ impl Default for BlastOptions {
         Self {
             depth: 10,
             format: BlastFormat::Markdown,
+            exclude_tests: false,
         }
     }
 }
@@ -97,6 +101,7 @@ pub fn run_blast(
     let mut matches: Vec<&Entity> = idx
         .entities_by_name(query)
         .filter(|e| e.kind != "import")
+        .filter(|e| !opts.exclude_tests || !crate::entity::is_test_path(&e.file))
         .collect();
     if matches.is_empty() {
         return None;
@@ -125,7 +130,10 @@ pub fn run_blast(
 
     // Join refs targeting `name` with caller-file rank. Sort by rank desc
     // so the most-load-bearing callers surface first.
-    let callers = rank_sorted_callers(idx, &chosen.name, &rank.file_rank);
+    let mut callers = rank_sorted_callers(idx, &chosen.name, &rank.file_rank);
+    if opts.exclude_tests {
+        callers.retain(|r| !crate::entity::is_test_path(&r.file));
+    }
 
     let (top_callers, skipped_callers) = if opts.depth == 0 {
         (callers, 0)
