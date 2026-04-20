@@ -14,7 +14,11 @@ name = "sigil"
 path = "src/main.rs"
 
 [dependencies]
+# Transitional: kept in place during Phase 0 migration. Call sites switch
+# over to the vendored src/parser/ module over days 2–6, then this dep is
+# removed on day 6 of Phase 0.
 codeix = { git = "https://github.com/montanetech/codeix", tag = "v0.5.0" }
+
 anyhow = "1"
 blake3 = "1"
 clap = { version = "4", features = ["derive"] }
@@ -26,6 +30,40 @@ ignore = "0.4"
 similar = "2"
 toml = "0.8"
 axoupdater = { version = "0.10", features = ["github_releases", "blocking"] }
+
+# Tree-sitter core (for the vendored src/parser/).
+# Language grammars are feature-gated; defaults match codeix's defaults.
+tree-sitter = "0.26"
+
+tree-sitter-python     = { version = "0.25", optional = true }
+tree-sitter-rust       = { version = "0.24", optional = true }
+tree-sitter-javascript = { version = "0.25", optional = true }
+tree-sitter-typescript = { version = "0.23", optional = true }
+tree-sitter-go         = { version = "0.25", optional = true }
+tree-sitter-java       = { version = "0.23", optional = true }
+tree-sitter-c          = { version = "0.24", optional = true }
+tree-sitter-cpp        = { version = "0.23", optional = true }
+tree-sitter-ruby       = { version = "0.23", optional = true }
+tree-sitter-c-sharp    = { version = "0.23", optional = true }
+tree-sitter-md         = { version = "0.5", features = ["parser"], optional = true }
+
+[features]
+default = [
+    "lang-python", "lang-rust", "lang-javascript", "lang-typescript",
+    "lang-go", "lang-java", "lang-c", "lang-cpp", "lang-ruby",
+    "lang-csharp", "lang-markdown",
+]
+lang-python     = ["dep:tree-sitter-python"]
+lang-rust       = ["dep:tree-sitter-rust"]
+lang-javascript = ["dep:tree-sitter-javascript"]
+lang-typescript = ["dep:tree-sitter-typescript"]
+lang-go         = ["dep:tree-sitter-go"]
+lang-java       = ["dep:tree-sitter-java"]
+lang-c          = ["dep:tree-sitter-c"]
+lang-cpp        = ["dep:tree-sitter-cpp"]
+lang-ruby       = ["dep:tree-sitter-ruby"]
+lang-csharp     = ["dep:tree-sitter-c-sharp"]
+lang-markdown   = ["dep:tree-sitter-md"]
 
 # The profile that 'dist' will build with
 [profile.dist]

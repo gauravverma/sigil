@@ -18,6 +18,7 @@ pub mod markdown_formatter;
 pub mod matcher;
 pub mod meta;
 pub mod output;
+pub mod parser;
 pub mod query;
 pub mod signature;
 pub mod writer;
