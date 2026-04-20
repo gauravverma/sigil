@@ -6,13 +6,13 @@ pub fn parse_yaml_file(
     source: &str,
     file_path: &str,
 ) -> Result<(Vec<Entity>, Vec<Reference>), String> {
-    let value: serde_yaml::Value =
-        serde_yaml::from_str(source).map_err(|e| format!("YAML parse error: {}", e))?;
+    let value: serde_yml::Value =
+        serde_yml::from_str(source).map_err(|e| format!("YAML parse error: {}", e))?;
 
     let mut entities = Vec::new();
     let lines: Vec<&str> = source.lines().collect();
 
-    if let serde_yaml::Value::Mapping(map) = &value {
+    if let serde_yml::Value::Mapping(map) = &value {
         let mut search_start_line = 0usize; // 0-indexed line index
         extract_mapping_entities(
             source,
@@ -96,13 +96,13 @@ fn indent_level(line: &str) -> usize {
 fn find_value_end_line(
     lines: &[&str],
     key_line_idx: usize,
-    value: &serde_yaml::Value,
+    value: &serde_yml::Value,
 ) -> u32 {
     let key_line = lines[key_line_idx];
     let key_indent = indent_level(key_line);
 
     match value {
-        serde_yaml::Value::Mapping(_) | serde_yaml::Value::Sequence(_) => {
+        serde_yml::Value::Mapping(_) | serde_yml::Value::Sequence(_) => {
             // Check if it's flow-style (inline { } or [ ])
             let trimmed = key_line.trim_start();
             // Find the colon and what follows
@@ -248,30 +248,30 @@ fn find_block_end_line(
 }
 
 /// Return the YAML type name for a value.
-fn yaml_type_name(value: &serde_yaml::Value) -> &'static str {
+fn yaml_type_name(value: &serde_yml::Value) -> &'static str {
     match value {
-        serde_yaml::Value::Null => "null",
-        serde_yaml::Value::Bool(_) => "boolean",
-        serde_yaml::Value::Number(_) => "number",
-        serde_yaml::Value::String(_) => "string",
-        serde_yaml::Value::Sequence(_) => "array",
-        serde_yaml::Value::Mapping(_) => "object",
-        serde_yaml::Value::Tagged(tagged) => yaml_type_name(&tagged.value),
+        serde_yml::Value::Null => "null",
+        serde_yml::Value::Bool(_) => "boolean",
+        serde_yml::Value::Number(_) => "number",
+        serde_yml::Value::String(_) => "string",
+        serde_yml::Value::Sequence(_) => "array",
+        serde_yml::Value::Mapping(_) => "object",
+        serde_yml::Value::Tagged(tagged) => yaml_type_name(&tagged.value),
     }
 }
 
 /// Return the entity kind for a value.
-fn entity_kind(value: &serde_yaml::Value) -> &'static str {
+fn entity_kind(value: &serde_yml::Value) -> &'static str {
     match value {
-        serde_yaml::Value::Mapping(_) => "object",
-        serde_yaml::Value::Sequence(_) => "array",
-        serde_yaml::Value::Tagged(tagged) => entity_kind(&tagged.value),
+        serde_yml::Value::Mapping(_) => "object",
+        serde_yml::Value::Sequence(_) => "array",
+        serde_yml::Value::Tagged(tagged) => entity_kind(&tagged.value),
         _ => "property",
     }
 }
 
 /// Extract the string representation of a YAML mapping key.
-fn key_as_string(key: &serde_yaml::Value) -> String {
+fn key_as_string(key: &serde_yml::Value) -> String {
     match key.as_str() {
         Some(s) => s.to_string(),
         None => format!("{:?}", key),
@@ -282,7 +282,7 @@ fn key_as_string(key: &serde_yaml::Value) -> String {
 fn extract_mapping_entities(
     source: &str,
     file_path: &str,
-    map: &serde_yaml::Mapping,
+    map: &serde_yml::Mapping,
     parent: Option<&str>,
     lines: &[&str],
     search_start_line: &mut usize,
@@ -329,10 +329,10 @@ fn extract_mapping_entities(
 
         // Recurse into nested mappings
         let inner_value = match value {
-            serde_yaml::Value::Tagged(tagged) => &tagged.value,
+            serde_yml::Value::Tagged(tagged) => &tagged.value,
             other => other,
         };
-        if let serde_yaml::Value::Mapping(nested_map) = inner_value {
+        if let serde_yml::Value::Mapping(nested_map) = inner_value {
             // For recursion, child keys start on the line after the parent key
             let mut child_search_start = key_line_idx + 1;
             extract_mapping_entities(
