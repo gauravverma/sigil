@@ -122,7 +122,7 @@ tar -xzf sigil-full-x86_64-unknown-linux-gnu.tar.gz
 sudo mv sigil-full-x86_64-unknown-linux-gnu/sigil /usr/local/bin/
 ```
 
-Available archives: `sigil-full-aarch64-apple-darwin.tar.gz`, `sigil-full-x86_64-apple-darwin.tar.gz`, `sigil-full-x86_64-unknown-linux-gnu.tar.gz`, `sigil-full-x86_64-pc-windows-msvc.zip`.
+Available archives: `sigil-full-aarch64-apple-darwin.tar.gz`, `sigil-full-x86_64-unknown-linux-gnu.tar.gz`, `sigil-full-x86_64-pc-windows-msvc.zip`. (Intel macOS: use the lean archive above; the full-feature build is Apple Silicon only.)
 
 ~70 MB binary. Adds:
 - **DuckDB backend** — persistent materialized index for codebases above ~5 MB of JSONL. Auto-engages; you don't have to ask. Critical if you're working on fastapi / zod / Linux-kernel-scale codebases.

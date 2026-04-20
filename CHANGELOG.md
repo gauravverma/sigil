@@ -4,6 +4,23 @@ All notable changes to sigil are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] — 2026-04-20
+
+### Changed
+
+- Dependency bumps: `tiktoken-rs` 0.7 → 0.11, `toml` 0.8 → 1, `similar`
+  2 → 3, `serde_yaml` → `serde_yml` (unmaintained → maintained fork),
+  `pyo3` 0.24 → 0.28 with migration to `attach` / `Py<PyAny>`. Plus
+  SemVer-compatible patch updates via `cargo update`.
+
+### Fixed
+
+- `.github/workflows/release-full.yml`: drop `x86_64-apple-darwin`
+  matrix entry. GitHub retired the `macos-13` hosted runner image on
+  2025-12-08, so the Intel matrix job on v0.3.0 queued indefinitely
+  with no runner. Remaining targets: `aarch64-apple-darwin`,
+  `x86_64-unknown-linux-gnu`, `x86_64-pc-windows-msvc`.
+
 ## [0.3.0] — 2026-04-20 — Phase 0 + Phase 1: in-house parsing, agent surface, DuckDB backend
 
 Three bundled releases shipping together: the codeix-free parser layer,
