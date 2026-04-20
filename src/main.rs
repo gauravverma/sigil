@@ -1119,6 +1119,24 @@ fn run_query(sql: &str, root: &std::path::Path, format: &str, max_cell_width: us
             std::process::exit(1);
         }
     };
+    // Empty-index guard mirrors `Backend::load`'s check for the router
+    // path — an empty-tables open (post-aa86ac9) would silently return
+    // zero rows for every query, which is surprising to users who
+    // expected a "run sigil index first" nudge.
+    match db.len() {
+        Ok((0, 0)) => {
+            eprintln!(
+                "error: sigil index is empty at {} — run `sigil index` first to populate .sigil/*.jsonl.",
+                root.display()
+            );
+            std::process::exit(1);
+        }
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!("error: {}", e);
+            std::process::exit(1);
+        }
+    }
     let result = match db.exec_query(sql) {
         Ok(r) => r,
         Err(e) => {
