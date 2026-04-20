@@ -22,9 +22,10 @@ jobs:
       - uses: PyO3/maturin-action@v1
         with:
           command: build
-          args: --release --manifest-path python/Cargo.toml --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 -i python3.12 -i python3.13
+          args: --release --manifest-path python/Cargo.toml --out dist
           target: ${{ matrix.target }}
           manylinux: 2_28
+          sccache: true
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-linux-${{ matrix.target }}
@@ -47,6 +48,7 @@ jobs:
           command: build
           args: --release --manifest-path python/Cargo.toml --out dist
           target: ${{ matrix.target }}
+          sccache: true
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-macos-${{ matrix.target }}
@@ -65,6 +67,7 @@ jobs:
           command: build
           args: --release --manifest-path python/Cargo.toml --out dist
           target: x64
+          sccache: true
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-windows-x64
