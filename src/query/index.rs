@@ -16,6 +16,76 @@ use anyhow::{Context, Result};
 
 use crate::entity::{Entity, Reference};
 
+/// What a `search()` invocation should look at.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Scope {
+    /// Everything the index knows about (symbols + files). Text blocks
+    /// are omitted — sigil doesn't index docstrings/comments today.
+    All,
+    /// Match only against entity names.
+    Symbols,
+    /// Match only against file paths.
+    Files,
+}
+
+impl Scope {
+    /// Parse codeix-compatible scope strings so main.rs's `--scope` flag
+    /// keeps working across the day-6 swap.
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "symbols" | "symbol" => Scope::Symbols,
+            "files" | "file" => Scope::Files,
+            _ => Scope::All,
+        }
+    }
+}
+
+/// A single search hit. References into the index — lifetime-bound.
+#[derive(Debug)]
+pub enum SearchHit<'a> {
+    Symbol(&'a Entity),
+    File(FileHit),
+}
+
+/// A file match from `search()` or `explore_*()`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct FileHit {
+    pub path: String,
+    pub lang: Option<String>,
+    pub entity_count: usize,
+}
+
+/// One row of `explore_dir_overview()`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct DirSummary {
+    pub path: String,
+    pub file_count: usize,
+    pub langs: Vec<String>,
+}
+
+/// Directory portion of `file`, or "" for the root.
+fn parent_dir(file: &str) -> &str {
+    match file.rsplit_once('/') {
+        Some((dir, _)) => dir,
+        None => "",
+    }
+}
+
+/// Language name for a file, if tree-sitter (or sigil's custom parsers) handle it.
+fn lang_for(file: &str) -> Option<&'static str> {
+    let ext = file.rsplit_once('.').map(|(_, e)| e)?;
+    if let Some(lang) = crate::parser::languages::detect_language(ext) {
+        return Some(lang);
+    }
+    // Sigil's custom parsers beyond codeix's coverage.
+    match ext {
+        "json" => Some("json"),
+        "yaml" | "yml" => Some("yaml"),
+        "toml" => Some("toml"),
+        _ => None,
+    }
+}
+
 /// In-memory index over sigil's entities and references.
 ///
 /// Lookup complexity: O(1) for exact-name/exact-file lookups via the maps;
@@ -181,6 +251,158 @@ impl Index {
             None => true,
         });
         apply_limit(iter, limit)
+    }
+
+    /// Unique file paths covered by this index, sorted.
+    pub fn files(&self) -> Vec<String> {
+        let mut files: Vec<String> = self.entities_by_file.keys().cloned().collect();
+        files.sort();
+        files
+    }
+
+    /// Directory overview: for each directory containing indexed files,
+    /// return (file count, unique languages). Used by `sigil explore`.
+    ///
+    /// `path_prefix`: if Some, restrict to files under this prefix (matches
+    /// the prefix semantics codeix's `explore_dir_overview` uses).
+    pub fn explore_dir_overview(&self, path_prefix: Option<&str>) -> Vec<DirSummary> {
+        let mut by_dir: std::collections::BTreeMap<String, (usize, std::collections::BTreeSet<String>)> =
+            std::collections::BTreeMap::new();
+
+        for file in self.entities_by_file.keys() {
+            if let Some(prefix) = path_prefix {
+                if !file.starts_with(prefix) {
+                    continue;
+                }
+            }
+            let dir = parent_dir(file).to_string();
+            let lang = lang_for(file);
+            let entry = by_dir.entry(dir).or_default();
+            entry.0 += 1;
+            if let Some(l) = lang {
+                entry.1.insert(l.to_string());
+            }
+        }
+
+        by_dir
+            .into_iter()
+            .map(|(path, (file_count, langs))| DirSummary {
+                path,
+                file_count,
+                langs: langs.into_iter().collect(),
+            })
+            .collect()
+    }
+
+    /// Flat file listing with directory + language, capped per directory.
+    /// Matches the shape of codeix's `explore_files_capped`.
+    pub fn explore_files_capped(
+        &self,
+        path_prefix: Option<&str>,
+        cap_per_dir: usize,
+    ) -> Vec<(String, String, Option<String>)> {
+        let mut by_dir: std::collections::BTreeMap<String, Vec<String>> =
+            std::collections::BTreeMap::new();
+
+        let mut files: Vec<&String> = self.entities_by_file.keys().collect();
+        files.sort();
+
+        for file in files {
+            if let Some(prefix) = path_prefix {
+                if !file.starts_with(prefix) {
+                    continue;
+                }
+            }
+            let dir = parent_dir(file).to_string();
+            by_dir.entry(dir).or_default().push(file.clone());
+        }
+
+        let mut out = Vec::new();
+        for (dir, mut entries) in by_dir {
+            entries.sort();
+            if cap_per_dir > 0 && entries.len() > cap_per_dir {
+                entries.truncate(cap_per_dir);
+            }
+            for f in entries {
+                let lang = lang_for(&f).map(|s| s.to_string());
+                out.push((dir.clone(), f, lang));
+            }
+        }
+        out
+    }
+
+    /// Search across symbols and/or files by substring (case-insensitive).
+    /// Mirrors the shape codeix's `search()` returns, minus text-block hits
+    /// (sigil doesn't index doc/comment text today).
+    pub fn search(
+        &self,
+        query: &str,
+        scope: Scope,
+        kind_filter: Option<&str>,
+        path_prefix: Option<&str>,
+        limit: usize,
+    ) -> Vec<SearchHit<'_>> {
+        if query.is_empty() {
+            return Vec::new();
+        }
+        let q = query.to_lowercase();
+        let mut hits: Vec<SearchHit<'_>> = Vec::new();
+
+        let want_symbols = matches!(scope, Scope::All | Scope::Symbols);
+        let want_files = matches!(scope, Scope::All | Scope::Files);
+
+        if want_symbols {
+            for e in &self.entities {
+                if let Some(prefix) = path_prefix {
+                    if !e.file.starts_with(prefix) {
+                        continue;
+                    }
+                }
+                if let Some(k) = kind_filter {
+                    if e.kind != k {
+                        continue;
+                    }
+                }
+                if e.name.to_lowercase().contains(&q) {
+                    hits.push(SearchHit::Symbol(e));
+                    if limit > 0 && hits.len() >= limit {
+                        return hits;
+                    }
+                }
+            }
+        }
+
+        if want_files {
+            let mut files: Vec<&String> = self.entities_by_file.keys().collect();
+            files.sort();
+            for f in files {
+                if let Some(prefix) = path_prefix {
+                    if !f.starts_with(prefix) {
+                        continue;
+                    }
+                }
+                if f.to_lowercase().contains(&q) {
+                    hits.push(SearchHit::File(FileHit {
+                        path: f.clone(),
+                        lang: lang_for(f).map(|s| s.to_string()),
+                        entity_count: self.entities_by_file.get(f).map(|v| v.len()).unwrap_or(0),
+                    }));
+                    if limit > 0 && hits.len() >= limit {
+                        return hits;
+                    }
+                }
+            }
+        }
+
+        hits
+    }
+
+    /// Single-project index — codeix's multi-project MountTable is gone.
+    /// Returning a single empty-string entry matches codeix's convention
+    /// ("" = the root project), which the existing `format_*` helpers
+    /// already handle.
+    pub fn list_projects(&self) -> Vec<String> {
+        vec![String::new()]
     }
 
     /// All entities in `file` whose `parent` matches `parent`.
@@ -504,6 +726,172 @@ mod tests {
         );
         let callers: Vec<&str> = idx.get_callers("foo", None, 0).iter().map(|r| r.file.as_str()).collect();
         assert_eq!(callers, vec!["a.rs", "b.rs", "c.rs"]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Day-5 API: search / explore_dir_overview / explore_files_capped /
+    // list_projects.
+    // ──────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn search_matches_symbol_name_substring_case_insensitive() {
+        let idx = Index::build(
+            vec![
+                ent("src/a.rs", "ParseError", "struct"),
+                ent("src/a.rs", "parse", "function"),
+                ent("src/b.rs", "helper", "function"),
+            ],
+            vec![],
+        );
+        let hits = idx.search("parse", Scope::Symbols, None, None, 0);
+        let names: Vec<&str> = hits
+            .iter()
+            .filter_map(|h| match h {
+                SearchHit::Symbol(e) => Some(e.name.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(names, vec!["ParseError", "parse"]);
+
+        // case-insensitive
+        let hits2 = idx.search("PARSE", Scope::Symbols, None, None, 0);
+        assert_eq!(hits2.len(), 2);
+    }
+
+    #[test]
+    fn search_respects_kind_and_path_prefix_filters() {
+        let idx = Index::build(
+            vec![
+                ent("src/a.rs", "ParseError", "struct"),
+                ent("src/a.rs", "parse", "function"),
+                ent("tests/parse_test.rs", "parse", "function"),
+            ],
+            vec![],
+        );
+        let hits = idx.search("parse", Scope::Symbols, Some("function"), None, 0);
+        assert_eq!(hits.len(), 2);
+
+        let hits_src = idx.search("parse", Scope::Symbols, None, Some("src/"), 0);
+        assert_eq!(hits_src.len(), 2);
+
+        let hits_tests = idx.search("parse", Scope::Symbols, None, Some("tests/"), 0);
+        assert_eq!(hits_tests.len(), 1);
+    }
+
+    #[test]
+    fn search_scope_controls_symbols_vs_files() {
+        let idx = Index::build(
+            vec![
+                ent("src/parse.rs", "helper", "function"),
+                ent("src/b.rs", "parse_input", "function"),
+            ],
+            vec![],
+        );
+        let all = idx.search("parse", Scope::All, None, None, 0);
+        let sym = idx.search("parse", Scope::Symbols, None, None, 0);
+        let fil = idx.search("parse", Scope::Files, None, None, 0);
+        assert_eq!(all.len(), sym.len() + fil.len());
+        assert!(sym.iter().all(|h| matches!(h, SearchHit::Symbol(_))));
+        assert!(fil.iter().all(|h| matches!(h, SearchHit::File(_))));
+    }
+
+    #[test]
+    fn search_empty_query_returns_nothing() {
+        let idx = Index::build(vec![ent("a.rs", "foo", "function")], vec![]);
+        assert!(idx.search("", Scope::All, None, None, 0).is_empty());
+    }
+
+    #[test]
+    fn search_limit_stops_early() {
+        let idx = Index::build(
+            (0..20).map(|i| ent(&format!("a{i}.rs"), "foo", "function")).collect(),
+            vec![],
+        );
+        assert_eq!(idx.search("foo", Scope::Symbols, None, None, 5).len(), 5);
+        assert_eq!(idx.search("foo", Scope::Symbols, None, None, 0).len(), 20);
+    }
+
+    #[test]
+    fn explore_dir_overview_groups_files_by_dir() {
+        let idx = Index::build(
+            vec![
+                ent("src/a.rs", "foo", "function"),
+                ent("src/a.rs", "bar", "function"),
+                ent("src/b.rs", "baz", "function"),
+                ent("tests/t.rs", "t", "function"),
+                ent("README.md", "hi", "section"),
+            ],
+            vec![],
+        );
+        let dirs = idx.explore_dir_overview(None);
+        let by_path: std::collections::HashMap<&str, &DirSummary> =
+            dirs.iter().map(|d| (d.path.as_str(), d)).collect();
+        assert_eq!(by_path.get("src").unwrap().file_count, 2);
+        assert_eq!(by_path.get("tests").unwrap().file_count, 1);
+        assert!(by_path.get("").is_some(), "root-level files land in the empty-string dir");
+    }
+
+    #[test]
+    fn explore_dir_overview_respects_prefix() {
+        let idx = Index::build(
+            vec![
+                ent("src/a.rs", "foo", "function"),
+                ent("tests/t.rs", "t", "function"),
+            ],
+            vec![],
+        );
+        let src_only = idx.explore_dir_overview(Some("src/"));
+        assert_eq!(src_only.len(), 1);
+        assert_eq!(src_only[0].path, "src");
+    }
+
+    #[test]
+    fn explore_files_capped_caps_per_dir() {
+        let idx = Index::build(
+            (0..10)
+                .map(|i| ent(&format!("src/f{i}.rs"), "x", "function"))
+                .chain(std::iter::once(ent("tests/t.rs", "t", "function")))
+                .collect(),
+            vec![],
+        );
+        let capped = idx.explore_files_capped(None, 3);
+        let src_count = capped.iter().filter(|(d, _, _)| d == "src").count();
+        let tests_count = capped.iter().filter(|(d, _, _)| d == "tests").count();
+        assert_eq!(src_count, 3);
+        assert_eq!(tests_count, 1);
+    }
+
+    #[test]
+    fn list_projects_returns_single_root() {
+        let idx = Index::build(vec![], vec![]);
+        assert_eq!(idx.list_projects(), vec![String::new()]);
+    }
+
+    #[test]
+    fn scope_from_str_parses_codeix_strings() {
+        assert_eq!(Scope::from_str("symbols"), Scope::Symbols);
+        assert_eq!(Scope::from_str("symbol"), Scope::Symbols);
+        assert_eq!(Scope::from_str("files"), Scope::Files);
+        assert_eq!(Scope::from_str("all"), Scope::All);
+        assert_eq!(Scope::from_str("gibberish"), Scope::All);
+    }
+
+    #[test]
+    fn lang_for_covers_rust_and_sigil_native_formats() {
+        assert_eq!(super::lang_for("src/a.rs"), Some("rust"));
+        assert_eq!(super::lang_for("data.json"), Some("json"));
+        assert_eq!(super::lang_for("config.yaml"), Some("yaml"));
+        assert_eq!(super::lang_for("config.yml"), Some("yaml"));
+        assert_eq!(super::lang_for("Cargo.toml"), Some("toml"));
+        assert_eq!(super::lang_for("README.md"), Some("markdown"));
+        assert_eq!(super::lang_for("nosuch"), None);
+    }
+
+    #[test]
+    fn parent_dir_handles_root_and_nested() {
+        assert_eq!(super::parent_dir("src/a.rs"), "src");
+        assert_eq!(super::parent_dir("src/foo/bar.rs"), "src/foo");
+        assert_eq!(super::parent_dir("top.rs"), "");
     }
 
     #[test]

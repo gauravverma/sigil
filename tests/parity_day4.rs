@@ -168,6 +168,96 @@ fn get_children_returns_only_matching_parent() {
     }
 }
 
+// ──────────────────────────────────────────────────────────────────────
+// Day-5 surface: search / explore_dir_overview / explore_files_capped /
+// list_projects against sigil's live `.sigil/`.
+// ──────────────────────────────────────────────────────────────────────
+
+#[test]
+fn search_finds_entity_struct_in_sigil_source() {
+    use sigil::query::index::{Scope, SearchHit};
+    let root = project_root();
+    if !has_index(&root) {
+        return;
+    }
+    let idx = load_sigil(&root);
+
+    let hits = idx.search("Entity", Scope::Symbols, Some("struct"), None, 0);
+    let in_entity_rs: Vec<_> = hits
+        .iter()
+        .filter_map(|h| match h {
+            SearchHit::Symbol(e) if e.file == "src/entity.rs" => Some(e.name.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        in_entity_rs.contains(&"Entity"),
+        "expected struct Entity in src/entity.rs search results, got {in_entity_rs:?}"
+    );
+}
+
+#[test]
+fn search_files_scope_returns_path_matches() {
+    use sigil::query::index::{Scope, SearchHit};
+    let root = project_root();
+    if !has_index(&root) {
+        return;
+    }
+    let idx = load_sigil(&root);
+
+    let hits = idx.search("entity", Scope::Files, None, None, 0);
+    assert!(hits.iter().any(|h| matches!(h, SearchHit::File(f) if f.path == "src/entity.rs")));
+    for h in &hits {
+        assert!(matches!(h, SearchHit::File(_)));
+    }
+}
+
+#[test]
+fn explore_dir_overview_covers_src_and_tests() {
+    let root = project_root();
+    if !has_index(&root) {
+        return;
+    }
+    let idx = load_sigil(&root);
+
+    let dirs = idx.explore_dir_overview(None);
+    let paths: Vec<&str> = dirs.iter().map(|d| d.path.as_str()).collect();
+    assert!(paths.contains(&"src"), "expected `src` in explore output, got {paths:?}");
+    let src = dirs.iter().find(|d| d.path == "src").unwrap();
+    assert!(src.file_count > 5);
+    assert!(src.langs.contains(&"rust".to_string()));
+}
+
+#[test]
+fn explore_files_capped_caps_per_directory() {
+    let root = project_root();
+    if !has_index(&root) {
+        return;
+    }
+    let idx = load_sigil(&root);
+
+    let full = idx.explore_files_capped(None, 0); // unlimited
+    let capped = idx.explore_files_capped(None, 2);
+
+    // For every directory, the capped listing is ≤ 2 rows.
+    let mut by_dir: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    for (dir, _, _) in &capped {
+        *by_dir.entry(dir.clone()).or_default() += 1;
+    }
+    assert!(by_dir.values().all(|&n| n <= 2));
+    assert!(capped.len() <= full.len());
+}
+
+#[test]
+fn list_projects_returns_single_empty_root() {
+    let root = project_root();
+    if !has_index(&root) {
+        return;
+    }
+    let idx = load_sigil(&root);
+    assert_eq!(idx.list_projects(), vec![String::new()]);
+}
+
 #[test]
 fn limit_never_exceeds_requested() {
     let root = project_root();
