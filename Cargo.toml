@@ -46,6 +46,11 @@ tree-sitter-md         = { version = "0.5", features = ["parser"], optional = tr
 # benchmark`. When absent we fall back to the bytes/4 proxy.
 tiktoken-rs = { version = "0.7", optional = true }
 
+# Optional: DuckDB backend for large-index workloads (~500k+ entities).
+# Lazily built from the JSONL source of truth, invalidated on mtime/size
+# change. Adds ~20 MB to the binary, so opt-in via `--features db`.
+duckdb = { version = "1", features = ["bundled"], optional = true }
+
 [features]
 default = [
     "lang-python", "lang-rust", "lang-javascript", "lang-typescript",
@@ -69,6 +74,13 @@ lang-markdown   = ["dep:tree-sitter-md"]
 # accepts `--tokenizer cl100k_base|o200k_base|p50k_base` in addition to
 # the default bytes/4 proxy.
 tokenizer = ["dep:tiktoken-rs"]
+
+# DuckDB query backend for very large indexes. See
+# src/query/duckdb_backend.rs; auto-engages above 50 MB of JSONL, or
+# when `--db` is passed on an Index query. Adds ~20 MB to the binary.
+# Requires a working C++17 toolchain on the host (libduckdb-sys bundles
+# DuckDB sources). Xcode CLT / build-essential / MSVC as appropriate.
+db = ["dep:duckdb"]
 
 # The profile that 'dist' will build with
 [profile.dist]

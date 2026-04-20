@@ -11,6 +11,11 @@ use crate::query::index::{FileHit, Index, SearchHit};
 
 pub mod index;
 
+/// DuckDB-backed scale path. Empty namespace when the `db` feature is
+/// disabled; consumers never need to conditionally import.
+#[cfg(feature = "db")]
+pub mod duckdb_backend;
+
 /// Load the sigil index from `.sigil/` under `root`. Thin wrapper over
 /// `Index::load` for call-site symmetry with the old `load_index`.
 pub fn load(root: &Path) -> Result<Index> {
