@@ -213,6 +213,59 @@ enum Cli {
         #[arg(long)]
         json: bool,
     },
+    /// Impact summary for a symbol — blast counts + top callers by file rank.
+    Blast {
+        /// Symbol name.
+        symbol: String,
+        /// Project root directory
+        #[arg(short, long, default_value = ".")]
+        root: PathBuf,
+        /// How many top callers to surface. 0 = all.
+        #[arg(long, default_value = "10")]
+        depth: usize,
+        /// Output format: markdown (default), json, or agent (compact JSON).
+        #[arg(long, default_value = "markdown")]
+        format: String,
+        /// Pretty-print when --format=json.
+        #[arg(long)]
+        pretty: bool,
+    },
+    /// Clone report — groups entities by body_hash to surface duplicated code.
+    Duplicates {
+        /// Project root directory
+        #[arg(short, long, default_value = ".")]
+        root: PathBuf,
+        /// Ignore entities whose body is fewer than this many lines.
+        #[arg(long, default_value = "3")]
+        min_lines: u32,
+        /// Drop groups larger than this (likely auto-generated). 0 = no cap.
+        #[arg(long, default_value = "0")]
+        max_group_size: usize,
+        /// Output format: markdown (default) or json.
+        #[arg(long, default_value = "markdown")]
+        format: String,
+        /// Pretty-print when --format=json.
+        #[arg(long)]
+        pretty: bool,
+    },
+    /// Token-reduction benchmark: sigil commands vs raw alternatives.
+    Benchmark {
+        /// Project root directory
+        #[arg(short, long, default_value = ".")]
+        root: PathBuf,
+        /// Git refspec for the PR-review query.
+        #[arg(long, default_value = "HEAD~1..HEAD")]
+        refspec: String,
+        /// Symbol for the context query. Defaults to the highest-blast entity.
+        #[arg(long)]
+        symbol: Option<String>,
+        /// Output format: markdown (default) or json.
+        #[arg(long, default_value = "markdown")]
+        format: String,
+        /// Pretty-print when --format=json.
+        #[arg(long)]
+        pretty: bool,
+    },
     /// PR review artifact — structural diff enriched with rank, blast
     /// radius, and co-change misses. Reviewer reads this instead of
     /// `git diff`.
@@ -547,6 +600,77 @@ fn main() {
                 println!();
             } else {
                 print!("{}", query::format_refs(&refs));
+            }
+        }
+        Cli::Blast { symbol, root, depth, format, pretty } => {
+            let idx = query::load(&root)
+                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+            let rank = sigil::map::load_rank_manifest(&root).unwrap_or_default();
+            let Some(fmt) = sigil::blast::BlastFormat::parse(&format) else {
+                eprintln!("error: unknown --format {}. expected markdown|json|agent", format);
+                std::process::exit(1);
+            };
+            let opts = sigil::blast::BlastOptions {
+                depth,
+                format: fmt,
+            };
+            let Some(report) = sigil::blast::run_blast(&idx, &rank, &symbol, &opts) else {
+                eprintln!("no entity named `{}` (skipping imports)", symbol);
+                eprintln!("hint: try `sigil search {}` to find similar symbols", symbol);
+                std::process::exit(2);
+            };
+            match fmt {
+                sigil::blast::BlastFormat::Markdown => print!("{}", sigil::blast::render_markdown(&report)),
+                sigil::blast::BlastFormat::Json => println!("{}", sigil::blast::render_json(&report, pretty)),
+                sigil::blast::BlastFormat::Agent => println!("{}", sigil::blast::render_agent(&report)),
+            }
+        }
+        Cli::Duplicates { root, min_lines, max_group_size, format, pretty } => {
+            let idx = query::load(&root)
+                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+            let Some(fmt) = sigil::duplicates::DuplicatesFormat::parse(&format) else {
+                eprintln!("error: unknown --format {}. expected markdown|json", format);
+                std::process::exit(1);
+            };
+            let opts = sigil::duplicates::DuplicatesOptions {
+                min_lines,
+                max_group_size,
+                format: fmt,
+                ..sigil::duplicates::DuplicatesOptions::default()
+            };
+            let report = sigil::duplicates::find_duplicates(&idx, &opts);
+            match fmt {
+                sigil::duplicates::DuplicatesFormat::Markdown => {
+                    print!("{}", sigil::duplicates::render_markdown(&report));
+                }
+                sigil::duplicates::DuplicatesFormat::Json => {
+                    println!("{}", sigil::duplicates::render_json(&report, pretty));
+                }
+            }
+        }
+        Cli::Benchmark { root, refspec, symbol, format, pretty } => {
+            let Some(fmt) = sigil::benchmark::BenchmarkFormat::parse(&format) else {
+                eprintln!("error: unknown --format {}. expected markdown|json", format);
+                std::process::exit(1);
+            };
+            let opts = sigil::benchmark::BenchmarkOptions {
+                refspec,
+                symbol,
+                format: fmt,
+            };
+            match sigil::benchmark::run_benchmark(&root, &opts) {
+                Ok(report) => match fmt {
+                    sigil::benchmark::BenchmarkFormat::Markdown => {
+                        print!("{}", sigil::benchmark::render_markdown(&report));
+                    }
+                    sigil::benchmark::BenchmarkFormat::Json => {
+                        println!("{}", sigil::benchmark::render_json(&report, pretty));
+                    }
+                },
+                Err(e) => {
+                    eprintln!("error: {}", e);
+                    std::process::exit(1);
+                }
             }
         }
         Cli::Review { ref_spec, root, format, top_k, no_cochange } => {

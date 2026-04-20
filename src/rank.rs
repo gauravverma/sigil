@@ -119,7 +119,7 @@ pub fn apply_blast_radius(entities: &mut [Entity], ranked: &RankedIndex) {
 
 /// Serializable on-disk form of the file-level rank pass. Written to
 /// `.sigil/rank.json` by `sigil index --rank` (default on).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RankManifest {
     pub version: String,
     pub sigil_version: String,

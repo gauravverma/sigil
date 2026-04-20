@@ -1,7 +1,10 @@
+pub mod benchmark;
+pub mod blast;
 pub mod cache;
 pub mod change_detail;
 pub mod classifier;
 pub mod diff;
+pub mod duplicates;
 pub mod diff_json;
 pub mod entity;
 pub mod formatter;
