@@ -104,7 +104,7 @@ All diff functions return a dict with this structure:
     "meta": {
         "base_ref": "old",
         "head_ref": "new",
-        "sigil_version": "0.2.3"
+        "sigil_version": "0.2.4"
     },
     "summary": {
         "files_changed": 1,
@@ -232,5 +232,5 @@ python3 -c "import sigil; print(sigil.diff_json('{\"a\":1}', '{\"a\":2}'))"
 
 ```bash
 maturin build --release
-# Output: target/wheels/sigil_diff-0.2.3-cp3XX-*.whl
+# Output: target/wheels/sigil_diff-0.2.4-cp3XX-*.whl
 ```
