@@ -80,11 +80,19 @@ use crate::entity::{Entity, Reference};
 use crate::query::index::{DirSummary, FileHit, Scope};
 use crate::query::SearchHitOwned;
 
-/// Default auto-upgrade threshold in bytes. Set conservatively — the in-
-/// memory index is quite fast up to ~100 MB of JSONL; above 50 MB we
-/// start paying multi-second cold-start costs. Override via
-/// `DuckDbBackend::open_with_threshold`.
-pub const DEFAULT_AUTO_UPGRADE_THRESHOLD_BYTES: u64 = 50 * 1024 * 1024;
+/// Default auto-upgrade threshold in bytes.
+///
+/// Sigil's per-query cost on the in-memory backend is dominated by
+/// JSONL load + hashmap build on every invocation (each `sigil <cmd>`
+/// is a fresh process). Benchmarks (see `evals/results/multilang-…`)
+/// show the crossover point where DuckDB's persistent materialized
+/// store beats re-loading JSONL sits around ~5 MB total, not the
+/// 50 MB originally conjectured.
+///
+/// Override via the `SIGIL_AUTO_ENGAGE_THRESHOLD_MB` env var when a
+/// specific workload wants a different crossover; the env path
+/// short-circuits `Backend::load` before this constant is consulted.
+pub const DEFAULT_AUTO_UPGRADE_THRESHOLD_BYTES: u64 = 5 * 1024 * 1024;
 
 /// Returns `true` when the DuckDB backend should engage by default for
 /// the given `root` — used by callers that want transparent routing

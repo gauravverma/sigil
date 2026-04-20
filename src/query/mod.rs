@@ -296,14 +296,26 @@ fn load_db(_: &Path) -> Result<Backend> {
 fn auto_load(root: &Path) -> Result<Backend> {
     #[cfg(feature = "db")]
     {
-        if duckdb_backend::should_auto_engage(
-            root,
-            duckdb_backend::DEFAULT_AUTO_UPGRADE_THRESHOLD_BYTES,
-        ) {
+        let threshold = auto_engage_threshold_bytes();
+        if duckdb_backend::should_auto_engage(root, threshold) {
             return load_db(root);
         }
     }
     load_in_memory(root)
+}
+
+/// Compute the DuckDB auto-engage threshold. `SIGIL_AUTO_ENGAGE_THRESHOLD_MB`
+/// wins when set to a non-negative integer; falls back to the compiled-in
+/// default (see `DEFAULT_AUTO_UPGRADE_THRESHOLD_BYTES`). Parse failures
+/// fall back silently — a bogus env value shouldn't block query routing.
+#[cfg(feature = "db")]
+fn auto_engage_threshold_bytes() -> u64 {
+    if let Ok(v) = std::env::var("SIGIL_AUTO_ENGAGE_THRESHOLD_MB")
+        && let Ok(mb) = v.trim().parse::<u64>()
+    {
+        return mb.saturating_mul(1024 * 1024);
+    }
+    duckdb_backend::DEFAULT_AUTO_UPGRADE_THRESHOLD_BYTES
 }
 
 /// Load the sigil index from `.sigil/` under `root`. Thin wrapper over
