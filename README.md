@@ -1,20 +1,62 @@
 # sigil
 
-Structural code fingerprinting and diffing. **See what actually changed.**
+**Deterministic structural code intelligence for AI coding agents — and humans.**
 
-sigil parses source files using [tree-sitter](https://tree-sitter.github.io/), extracts code entities (functions, classes, methods, types), computes content hashes, and produces structural diffs that tell you *what kind of change* happened — not just which lines changed.
+sigil parses source files with [tree-sitter](https://tree-sitter.github.io/), hashes entities with BLAKE3, runs PageRank over the reference graph, and emits ranked maps, focused context bundles, PR review artifacts, and structural diffs. Zero LLM. Zero inference. The tool tells you *what structurally changed*, *who calls what*, *what depends on this change* — always from a parsed index, never from text search.
 
-## Why
+Measured on sigil's own source (v0.2.4):
 
-`git diff` shows which lines of text changed. sigil shows which **entities** changed and **how**:
+| Query | Raw tokens | Sigil tokens | Ratio |
+|---|---:|---:|---:|
+| PR review (3 commits) | 185,954 | 7,176 | **25.91×** |
+| Context for `Entity` | 90,296 | 358 | **252.22×** |
+| Cold-start orientation | 47,879 | 1,891 | **25.32×** |
 
-| git diff says | sigil diff says |
+Median reduction: **25.91×**. Reproduce with `sigil benchmark` on your own repo. Raw numbers + methodology: [`evals/`](evals/). Worked examples: [`worked/`](worked/). Full roadmap: [`agent-adoption-plan.md`](agent-adoption-plan.md). Release notes: [`blog-agent-adoption.md`](blog-agent-adoption.md).
+
+## What you get
+
+**Agent-facing commands** — narrated, budget-aware, markdown-first. Drop into an agent's context.
+
+| | |
 |---|---|
-| 87 lines changed across 3 files | 1 function modified (body), 1 renamed, 12 formatting-only |
-| red/green line pairs | `"true"` → `"false"` in `--commit` flag default |
-| no signal about impact | ⚠ BREAKING: public signature changed |
+| `sigil map --tokens N` | Ranked codebase digest (cold-start orientation) |
+| `sigil context <symbol>` | Signature + callers + callees + related types, budget-capped |
+| `sigil review A..B` | PR review: structural diff + rank + blast + co-change misses |
+| `sigil blast <symbol>` | Impact summary — callers, files, transitive reach |
+| `sigil benchmark` | Publishes your own median reduction number |
 
-For AI agents reviewing code, sigil's `--json` output provides structured change data instead of raw text diffs — enabling precise reviews instead of "this PR modifies several functions."
+**Script-facing commands** — raw, unbounded, JSON-friendly. For `jq` / `xargs` pipelines.
+
+| | |
+|---|---|
+| `sigil search <query>` | Substring search over symbols + file paths |
+| `sigil symbols <file>` | All entities in a file |
+| `sigil children <file> <parent>` | Entities under a parent (class methods, etc.) |
+| `sigil callers <symbol>` | All refs targeting a symbol (unbounded) |
+| `sigil callees <caller>` | What a symbol calls |
+| `sigil explore [--path X]` | Directory overview |
+| `sigil duplicates` | Clone report across the codebase |
+| `sigil cochange` | Mine git history for file-pair co-change weights |
+
+**Diff** — `sigil diff <refspec>` is the original 0.2.x-era engine: entity-level structural deltas with token-change details and breaking-change detection.
+
+## Install into an agent
+
+Each installer writes a capability-describing block (what sigil does, when to use it) and, where supported, a pre-tool-use hint hook. None of them prescribe preferences ("use sigil instead of grep") — they just make sigil discoverable on the same terms as any built-in tool.
+
+```bash
+sigil claude install     # CLAUDE.md + .claude/settings.json PreToolUse hook
+sigil cursor install     # .cursor/rules/sigil.mdc (alwaysApply: true)
+sigil codex install      # AGENTS.md + .codex/hooks.json Bash hook
+sigil gemini install     # GEMINI.md + .gemini/settings.json BeforeTool hook
+sigil opencode install   # AGENTS.md + .opencode/plugins/sigil.js
+sigil aider install      # AGENTS.md block
+sigil copilot install    # ~/.copilot/skills/sigil/SKILL.md
+sigil hook install       # git post-commit + post-checkout auto-rebuild
+```
+
+Every installer is idempotent (re-running is a no-op when content matches), preserves user content outside sigil's marker block, and has a matching `uninstall` that cleans up without touching sibling user config.
 
 ## How It Works
 
