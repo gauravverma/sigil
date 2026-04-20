@@ -70,11 +70,15 @@
 
 use std::path::{Path, PathBuf};
 
+use std::collections::BTreeMap;
+
 use anyhow::{Context as _, Result};
 use duckdb::{Connection, params};
 use serde::{Deserialize, Serialize};
 
 use crate::entity::{Entity, Reference};
+use crate::query::index::{DirSummary, FileHit, Scope};
+use crate::query::SearchHitOwned;
 
 /// Default auto-upgrade threshold in bytes. Set conservatively — the in-
 /// memory index is quite fast up to ~100 MB of JSONL; above 50 MB we
@@ -282,24 +286,54 @@ impl DuckDbBackend {
         Ok(rows)
     }
 
-    /// Case-insensitive substring search over entity names, matching the
-    /// `Scope::Symbols` branch of `Index::search`. File search (the
-    /// `Scope::Files` branch) runs a separate DISTINCT scan.
-    ///
-    /// Unlike `Index::search`, this only returns the symbol form for now
-    /// — file-path matching without entity hits is rare in agent
-    /// workflows, and adding it requires another query + enum serde
-    /// gymnastics. Deferred until a consumer needs it.
-    pub fn search_symbols(
+    /// Full search matching `Index::search` semantics across all three
+    /// `Scope` variants. Symbol matches hit entity names;
+    /// file matches hit file paths via the same case-insensitive
+    /// substring rule. Empty queries short-circuit to `Vec::new()`.
+    pub fn search(
+        &self,
+        query: &str,
+        scope: Scope,
+        kind_filter: Option<&str>,
+        path_prefix: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<SearchHitOwned>> {
+        if query.is_empty() {
+            return Ok(Vec::new());
+        }
+        let want_symbols = matches!(scope, Scope::All | Scope::Symbols);
+        let want_files = matches!(scope, Scope::All | Scope::Files);
+
+        let mut hits: Vec<SearchHitOwned> = Vec::new();
+
+        if want_symbols {
+            for e in self.search_symbols_impl(query, kind_filter, path_prefix, remaining_limit(limit, hits.len()))? {
+                hits.push(SearchHitOwned::Symbol(e));
+                if limit > 0 && hits.len() >= limit {
+                    return Ok(hits);
+                }
+            }
+        }
+
+        if want_files {
+            for f in self.search_files_impl(query, path_prefix, remaining_limit(limit, hits.len()))? {
+                hits.push(SearchHitOwned::File(f));
+                if limit > 0 && hits.len() >= limit {
+                    break;
+                }
+            }
+        }
+
+        Ok(hits)
+    }
+
+    fn search_symbols_impl(
         &self,
         query: &str,
         kind_filter: Option<&str>,
         path_prefix: Option<&str>,
         limit: usize,
     ) -> Result<Vec<Entity>> {
-        if query.is_empty() {
-            return Ok(Vec::new());
-        }
         let needle = format!("%{}%", query.to_lowercase());
         let mut sql = String::from(
             "SELECT file, name, kind, line_start, line_end, parent, sig, \
@@ -331,6 +365,128 @@ impl DuckDbBackend {
             (None, None) => stmt
                 .query_map(params![needle], row_to_entity)?
                 .collect::<std::result::Result<Vec<_>, _>>()?,
+        };
+        Ok(rows)
+    }
+
+    fn search_files_impl(
+        &self,
+        query: &str,
+        path_prefix: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<FileHit>> {
+        let needle = format!("%{}%", query.to_lowercase());
+        // Subquery DISTINCT-scans the entities table since sigil doesn't
+        // yet maintain a separate files table; every file with at least
+        // one indexed entity is a candidate. `entity_count` comes from
+        // a GROUP BY so callers see the richer row shape `FileHit`
+        // carries.
+        let mut sql = String::from(
+            "SELECT file, COUNT(*) as entity_count \
+             FROM entities \
+             WHERE lower(file) LIKE ?",
+        );
+        if path_prefix.is_some() {
+            sql.push_str(" AND file LIKE ?");
+        }
+        sql.push_str(" GROUP BY file ORDER BY file");
+        if limit > 0 {
+            sql.push_str(&format!(" LIMIT {}", limit));
+        }
+        let mut stmt = self.conn.prepare(&sql)?;
+        let rows: Vec<(String, i64)> = if let Some(p) = path_prefix {
+            stmt.query_map(params![needle, format!("{p}%")], |r| {
+                Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?))
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?
+        } else {
+            stmt.query_map(params![needle], |r| {
+                Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?))
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|(path, count)| FileHit {
+                lang: lang_for(&path).map(|s| s.to_string()),
+                path,
+                entity_count: count as usize,
+            })
+            .collect())
+    }
+
+    /// Directory overview — one `DirSummary` per unique directory in the
+    /// indexed file set, with the languages present in each. Matches
+    /// `Index::explore_dir_overview`.
+    ///
+    /// The grouping happens in Rust rather than SQL because directory
+    /// extraction would require reverse-string slicing in SQL, which is
+    /// awkward + backend-specific. Loading distinct file paths is cheap
+    /// (one DISTINCT scan); the CPU grouping is trivial on the returned
+    /// list.
+    pub fn explore_dir_overview(&self, path_prefix: Option<&str>) -> Result<Vec<DirSummary>> {
+        let files = self.distinct_files(path_prefix)?;
+        let mut by_dir: BTreeMap<String, (usize, std::collections::BTreeSet<String>)> =
+            BTreeMap::new();
+        for f in &files {
+            let dir = parent_dir(f).to_string();
+            let entry = by_dir.entry(dir).or_default();
+            entry.0 += 1;
+            if let Some(lang) = lang_for(f) {
+                entry.1.insert(lang.to_string());
+            }
+        }
+        Ok(by_dir
+            .into_iter()
+            .map(|(path, (file_count, langs))| DirSummary {
+                path,
+                file_count,
+                langs: langs.into_iter().collect(),
+            })
+            .collect())
+    }
+
+    /// Flat file listing capped per-directory. Same shape as
+    /// `Index::explore_files_capped` so the router can swap backends.
+    pub fn explore_files_capped(
+        &self,
+        path_prefix: Option<&str>,
+        cap_per_dir: usize,
+    ) -> Result<Vec<(String, String, Option<String>)>> {
+        let mut files = self.distinct_files(path_prefix)?;
+        files.sort();
+
+        let mut by_dir: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for f in files {
+            let dir = parent_dir(&f).to_string();
+            by_dir.entry(dir).or_default().push(f);
+        }
+        let mut out = Vec::new();
+        for (dir, mut entries) in by_dir {
+            entries.sort();
+            if cap_per_dir > 0 && entries.len() > cap_per_dir {
+                entries.truncate(cap_per_dir);
+            }
+            for f in entries {
+                let lang = lang_for(&f).map(|s| s.to_string());
+                out.push((dir.clone(), f, lang));
+            }
+        }
+        Ok(out)
+    }
+
+    fn distinct_files(&self, path_prefix: Option<&str>) -> Result<Vec<String>> {
+        let mut sql = String::from("SELECT DISTINCT file FROM entities");
+        if path_prefix.is_some() {
+            sql.push_str(" WHERE file LIKE ?");
+        }
+        let mut stmt = self.conn.prepare(&sql)?;
+        let rows: Vec<String> = if let Some(p) = path_prefix {
+            stmt.query_map(params![format!("{p}%")], |r| r.get::<_, String>(0))?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        } else {
+            stmt.query_map([], |r| r.get::<_, String>(0))?
+                .collect::<std::result::Result<Vec<_>, _>>()?
         };
         Ok(rows)
     }
@@ -380,6 +536,44 @@ fn row_to_reference(row: &duckdb::Row<'_>) -> duckdb::Result<Reference> {
         ref_kind: row.get::<_, String>(3)?,
         line: row.get::<_, i64>(4)? as u32,
     })
+}
+
+/// Remaining quota when packing mixed search hits. `limit == 0` means
+/// unlimited on the caller's side; we pass `0` straight through so SQL
+/// doesn't cap the inner query.
+fn remaining_limit(total: usize, so_far: usize) -> usize {
+    if total == 0 {
+        0
+    } else {
+        total.saturating_sub(so_far)
+    }
+}
+
+/// Directory component of a path, or `""` for the root. Mirrors
+/// `query::index::parent_dir` so the two backends agree on
+/// "(what bucket does this file live in?)".
+fn parent_dir(file: &str) -> &str {
+    match file.rsplit_once('/') {
+        Some((dir, _)) => dir,
+        None => "",
+    }
+}
+
+/// Language name for a file, if sigil parses it. Extends the vendored
+/// tree-sitter detector with sigil's four native formats
+/// (json / yaml / toml / markdown). Matches `Index`'s helper so the
+/// two backends label files identically.
+fn lang_for(file: &str) -> Option<&'static str> {
+    let ext = file.rsplit_once('.').map(|(_, e)| e)?;
+    if let Some(lang) = crate::parser::languages::detect_language(ext) {
+        return Some(lang);
+    }
+    match ext {
+        "json" => Some("json"),
+        "yaml" | "yml" => Some("yaml"),
+        "toml" => Some("toml"),
+        _ => None,
+    }
 }
 
 /// Hydrate the subset of `Entity` that the DuckDB backend extracts —
@@ -726,7 +920,7 @@ mod tests {
 
     #[test]
     fn search_symbols_case_insensitive_with_path_prefix() {
-        let root = tmpdir("search");
+        let root = tmpdir("search_symbols");
         seed(
             &root,
             vec![
@@ -738,22 +932,104 @@ mod tests {
         );
         let db = DuckDbBackend::open(&root).unwrap();
 
-        // Case-insensitive match hits both "parse" and "ParseError".
-        let all = db.search_symbols("PARSE", None, None, 0).unwrap();
+        // Scope::Symbols: case-insensitive name match.
+        let all = db.search("PARSE", Scope::Symbols, None, None, 0).unwrap();
         assert_eq!(all.len(), 3);
+        assert!(all.iter().all(|h| matches!(h, SearchHitOwned::Symbol(_))));
 
         // Filter by kind.
-        let only_fns = db.search_symbols("parse", Some("function"), None, 0).unwrap();
+        let only_fns = db.search("parse", Scope::Symbols, Some("function"), None, 0).unwrap();
         assert_eq!(only_fns.len(), 2);
 
-        // Filter by path prefix (src/) — tests/ excluded.
-        let src_only = db.search_symbols("parse", None, Some("src/"), 0).unwrap();
+        // Filter by path prefix.
+        let src_only = db.search("parse", Scope::Symbols, None, Some("src/"), 0).unwrap();
         assert_eq!(src_only.len(), 2);
 
         // Empty query short-circuits.
-        let empty = db.search_symbols("", None, None, 0).unwrap();
+        let empty = db.search("", Scope::All, None, None, 0).unwrap();
         assert!(empty.is_empty());
 
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn search_files_scope_returns_file_hits_only() {
+        let root = tmpdir("search_files");
+        seed(
+            &root,
+            vec![
+                ent("src/parser/lib.rs", "parse_fn", "function"),
+                ent("src/other.rs", "unrelated", "function"),
+            ],
+            vec![],
+        );
+        let db = DuckDbBackend::open(&root).unwrap();
+        let hits = db.search("parser", Scope::Files, None, None, 0).unwrap();
+        assert_eq!(hits.len(), 1);
+        match &hits[0] {
+            SearchHitOwned::File(f) => {
+                assert_eq!(f.path, "src/parser/lib.rs");
+                assert_eq!(f.lang.as_deref(), Some("rust"));
+            }
+            other => panic!("expected File hit, got {other:?}"),
+        }
+
+        // Scope::All combines both — same query should surface the symbol
+        // inside `parse_fn` and the file match for `src/parser/lib.rs`.
+        let combined = db.search("parse", Scope::All, None, None, 0).unwrap();
+        let n_symbols = combined
+            .iter()
+            .filter(|h| matches!(h, SearchHitOwned::Symbol(_)))
+            .count();
+        let n_files = combined
+            .iter()
+            .filter(|h| matches!(h, SearchHitOwned::File(_)))
+            .count();
+        assert!(n_symbols >= 1);
+        assert!(n_files >= 1);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn explore_dir_overview_groups_by_directory_with_langs() {
+        let root = tmpdir("explore_overview");
+        seed(
+            &root,
+            vec![
+                ent("src/a.rs", "x", "function"),
+                ent("src/b.rs", "y", "function"),
+                ent("tests/t.rs", "t", "function"),
+                ent("README.md", "r", "section"),
+            ],
+            vec![],
+        );
+        let db = DuckDbBackend::open(&root).unwrap();
+        let overview = db.explore_dir_overview(None).unwrap();
+        let by_path: std::collections::HashMap<String, &DirSummary> =
+            overview.iter().map(|d| (d.path.clone(), d)).collect();
+        assert_eq!(by_path.get("src").unwrap().file_count, 2);
+        assert_eq!(by_path.get("tests").unwrap().file_count, 1);
+        assert!(by_path.contains_key(""), "root-level files land in the empty-string dir");
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn explore_files_capped_caps_per_directory() {
+        let root = tmpdir("explore_cap");
+        seed(
+            &root,
+            (0..10)
+                .map(|i| ent(&format!("src/f{i}.rs"), "x", "function"))
+                .chain(std::iter::once(ent("tests/t.rs", "t", "function")))
+                .collect(),
+            vec![],
+        );
+        let db = DuckDbBackend::open(&root).unwrap();
+        let capped = db.explore_files_capped(None, 3).unwrap();
+        let src_count = capped.iter().filter(|(d, _, _)| d == "src").count();
+        let tests_count = capped.iter().filter(|(d, _, _)| d == "tests").count();
+        assert_eq!(src_count, 3);
+        assert_eq!(tests_count, 1);
         std::fs::remove_dir_all(&root).ok();
     }
 

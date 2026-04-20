@@ -19,7 +19,17 @@ use std::path::Path;
 use anyhow::{Context, Result};
 
 use crate::entity::{Entity, Reference};
-use crate::query::index::{FileHit, Index, SearchHit};
+use crate::query::index::{DirSummary, FileHit, Index, Scope, SearchHit};
+
+/// Owned sibling of [`index::SearchHit`]. Used by the DuckDB router path
+/// since cross-backend uniformity is easier with owned data — the
+/// in-memory backend clones its borrows into owned form on return, and
+/// the DuckDB path already produces owned rows.
+#[derive(Debug, Clone)]
+pub enum SearchHitOwned {
+    Symbol(Entity),
+    File(FileHit),
+}
 
 pub mod index;
 
@@ -174,6 +184,73 @@ impl Backend {
         }
     }
 
+    /// Full search matching `Index::search` semantics. Returns owned
+    /// hits so both backends feed the same downstream formatter.
+    pub fn search(
+        &self,
+        query: &str,
+        scope: Scope,
+        kind_filter: Option<&str>,
+        path_prefix: Option<&str>,
+        limit: usize,
+    ) -> Vec<SearchHitOwned> {
+        match self {
+            Self::InMemory(idx) => idx
+                .search(query, scope, kind_filter, path_prefix, limit)
+                .into_iter()
+                .map(|h| match h {
+                    SearchHit::Symbol(e) => SearchHitOwned::Symbol(e.clone()),
+                    SearchHit::File(f) => SearchHitOwned::File(f),
+                })
+                .collect(),
+            #[cfg(feature = "db")]
+            Self::DuckDb(db) => db
+                .search(query, scope, kind_filter, path_prefix, limit)
+                .unwrap_or_else(|e| {
+                    eprintln!("warning: DuckDB search failed: {e}");
+                    Vec::new()
+                }),
+        }
+    }
+
+    pub fn explore_dir_overview(&self, path_prefix: Option<&str>) -> Vec<DirSummary> {
+        match self {
+            Self::InMemory(idx) => idx.explore_dir_overview(path_prefix),
+            #[cfg(feature = "db")]
+            Self::DuckDb(db) => db
+                .explore_dir_overview(path_prefix)
+                .unwrap_or_else(|e| {
+                    eprintln!("warning: DuckDB explore_dir_overview failed: {e}");
+                    Vec::new()
+                }),
+        }
+    }
+
+    pub fn explore_files_capped(
+        &self,
+        path_prefix: Option<&str>,
+        cap_per_dir: usize,
+    ) -> Vec<(String, String, Option<String>)> {
+        match self {
+            Self::InMemory(idx) => idx.explore_files_capped(path_prefix, cap_per_dir),
+            #[cfg(feature = "db")]
+            Self::DuckDb(db) => db
+                .explore_files_capped(path_prefix, cap_per_dir)
+                .unwrap_or_else(|e| {
+                    eprintln!("warning: DuckDB explore_files_capped failed: {e}");
+                    Vec::new()
+                }),
+        }
+    }
+
+    pub fn list_projects(&self) -> Vec<String> {
+        match self {
+            Self::InMemory(idx) => idx.list_projects(),
+            #[cfg(feature = "db")]
+            Self::DuckDb(db) => db.list_projects().unwrap_or_default(),
+        }
+    }
+
     /// Short label describing which backend is in play — useful for
     /// verbose output so users can confirm routing without guessing.
     pub fn label(&self) -> &'static str {
@@ -273,6 +350,77 @@ pub fn explore_text(idx: &Index, path_prefix: Option<&str>, max_entries: usize) 
         .map(|d| (d.path.as_str(), d.file_count))
         .collect();
 
+    let mut out = String::new();
+    for (dir, shown) in &by_dir {
+        let dir_display = if dir.is_empty() { "." } else { dir.as_str() };
+        let total = total_map.get(dir.as_str()).copied().unwrap_or(shown.len());
+        out.push_str(&format!("{}/ ({} files)\n", dir_display, total));
+        for f in shown {
+            out.push_str(&format!("  {}\n", f));
+        }
+        let remaining = total.saturating_sub(shown.len());
+        if remaining > 0 {
+            out.push_str(&format!("  ... +{} more\n", remaining));
+        }
+    }
+    out
+}
+
+/// Owned-hit variant of [`format_search_hits`]. Called from the router
+/// path where the Backend returns owned rows.
+pub fn format_search_hits_owned(hits: &[SearchHitOwned]) -> String {
+    if hits.is_empty() {
+        return "No results found.".to_string();
+    }
+    let mut out = String::new();
+    for hit in hits {
+        match hit {
+            SearchHitOwned::Symbol(e) => {
+                let parent = e
+                    .parent
+                    .as_deref()
+                    .map(|p| format!(" (in {})", p))
+                    .unwrap_or_default();
+                out.push_str(&format!(
+                    "[symbol] {} {} {}:{}-{}{}\n",
+                    e.kind, e.name, e.file, e.line_start, e.line_end, parent
+                ));
+            }
+            SearchHitOwned::File(FileHit {
+                path,
+                lang,
+                entity_count,
+            }) => {
+                let lang = lang.as_deref().unwrap_or("unknown");
+                out.push_str(&format!(
+                    "[file]   {} ({}, {} symbols)\n",
+                    path, lang, entity_count
+                ));
+            }
+        }
+    }
+    out
+}
+
+/// Render a tree-style explore overview from pre-computed
+/// `(dirs, files)` pulled off any `Backend`. Matches the layout
+/// `explore_text` produces on an Index.
+pub fn render_explore(
+    dirs: &[DirSummary],
+    files: &[(String, String, Option<String>)],
+) -> String {
+    if dirs.is_empty() {
+        return "No files found.".to_string();
+    }
+    let total_map: std::collections::HashMap<&str, usize> = dirs
+        .iter()
+        .map(|d| (d.path.as_str(), d.file_count))
+        .collect();
+    let mut by_dir: std::collections::BTreeMap<String, Vec<String>> =
+        std::collections::BTreeMap::new();
+    for (dir, file, _lang) in files {
+        by_dir.entry(dir.clone()).or_default().push(file.clone());
+    }
     let mut out = String::new();
     for (dir, shown) in &by_dir {
         let dir_display = if dir.is_empty() { "." } else { dir.as_str() };

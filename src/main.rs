@@ -621,20 +621,28 @@ fn main() {
 
         }
         Cli::Explore { root, path, max_entries, json } => {
-            let idx = query::load(&root)
+            let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             if json {
-                let files = idx.explore_files_capped(path.as_deref(), max_entries);
+                let files = backend.explore_files_capped(path.as_deref(), max_entries);
                 serde_json::to_writer_pretty(std::io::stdout(), &files.iter().map(|(dir, path, lang)| {
                     serde_json::json!({"directory": dir, "path": path, "language": lang})
                 }).collect::<Vec<_>>()).ok();
                 println!();
             } else {
-                print!("{}", query::explore_text(&idx, path.as_deref(), max_entries));
+                let dirs = backend.explore_dir_overview(path.as_deref());
+                if dirs.is_empty() {
+                    print!("No files found.\n");
+                } else {
+                    let visible = dirs.len().max(1);
+                    let cap = (max_entries / visible).max(1);
+                    let files = backend.explore_files_capped(path.as_deref(), cap);
+                    print!("{}", sigil::query::render_explore(&dirs, &files));
+                }
             }
         }
         Cli::Search { query: q, root, scope, kind, path, limit, json } => {
-            let idx = query::load(&root)
+            let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             // `scope` / `kind` are Vec<String> for CLI multi-arg compatibility;
             // first value wins for filtering (matches codeix's prior behavior).
@@ -643,12 +651,12 @@ fn main() {
                 .map(|s| query::index::Scope::parse(s))
                 .unwrap_or(query::index::Scope::All);
             let kind_filter = kind.first().map(|s| s.as_str());
-            let results = idx.search(&q, scope_enum, kind_filter, path.as_deref(), limit as usize);
+            let results = backend.search(&q, scope_enum, kind_filter, path.as_deref(), limit as usize);
             if json {
                 // Serialize as a flat list with a `type` discriminator so the
                 // shape is stable for scripts/agents consuming the output.
                 let json_hits: Vec<serde_json::Value> = results.iter().map(|h| match h {
-                    query::index::SearchHit::Symbol(e) => serde_json::json!({
+                    sigil::query::SearchHitOwned::Symbol(e) => serde_json::json!({
                         "type": "symbol",
                         "file": e.file,
                         "name": e.name,
@@ -656,7 +664,7 @@ fn main() {
                         "line": [e.line_start, e.line_end],
                         "parent": e.parent,
                     }),
-                    query::index::SearchHit::File(f) => serde_json::json!({
+                    sigil::query::SearchHitOwned::File(f) => serde_json::json!({
                         "type": "file",
                         "path": f.path,
                         "lang": f.lang,
@@ -666,7 +674,7 @@ fn main() {
                 serde_json::to_writer_pretty(std::io::stdout(), &json_hits).ok();
                 println!();
             } else {
-                print!("{}", query::format_search_hits(&results));
+                print!("{}", query::format_search_hits_owned(&results));
             }
         }
         Cli::Symbols { file, root, limit, json } => {
