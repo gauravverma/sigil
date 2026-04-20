@@ -82,9 +82,7 @@ Every `sigil <cmd>` works as `git sigil <cmd>`.
 
 ## Install
 
-Both builds ship as pre-built archives on the [Releases page](https://github.com/gauravverma/sigil/releases/latest). No Rust toolchain required.
-
-### Option 1 — lean default (recommended for most users)
+Pre-built archives for every supported platform ship on the [Releases page](https://github.com/gauravverma/sigil/releases/latest). No Rust toolchain required.
 
 **macOS / Linux** (one-liner):
 
@@ -109,33 +107,17 @@ sudo mv sigil-aarch64-apple-darwin/sigil /usr/local/bin/
 
 Available archives: `sigil-aarch64-apple-darwin.tar.gz`, `sigil-x86_64-apple-darwin.tar.gz`, `sigil-aarch64-unknown-linux-gnu.tar.gz`, `sigil-x86_64-unknown-linux-gnu.tar.gz`, `sigil-x86_64-pc-windows-msvc.zip`.
 
-Lean binary (~20 MB). Covers `sigil index` / `diff` / `map` / `context` / `review` / `blast` / and every query command. All 8 platform installers included. Fast on small-to-medium repos.
-
-### Option 2 — full build for monorepo scale
-
-Same Releases page, different archive prefix. Grab the matching `sigil-full-<target>` archive:
-
-```bash
-# Example: x86_64 Linux
-curl -LO https://github.com/gauravverma/sigil/releases/latest/download/sigil-full-x86_64-unknown-linux-gnu.tar.gz
-tar -xzf sigil-full-x86_64-unknown-linux-gnu.tar.gz
-sudo mv sigil-full-x86_64-unknown-linux-gnu/sigil /usr/local/bin/
-```
-
-Available archives: `sigil-full-aarch64-apple-darwin.tar.gz`, `sigil-full-x86_64-unknown-linux-gnu.tar.gz`, `sigil-full-x86_64-pc-windows-msvc.zip`. (Intel macOS: use the lean archive above; the full-feature build is Apple Silicon only.)
-
-~70 MB binary. Adds:
-- **DuckDB backend** — persistent materialized index for codebases above ~5 MB of JSONL. Auto-engages; you don't have to ask. Critical if you're working on fastapi / zod / Linux-kernel-scale codebases.
-- **BPE-accurate tokenizer** — `sigil benchmark --tokenizer o200k_base` publishes honest token counts instead of a bytes/4 proxy. Matters if you're citing numbers.
-- **`sigil query 'SQL'`** — run arbitrary SQL against the materialized index.
+Single binary, ~20 MB. Every command ships in it: `index` / `diff` / `map` / `context` / `review` / `blast` / `query`, plus the DuckDB backend for monorepo scale and the BPE-accurate tokenizer for `sigil benchmark`.
 
 ### Building from source (optional)
 
 ```bash
 git clone https://github.com/gauravverma/sigil && cd sigil
-cargo build --release                          # lean
-cargo build --release --features db,tokenizer  # full (requires C++17 toolchain)
+cargo build --release --features db,tokenizer  # match the shipped release
+cargo build --release                          # lean (no DuckDB, no BPE)
 ```
+
+Building with `db` requires a C++17 toolchain (Xcode CLT on macOS, `build-essential` on Debian/Ubuntu, MSVC on Windows).
 
 The compiled binary lands at `target/release/sigil`. Full-feature builds need a C++17 toolchain (Xcode CLT / `build-essential` / MSVC) because DuckDB is bundled from source.
 
@@ -281,7 +263,7 @@ sigil blast Entity --depth 5     # impact summary
 
 ```bash
 sigil benchmark --refspec HEAD~3..HEAD
-# with the full build:
+# BPE-accurate counts:
 sigil benchmark --refspec HEAD~3..HEAD --tokenizer o200k_base
 ```
 
@@ -310,7 +292,7 @@ Each has a matching `uninstall`. Every installer is idempotent (rerunning with s
 
 ## Benchmarks
 
-### Multi-language test (full binary, threshold=5 MB)
+### Multi-language test (DuckDB backend auto-engaged at 5 MB threshold)
 
 One OSS repo per language, 3 query shapes each, 3-run median wall-clock. Sigil vs `git grep`. Full writeup in [evals/results/multilang-with-db-2026-04-20.md](evals/results/multilang-with-db-2026-04-20.md).
 
@@ -366,7 +348,7 @@ Median: **35×**. BPE-accurate counts via `o200k_base`. Raw JSON at [evals/resul
  (small repos)    (≥5 MB JSONL)
 ```
 
-1. **tree-sitter parser** extracts entities (functions, structs, classes, types, imports) with line ranges. 11 languages ship; feature-gated so lean builds can drop unused grammars.
+1. **tree-sitter parser** extracts entities (functions, structs, classes, types, imports) with line ranges. 11 languages ship; each grammar is feature-gated so source builds can drop unused languages.
 2. **BLAKE3 hashes** per entity — `struct_hash` (raw), `body_hash` (normalized, ignores whitespace), `sig_hash` (signature only). Powers classify: formatting-only vs logic-change vs API-change.
 3. **Reference table** — call / import / type_annotation / instantiation / definition rows, linking caller → target.
 4. **PageRank** over the file import graph ranks which files are load-bearing. **Blast radius** per entity = BFS over the reverse-reference graph, capped at depth 3.
@@ -460,7 +442,7 @@ Exit code is always 0 on success; non-zero only on fatal errors. Rename / move d
 | Command | What it does |
 |---|---|
 | `sigil index [--full] [--no-rank]` | Build / refresh the `.sigil/` index. Incremental by default. `--full` forces re-parse; `--no-rank` skips PageRank + blast radius. |
-| `sigil query "SQL"` | Ad-hoc SQL against the materialized DuckDB index (full build only). Tables: `entities`, `refs`, plus `rank` / `blast` views. |
+| `sigil query "SQL"` | Ad-hoc SQL against the materialized DuckDB index. Tables: `entities`, `refs`, plus `rank` / `blast` views. |
 | `sigil update` | Self-update via axoupdater (release-binary installs). |
 
 ### Integrations
@@ -533,7 +515,7 @@ Unknown `SIGIL_BACKEND` values are a hard error — no silent fallbacks. Reprodu
 - **Output is precise, not exhaustive by default.** `sigil map --tokens 4000` hits its budget and truncates; `sigil context` hits a depth cap. The script-facing commands (`callers`, `symbols`, `children`) are unbounded — use those when you need every row.
 - **No semantic inference.** sigil tells you who calls what and what changed structurally. It doesn't tell you "this function implements the observer pattern" or "this has a race condition." Those need an LLM — sigil feeds one, it doesn't replace one.
 - **Tree-sitter parsing isn't 100%.** Some language edge cases (Rust macros, Python dynamic imports, TS complex generics) don't extract cleanly. The 4 data parsers (JSON/YAML/TOML/Markdown) are sigil-native and handle edge cases that tree-sitter grammars don't.
-- **Small-repo performance:** the lean default build is fastest on small repos. The full build (`--features db`) adds ~10 ms of startup overhead per invocation from the bigger binary. For monorepo-scale use, that's noise; for one-shot scripts on tiny repos, stick with the lean build.
+- **Small-repo performance:** the DuckDB backend only engages above 5 MB of JSONL index (tunable via `SIGIL_AUTO_ENGAGE_THRESHOLD_MB`). Below that, sigil stays on the in-memory index, so there's no DuckDB cost on small repos.
 
 ---
 
