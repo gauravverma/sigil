@@ -11,9 +11,14 @@
 //! place via sentinel markers; uninstallers remove only the sigil block
 //! and leave user content intact.
 
+pub mod aider;
 pub mod claude;
 pub mod codex;
+pub mod copilot;
 pub mod cursor;
+pub mod gemini;
+pub mod githook;
+pub mod opencode;
 
 /// Escape single quotes for safe embedding in a single-quoted shell string.
 /// `it's` → `it'\''s`. Shared across installers that emit shell commands.

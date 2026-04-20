@@ -369,6 +369,35 @@ enum Cli {
         #[command(subcommand)]
         action: InstallAction,
     },
+    /// Install or uninstall the Gemini CLI integration
+    /// (`GEMINI.md` capability block + `.gemini/settings.json` BeforeTool hint hook).
+    Gemini {
+        #[command(subcommand)]
+        action: InstallAction,
+    },
+    /// Install or uninstall the OpenCode integration
+    /// (`AGENTS.md` + `.opencode/plugins/sigil.js` + `opencode.json`).
+    Opencode {
+        #[command(subcommand)]
+        action: InstallAction,
+    },
+    /// Install or uninstall the Aider integration (`AGENTS.md` block).
+    Aider {
+        #[command(subcommand)]
+        action: InstallAction,
+    },
+    /// Install or uninstall the GitHub Copilot CLI skill
+    /// (`~/.copilot/skills/sigil/SKILL.md`).
+    Copilot {
+        #[command(subcommand)]
+        action: InstallAction,
+    },
+    /// Install git hooks (post-commit + post-checkout) that auto-rebuild
+    /// the sigil index in the background.
+    Hook {
+        #[command(subcommand)]
+        action: InstallAction,
+    },
     /// Update sigil to the latest release
     Update,
 }
@@ -871,6 +900,82 @@ fn main() {
                 Ok(steps) => {
                     for s in &steps {
                         eprintln!("codex: {:?}", s);
+                    }
+                }
+                Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
+            },
+        },
+        Cli::Gemini { action } => match action {
+            InstallAction::Install { root } => match sigil::install::gemini::install(&root) {
+                Ok(steps) => {
+                    for s in &steps {
+                        eprintln!("gemini: {:?}", s);
+                    }
+                }
+                Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
+            },
+            InstallAction::Uninstall { root } => match sigil::install::gemini::uninstall(&root) {
+                Ok(steps) => {
+                    for s in &steps {
+                        eprintln!("gemini: {:?}", s);
+                    }
+                }
+                Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
+            },
+        },
+        Cli::Opencode { action } => match action {
+            InstallAction::Install { root } => match sigil::install::opencode::install(&root) {
+                Ok(steps) => {
+                    for s in &steps {
+                        eprintln!("opencode: {:?}", s);
+                    }
+                }
+                Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
+            },
+            InstallAction::Uninstall { root } => match sigil::install::opencode::uninstall(&root) {
+                Ok(steps) => {
+                    for s in &steps {
+                        eprintln!("opencode: {:?}", s);
+                    }
+                }
+                Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
+            },
+        },
+        Cli::Aider { action } => match action {
+            InstallAction::Install { root } => match sigil::install::aider::install(&root) {
+                Ok(r) => eprintln!("aider: {:?}", r),
+                Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
+            },
+            InstallAction::Uninstall { root } => match sigil::install::aider::uninstall(&root) {
+                Ok(true) => eprintln!("aider: removed"),
+                Ok(false) => eprintln!("aider: nothing to remove"),
+                Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
+            },
+        },
+        Cli::Copilot { action } => match action {
+            InstallAction::Install { root } => match sigil::install::copilot::install(&root) {
+                Ok(r) => eprintln!("copilot: {:?}", r),
+                Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
+            },
+            InstallAction::Uninstall { root } => match sigil::install::copilot::uninstall(&root) {
+                Ok(true) => eprintln!("copilot: removed"),
+                Ok(false) => eprintln!("copilot: nothing to remove"),
+                Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
+            },
+        },
+        Cli::Hook { action } => match action {
+            InstallAction::Install { root } => match sigil::install::githook::install(&root) {
+                Ok(steps) => {
+                    for s in &steps {
+                        eprintln!("hook {}: {:?}", s.name, s.result);
+                    }
+                }
+                Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
+            },
+            InstallAction::Uninstall { root } => match sigil::install::githook::uninstall(&root) {
+                Ok(steps) => {
+                    for s in &steps {
+                        eprintln!("hook {}: {:?}", s.name, s.result);
                     }
                 }
                 Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
