@@ -23,6 +23,10 @@ auto-includes = true
 # the binary but removes the need for a separate `sigil-full-*` asset
 # set. See PR #6 for the trade-off.
 features = ["db", "tokenizer"]
+# Inject a Swatinem/rust-cache step before each `dist build` so the
+# DuckDB bundled C++ compile + tree-sitter grammars don't rebuild from
+# scratch on every tag push. Path is relative to .github/workflows/.
+github-build-setup = "build-setup.yml"
 
 [dist.github-custom-runners]
 aarch64-unknown-linux-gnu = "ubuntu-latest"
