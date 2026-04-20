@@ -27,9 +27,6 @@ changes visible to end users — the CLI output format is preserved.
   codeix-compatible scope strings.
 - 23 unit tests for the query layer covering filter/limit semantics,
   substring/case matching, directory grouping, and parser fallbacks.
-- `agent-adoption-plan.md` — 90-day roadmap with a Phase 0 precursor
-  (this release), §14.8 index-files spec, §14.9 scale story that adds a
-  DuckDB-backed query backend built lazily from the same JSONL.
 
 ### Changed
 
@@ -45,8 +42,7 @@ changes visible to end users — the CLI output format is preserved.
   consumer surfaces.
 - `sigil explore` queries run against the in-house Index; output shape
   unchanged.
-- Architecture diagram in `ARCHITECTURE.md` and module reference in
-  `CLAUDE.md` updated to reflect in-house ownership.
+- Module reference in `CLAUDE.md` updated to reflect in-house ownership.
 
 ### Removed
 
@@ -79,13 +75,6 @@ changes visible to end users — the CLI output format is preserved.
   No Python-side code changes needed — the crate depends on
   `sigil_core` by path, which picked up the decodeix work
   transparently.
-
-### Internal
-
-- Added `agent-adoption-plan.md` — the strategic roadmap driving
-  Phase 0 and the 90-day work that follows (entity rank, blast
-  radius, `sigil map`, `sigil context`, platform hook installers,
-  Phase 0.5 DuckDB backend).
 
 ## [0.2.4] — 2026-04-16
 

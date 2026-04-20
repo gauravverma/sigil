@@ -5,10 +5,10 @@
 # `sigil <args>` thanks to git's built-in extension mechanism: any executable
 # named `git-<name>` on PATH becomes a `git <name>` subcommand.
 #
-# Purpose per agent-adoption-plan.md §11 / §6 / §9.2: piggyback on git's
-# pretrained name recognition so agents that already know `git diff` /
-# `git log` naturally reach for `git sigil map` / `git sigil review`. No
-# training-data problem to solve — `git <foo>` is in every agent's corpus.
+# Piggybacks on git's pretrained name recognition so agents that already know
+# `git diff` / `git log` naturally reach for `git sigil map` / `git sigil
+# review`. No training-data problem to solve — `git <foo>` is in every agent's
+# corpus.
 #
 # Usage:
 #   git sigil map --tokens 4000

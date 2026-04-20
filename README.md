@@ -17,19 +17,37 @@ Measured with the GPT-4o/o3 BPE tokenizer. Reproduce with `sigil benchmark` on y
 
 ## What it does
 
-**For AI agents** — drop-in commands that fit an agent's context window:
-- `sigil map` — ranked codebase digest, budget-aware. Cold-start orientation in one tool call.
+**Structural diff — the original power tool, with or without agents:**
+- `sigil diff HEAD~1` — per-entity change list (struct / fn / class), classified breaking vs logic vs formatting via three BLAKE3 hashes. Line-level inline diffs with code context.
+- `sigil diff main..HEAD --markdown` — pastes straight into a PR. Reviewers skim 20 entity-level bullets instead of wading through 800 lines.
+- `sigil diff --files old.py new.py` — compares any two files without git. Works on all 11 code languages + JSON / YAML / TOML (e.g., `"port": 8080 → 8443` detected as a structural change, not just "line 14 changed").
+- `sigil diff main..HEAD --json` — pipe into `jq` for CI gates.
+
+**Impact & navigation — blast radius is the second headline:**
+- `sigil blast <symbol>` — direct callers, direct files, transitive reach. Before touching a function, see how many files it breaks.
+- `sigil callers <symbol>` — exact reference sites from the parsed AST. Not every string match grep catches.
+- `sigil callees <caller>` — what a symbol depends on.
+- `sigil symbols <file>` / `sigil children <file> <parent>` / `sigil search <q>` — precise AST lookups, not regex guesses.
+- `sigil duplicates` — clone report (free — sigil already hashes entity bodies).
+
+**For AI agents — budget-aware bundles that fit a context window:**
+- `sigil map` — ranked codebase digest. Cold-start orientation in one tool call.
 - `sigil context <symbol>` — signature + callers + callees + related types, in ~500 tokens.
-- `sigil review A..B` — PR review: structural diff + blast radius + co-change misses. Replaces `git diff` for review.
+- `sigil review A..B` — PR review: `diff` + blast radius + co-change misses. Replaces `git diff` for review.
 
-**For humans** — fast, precise code navigation that grep can't match:
-- `sigil callers <symbol>` — exact reference sites from the parsed AST (not every string match).
-- `sigil blast <symbol>` — impact summary: how many files depend on this, how far it propagates.
-- `sigil duplicates` — clone report across the codebase (free — sigil already hashes entity bodies).
+**For scripts & CI:**
+- `sigil diff --json` / `sigil query "SELECT ..."` (DuckDB, `--features db`) / every command supports `--json`.
 
-**For scripts & CI** — JSON output, pipe-composable, deterministic:
-- `sigil diff main..HEAD --json` for structural PR checks in GitHub Actions.
-- `sigil query "SELECT ..."` for ad-hoc SQL over the materialized index (`--features db`).
+### `git sigil` alias — piggyback on git's pretrained name recognition
+
+Agents that know `git diff` discover `git sigil diff` naturally. Git's built-in extension mechanism auto-wires any `git-<name>` on PATH:
+
+```bash
+ln -s "$(which sigil)" /usr/local/bin/git-sigil
+# now: git sigil diff HEAD~1 / git sigil map / git sigil review — all work
+```
+
+A ready-made shim ships in `scripts/git-sigil`.
 
 ---
 
@@ -73,9 +91,10 @@ pip install sigil-diff
 ```python
 import sigil
 
-result = sigil.diff_json(old_json_str, new_json_str)
-result = sigil.diff_files("old.py", "new.py")
-result = sigil.diff_refs(".", "HEAD~1", "HEAD")
+result = sigil.diff_json(old_json_str, new_json_str)      # two JSON strings
+result = sigil.diff_files("old.py", "new.py")             # any two files on disk
+result = sigil.diff_refs(".", "HEAD~1", "HEAD")           # two git refs
+entities = sigil.index_json(json_str)                     # parse a JSON blob into entities
 ```
 
 See [python/README.md](python/README.md) for full API.
@@ -153,15 +172,45 @@ sigil context Entity --budget 1000
 
 ~350 tokens — the minimum-viable context for editing `Entity`, or for answering "what is this thing?"
 
-### 4. PR review
+### 4. Structural diff
+
+```bash
+sigil diff HEAD~1                           # terminal view with colors
+sigil diff main..HEAD --markdown            # paste into a PR
+sigil diff HEAD~1 --json --pretty           # feed into jq / a script
+sigil diff --files old_config.yaml new_config.yaml   # no git required
+sigil diff HEAD~1 --summary                 # one-line "5 breaking, 3 logic, 2 formatting"
+sigil diff HEAD~1 --group                   # cluster related entity changes
+sigil diff HEAD~1 --lines --context 5       # show 5 lines of code context
+```
+
+Three BLAKE3 hashes per entity (`struct_hash`, `body_hash`, `sig_hash`) classify every change:
+
+- **breaking** — `sig_hash` changed (public API surface moved)
+- **logic** — `body_hash` changed but signature stable
+- **formatting** — whitespace / comment only; `body_hash` unchanged
+
+Sample markdown output on a real commit:
+
+```markdown
+## src/entity.rs
+- 🔴 **breaking** struct `Entity` (L7-L35) — field added
+    + pub visibility: Option<Visibility>,
+- 🟡 **logic** fn `is_public` (L112-L118) — body refactored
+- ⚪ **formatting** fn `name` (L45-L47)
+```
+
+Renames, moves, and refactors matched across the commit so "deleted `foo` + added `bar` with the same body_hash" becomes one renamed row, not two.
+
+### 5. PR review (diff + blast + co-change)
 
 ```bash
 sigil review HEAD~3..HEAD
 ```
 
-Replaces `git diff` for review. Entity-level changes, ranked by impact, with blast radius per entity and co-change misses. Committable as a review artifact.
+The agent-shaped wrapper around `diff`: structural changes ranked by blast radius, plus co-change misses ("this commit touched `a.rs` — git history suggests `b.rs` usually moves with it"). Committable as a review artifact.
 
-### 5. Navigation queries
+### 6. Navigation queries
 
 ```bash
 sigil callers Entity             # exact reference sites
@@ -171,7 +220,7 @@ sigil search parse --scope symbols
 sigil blast Entity --depth 5     # impact summary
 ```
 
-### 6. Run the benchmark on your repo
+### 7. Run the benchmark on your repo
 
 ```bash
 sigil benchmark --refspec HEAD~3..HEAD
@@ -199,13 +248,6 @@ sigil hook install       # git post-commit + post-checkout auto-rebuild
 ```
 
 Each has a matching `uninstall`. Every installer is idempotent (rerunning with same content is a no-op), preserves user content outside sigil's marker block, and leaves sibling user hooks / rules / plugins untouched.
-
-**`git sigil <cmd>` alias** — piggyback on git's pretrained name recognition so agents that know `git diff` naturally discover `git sigil`:
-
-```bash
-ln -s "$(which sigil)" /usr/local/bin/git-sigil
-# now: git sigil map / git sigil review / git sigil context — all work
-```
 
 ---
 
@@ -307,21 +349,41 @@ Tree-sitter grammars ship as cargo features. Default build includes all 11:
 | C# | `.cs` |
 | Markdown | `.md` `.markdown` |
 
-Plus four sigil-native parsers for data formats: **JSON**, **YAML**, **TOML**, with structural diff (e.g., `"port": 8080 → 8443` detected, not just "line 14 changed").
+Plus four sigil-native parsers for data formats: **JSON**, **YAML**, **TOML**, and **Markdown**. Structural diff works on all four — `"port": 8080 → 8443` is detected as an entity change (not "line 14 changed"), YAML / TOML key moves are matched parent-aware, Markdown headings / code blocks / tables / lists are entity-extracted for diffing too.
 
 ---
 
 ## Command reference
 
+### Structural diff
+
+The original workhorse. Works without `.sigil/` when you pass `--files`; with an index it also lights up caller-aware impact on breaking changes.
+
+| Flag | Effect |
+|---|---|
+| `<refspec>` | `HEAD~1`, `main..HEAD`, `abc123..def456` |
+| `--files <OLD> <NEW>` | Compare two files directly, no git required |
+| `--markdown` | GitHub-flavored markdown (PR-ready); `--no-emoji` for ASCII glyphs |
+| `--json [--pretty]` | Structured output for scripts / CI |
+| `--summary` | One-line `N breaking / M logic / K formatting` |
+| `--group` | Cluster related entity changes |
+| `--lines` | Show line numbers next to entity names |
+| `--context N` / `--no-context` | Lines of code context around each change (default 3) |
+| `--no-callers` | Skip caller analysis for breaking changes (faster on huge diffs) |
+| `--no-color` | Disable ANSI color (for logs / files) |
+| `-r, --root <ROOT>` | Project root (default `.`) |
+
+Exit code is always 0 on success; non-zero only on fatal errors. Rename / move detection is automatic — matched via `body_hash` equality across delete + add pairs.
+
 ### Agent-facing (narrated, budget-aware)
 
 | Command | What it does |
 |---|---|
-| `sigil map [--tokens N] [--focus PATH] [--exclude-tests]` | Ranked codebase digest. Pack N tokens of highest-impact orientation into one markdown artifact. |
+| `sigil map [--tokens N] [--focus PATH] [--exclude-tests] [--write]` | Ranked codebase digest. Pack N tokens of highest-impact orientation into one markdown artifact. `--write` tees to `.sigil/SIGIL_MAP.md`. |
 | `sigil context <symbol> [--budget N] [--format agent\|markdown\|json]` | Focused bundle for one symbol: signature + callers + callees + related types. |
 | `sigil review <refspec> [--markdown\|--json]` | PR review: structural diff + blast radius + co-change misses. |
 | `sigil blast <symbol> [--depth N]` | Impact summary: direct callers, files, transitive reach. |
-| `sigil benchmark [--tokenizer o200k_base]` | Publishes a median token-reduction number for your repo. |
+| `sigil benchmark [--refspec R] [--symbol S] [--tokenizer o200k_base\|cl100k_base\|p50k_base\|proxy] [--format markdown\|json]` | Publishes a median token-reduction number for your repo. |
 
 ### Script-facing (raw, unbounded, JSON-friendly)
 
@@ -330,19 +392,19 @@ Plus four sigil-native parsers for data formats: **JSON**, **YAML**, **TOML**, w
 | `sigil search <q> [--scope symbol\|file\|all]` | Substring search over symbols + file paths. |
 | `sigil symbols <file>` | All entities in a file. |
 | `sigil children <file> <parent>` | Entities under a class / module. |
-| `sigil callers <symbol> [--kind call\|import\|...]` | All references targeting a symbol. |
+| `sigil callers <symbol> [--kind call\|import\|type_annotation\|instantiation\|definition]` | All references targeting a symbol. |
 | `sigil callees <caller>` | What a symbol calls. |
 | `sigil explore [--path PATH]` | Directory overview with file counts by language. |
-| `sigil duplicates [--min-lines N]` | Clone report across the codebase. |
-| `sigil cochange [--commits N]` | Mine git history for file-pair co-change weights. |
+| `sigil duplicates [--min-lines N]` | Clone report across the codebase (groups by `body_hash`). |
+| `sigil cochange [--commits N]` | Mine git history for file-pair co-change weights (`.sigil/cochange.json`). |
 
 ### Admin & data pipeline
 
 | Command | What it does |
 |---|---|
-| `sigil index [--full] [--no-rank]` | Build / refresh the `.sigil/` index. Incremental by default. |
-| `sigil diff <refspec> [--json\|--markdown]` | Structural diff between two git refs or two files. |
-| `sigil query "SQL"` | Ad-hoc SQL against the materialized DuckDB index (full build only). |
+| `sigil index [--full] [--no-rank]` | Build / refresh the `.sigil/` index. Incremental by default. `--full` forces re-parse; `--no-rank` skips PageRank + blast radius. |
+| `sigil query "SQL"` | Ad-hoc SQL against the materialized DuckDB index (full build only). Tables: `entities`, `refs`, plus `rank` / `blast` views. |
+| `sigil update` | Self-update via axoupdater (release-binary installs). |
 
 ### Integrations
 
@@ -427,7 +489,7 @@ Depends. `.sigil/entities.jsonl` + `refs.jsonl` + `rank.json` + `SIGIL_MAP.md` a
 Different tools. ripgrep is line-oriented text search; sigil is structural AST search. Sigil beats grep on (a) output compactness — 5–70× fewer bytes because no noise from docstrings / strings / comments, and (b) semantic queries like "what's defined in this file?" that grep can't express. Grep beats sigil on one-shot queries against unindexed repos. Detailed numbers in [evals/results/multilang-with-db-2026-04-20.md](evals/results/multilang-with-db-2026-04-20.md).
 
 **Q: How does sigil compare to LSP / language servers?**
-LSPs are per-language, resident processes with deep semantic understanding (types, generic resolution, incremental state). sigil is cross-language, stateless, deterministic. Complementary, not competitive — an LSP-upgrade path is on the roadmap (§14.10 of the plan) for precision on TS generics / Rust traits / Python dynamic dispatch.
+LSPs are per-language, resident processes with deep semantic understanding (types, generic resolution, incremental state). sigil is cross-language, stateless, deterministic. Complementary, not competitive.
 
 **Q: Why BLAKE3 for hashing?**
 Faster than SHA-256, faster than xxhash3 at most sizes. 16-hex-char truncation is sigil's storage form — enough to distinguish entities within any plausible repo size.
@@ -436,21 +498,15 @@ Faster than SHA-256, faster than xxhash3 at most sizes. 16-hex-char truncation i
 Skipped silently (with `-v` flag: printed to stderr). sigil never errors out on parse failures — one broken file doesn't block the other 2,000.
 
 **Q: Can I run sigil without the `.sigil/` directory?**
-Yes — `sigil diff --files old.py new.py` compares two files directly without an index. For agent commands (`map`, `context`, `blast`, `review`), you need to run `sigil index` first.
+Yes — `sigil diff --files old.py new.py` compares two files directly without an index. `sigil diff <refspec>` (against git) also works without an index; caller-aware blast enrichment on breaking changes gets skipped until you run `sigil index`. For agent commands (`map`, `context`, `blast`, `review`) the index is required.
+
+**Q: How is `sigil diff` different from `git diff`?**
+`git diff` is line-oriented text: a renamed function becomes "delete + add" noise; whitespace-only edits look identical to logic changes; you can't tell a breaking-API change from a body refactor without reading every hunk. `sigil diff` matches entities by body hash (so renames collapse into one row), classifies every change by three BLAKE3 hashes (breaking / logic / formatting), and extracts entity-level markdown that pastes straight into PRs. Use `git diff` to see lines; use `sigil diff` to review the change.
+
+**Q: What does `sigil diff --files` support?**
+All 11 tree-sitter languages + JSON + YAML + TOML + Markdown. Pass any two paths; sigil picks the parser from the extension. Works offline, no git, no index.
 
 ---
-
-## Roadmap & plan
-
-The full strategic roadmap — agent-adoption plan, command surface rationale, scale strategy, eval methodology — lives in **[agent-adoption-plan.md](agent-adoption-plan.md)** (~900 lines). Release notes in **[blog-agent-adoption.md](blog-agent-adoption.md)**.
-
-## Worked examples
-
-Real sigil outputs on real repos, with honest notes on wins and misses:
-- [worked/sigil-self/](worked/sigil-self/) — sigil indexed against its own source
-- [evals/results/](evals/results/) — benchmark snapshots
-
-Contributions welcome — see [worked/README.md](worked/README.md) for the rubric.
 
 ## License
 

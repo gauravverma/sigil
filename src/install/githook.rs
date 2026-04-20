@@ -2,8 +2,7 @@
 //!
 //! Writes `.git/hooks/post-commit` and `.git/hooks/post-checkout` that
 //! re-run `sigil index` incrementally in the background so `.sigil/`
-//! and `.sigil/rank.json` stay fresh without a daemon. Matches the
-//! pattern graphify's `hook install` uses (§5.1 of agent-adoption-plan).
+//! and `.sigil/rank.json` stay fresh without a daemon.
 //!
 //! The hook scripts are idempotent: re-running install overwrites only
 //! sigil's script (identified via a sentinel comment). If a user has

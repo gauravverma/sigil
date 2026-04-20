@@ -14,12 +14,7 @@ All published numbers use BPE-accurate counts via OpenAI's `o200k_base`
 tokenizer (closest Rust-available match to Claude's on code). Build sigil
 with `--features tokenizer` to enable it. The default build still has a
 `bytes / 4` proxy for zero-dep usage, but everything in this directory
-and everything quoted in the README, blog, and worked examples is BPE.
-
-Full eval design lives in **§8 of `agent-adoption-plan.md`**. This
-directory is the Week-11 / Week-12 slice: the smoke-level benchmark that
-shipped first so later work (E1 PR review with LLM-judge, E2 navigation
-precision/recall, E4 SWE-bench) has somewhere to land.
+and everything quoted in the README is BPE.
 
 ## Layout
 

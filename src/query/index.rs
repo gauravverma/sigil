@@ -1,13 +1,11 @@
-//! In-house query index for sigil — replaces codeix's SearchDb on Phase 0 day 6.
+//! In-house query index for sigil.
 //!
 //! The index is built from `.sigil/entities.jsonl` + `.sigil/refs.jsonl` (sigil's
 //! on-disk source of truth). It lives in memory and exposes the lookups that
 //! `sigil callers / callees / symbols / children / search / explore` need.
 //!
-//! Scale-wise this is the Phase 0 backend — fine up to ~500k entities. The
-//! DuckDB backend from Phase 0.5 (§14.9 of agent-adoption-plan.md) will slot in
-//! behind the same public API once JSONL size crosses the auto-upgrade
-//! threshold.
+//! Fine up to ~500k entities. Above the `SIGIL_AUTO_ENGAGE_THRESHOLD_MB` size
+//! the DuckDB backend slots in behind the same public API.
 
 use std::collections::HashMap;
 use std::path::Path;

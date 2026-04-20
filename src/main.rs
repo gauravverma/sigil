@@ -18,7 +18,7 @@ use std::path::PathBuf;
     long_about = "\
 Deterministic structural code intelligence for AI coding agents.
 
-sigil groups commands into two tiers (see `agent-adoption-plan.md` §15):
+sigil groups commands into two tiers:
 
   AGENT-FACING (narrated, budget-aware, markdown-first):
     map         Ranked codebase digest for cold-start orientation

@@ -2,9 +2,7 @@
 //!
 //! Everything here is a pure function over `(Vec<Entity>, Vec<Reference>)` so
 //! it unit-tests without touching disk or git. Callers decide whether to
-//! persist the output into the Entity slots (`rank`, `blast_radius`) reserved
-//! in Phase 0. See §10 of agent-adoption-plan.md for the week-by-week
-//! rollout; this file covers the Week 1 foundation.
+//! persist the output into the Entity slots (`rank`, `blast_radius`).
 //!
 //! ## Graph
 //!

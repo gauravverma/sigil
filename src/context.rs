@@ -1,9 +1,7 @@
 //! `sigil context <symbol>` — the minimum-viable-context bundle.
 //!
 //! Collapses the agent loop "read 6 files to understand one function before
-//! editing" into a single structured call. Per §4.3 of
-//! agent-adoption-plan.md, this is the single highest-leverage new command —
-//! it touches the most-expensive recurring pattern in real agent work.
+//! editing" into a single structured call.
 //!
 //! Output shape (see `Context` struct):
 //!   - the resolved entity (file, line range, signature, visibility)

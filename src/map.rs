@@ -1,15 +1,14 @@
 //! `sigil map` — budget-aware ranked digest of a codebase.
 //!
 //! The output is the orientation artifact agents read instead of grepping
-//! around cold. Algorithm (§10 week 3 of agent-adoption-plan.md):
+//! around cold.
 //!
 //! 1. Score each file by its PageRank from `.sigil/rank.json`.
-//! 2. For each entity in that file, score by `blast_radius.direct_files`.
-//!    Pick the top `--depth` per file (exported symbols only are not filtered
-//!    here — Week 5's visibility multiplier will promote them).
+//! 2. For each entity in that file, score by `blast_radius.direct_files` and
+//!    pick the top `--depth` per file.
 //! 3. Greedily pack files in rank order until the token budget is exhausted.
 //! 4. Render as Markdown (default) or JSON. `--write` tees to
-//!    `.sigil/SIGIL_MAP.md` for the hook installers landing in Week 7.
+//!    `.sigil/SIGIL_MAP.md` for the hook installers.
 //!
 //! Token estimation uses bytes/4 as a proxy — accurate enough for budgeting
 //! decisions without a tokenizer dependency. If we ever need precision (e.g.
