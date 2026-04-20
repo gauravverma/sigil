@@ -1,0 +1,14 @@
+# Injected before each `dist build` step via `github-build-setup` in
+# dist-workspace.toml. Caches `~/.cargo/registry`, `~/.cargo/git`, and a
+# pruned `target/` so the DuckDB bundled C++ compile and tree-sitter
+# grammars are not rebuilt from scratch on every tag push.
+#
+# Cache keys are scoped per matrix target so we don't cross-contaminate
+# between (say) x86_64-apple-darwin and aarch64-apple-darwin, which have
+# incompatible target/ artifacts.
+- name: Cache cargo (Swatinem/rust-cache)
+  uses: Swatinem/rust-cache@v2
+  with:
+    key: release-${{ join(matrix.targets, '-') }}
+    shared-key: release
+    cache-on-failure: true

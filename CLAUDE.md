@@ -153,15 +153,15 @@ sigil benchmark --tokenizer o200k_base     # BPE-accurate token reduction
 
 # Navigation (script-facing, unbounded, JSON-friendly)
 sigil explore
-sigil search "parse" --scope symbols
+sigil search "parse" --scope symbol
 sigil symbols src/main.rs
 sigil children src/entity.rs Entity
-sigil callers struct_hash [--kind call|import|type_annotation|instantiation|definition]
+sigil callers struct_hash [--kind call|import|type_annotation|instantiation]
 sigil callees build_index
 sigil duplicates --min-lines 10
 sigil cochange --commits 500               # → .sigil/cochange.json
 
-# DuckDB (requires --features db)
+# DuckDB (baked into shipped release binaries since 0.3.2)
 sigil query "SELECT kind, COUNT(*) FROM entities GROUP BY kind ORDER BY 2 DESC"
 
 # Agent / editor integrations (idempotent, content-preserving)
