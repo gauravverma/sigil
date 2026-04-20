@@ -213,6 +213,44 @@ enum Cli {
         #[arg(long)]
         json: bool,
     },
+    /// PR review artifact — structural diff enriched with rank, blast
+    /// radius, and co-change misses. Reviewer reads this instead of
+    /// `git diff`.
+    Review {
+        /// Ref spec: HEAD~1, main..HEAD, abc123..def456
+        ref_spec: String,
+        /// Project root directory
+        #[arg(short, long, default_value = ".")]
+        root: PathBuf,
+        /// Output format: markdown (default) or json.
+        #[arg(long, default_value = "markdown")]
+        format: String,
+        /// Max entries in the "Most impactful" section.
+        #[arg(long, default_value = "5")]
+        top_k: usize,
+        /// Skip co-change miss detection.
+        #[arg(long)]
+        no_cochange: bool,
+    },
+    /// Build / refresh the co-change cache (`.sigil/cochange.json`).
+    /// Reads `git log --name-only` and weights file pairs that move together.
+    Cochange {
+        /// Project root directory
+        #[arg(short, long, default_value = ".")]
+        root: PathBuf,
+        /// Number of historical commits to walk.
+        #[arg(long, default_value = "500")]
+        commits: u32,
+        /// Drop pairs with fewer than this many co-occurrences.
+        #[arg(long, default_value = "2")]
+        min_support: u32,
+        /// Ignore commits that touch more than this many files.
+        #[arg(long, default_value = "30")]
+        max_files_per_commit: u32,
+        /// Pretty-print the JSON output.
+        #[arg(long)]
+        pretty: bool,
+    },
     /// Minimum-viable context for a symbol — signature, callers, callees,
     /// related types. One call replaces the read-6-files orientation loop.
     Context {
@@ -509,6 +547,53 @@ fn main() {
                 println!();
             } else {
                 print!("{}", query::format_refs(&refs));
+            }
+        }
+        Cli::Review { ref_spec, root, format, top_k, no_cochange } => {
+            let Some(fmt) = sigil::review::ReviewFormat::parse(&format) else {
+                eprintln!("error: unknown --format {}. expected `markdown` or `json`", format);
+                std::process::exit(1);
+            };
+            let opts = sigil::review::ReviewOptions {
+                format: fmt,
+                top_k,
+                show_cochange: !no_cochange,
+                ..sigil::review::ReviewOptions::default()
+            };
+            match sigil::review::run_review(&root, &ref_spec, &opts) {
+                Ok(rendered) => {
+                    if matches!(fmt, sigil::review::ReviewFormat::Json) {
+                        println!("{}", rendered);
+                    } else {
+                        print!("{}", rendered);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Cli::Cochange { root, commits, min_support, max_files_per_commit, pretty } => {
+            let cfg = sigil::cochange::CochangeConfig { commits, min_support, max_files_per_commit };
+            match sigil::cochange::mine(&root, &cfg) {
+                Ok(manifest) => {
+                    if let Err(e) = sigil::cochange::save(&manifest, &root, pretty) {
+                        eprintln!("error writing .sigil/cochange.json: {}", e);
+                        std::process::exit(1);
+                    }
+                    eprintln!(
+                        "scanned {} commits, {} files, {} pairs (min_support={})",
+                        manifest.commits_scanned,
+                        manifest.file_count,
+                        manifest.pairs.len(),
+                        manifest.min_support,
+                    );
+                }
+                Err(e) => {
+                    eprintln!("error: {}", e);
+                    std::process::exit(1);
+                }
             }
         }
         Cli::Context { query: q, root, budget, depth, format, pretty } => {
