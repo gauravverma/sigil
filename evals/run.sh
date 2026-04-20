@@ -5,13 +5,17 @@
 set -eu
 
 REFSPEC="${1:-HEAD~3..HEAD}"
+TOKENIZER="${TOKENIZER:-o200k_base}"
 # sigil reports its version via --version; strip the leading name.
-VERSION="$(cargo run --quiet -- --version 2>/dev/null | awk '{print $NF}')"
+VERSION="$(cargo run --quiet --features tokenizer -- --version 2>/dev/null | awk '{print $NF}')"
 SAFE_REF="$(printf '%s' "$REFSPEC" | tr '/.~^:' '-----')"
-OUT="evals/results/${VERSION}-${SAFE_REF}.json"
+OUT="evals/results/${VERSION}-${SAFE_REF}-${TOKENIZER}.json"
 
 # The benchmark assumes a current index. Re-run `sigil index` first if in doubt.
-cargo run --quiet -- benchmark --refspec "$REFSPEC" --format json --pretty > "$OUT"
+cargo run --quiet --features tokenizer -- benchmark \
+    --refspec "$REFSPEC" \
+    --tokenizer "$TOKENIZER" \
+    --format json --pretty > "$OUT"
 
 # Human-readable summary to stderr.
 python3 - "$OUT" <<'PY' >&2

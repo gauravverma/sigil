@@ -26,10 +26,10 @@ branch at the snapshot where Phase 1 Week 10 just merged. ~2630 entities,
    but genuinely surfaced by the tool.
 
 4. **Context + budget is tight.** `context Entity --budget 1000` fits
-   in 358 tokens and gives an agent everything it needs to edit
+   in 467 BPE tokens and gives an agent everything it needs to edit
    `Entity`: signature, callers, callees, related types. The raw
-   alternative (read every file that references `Entity`) is 90 KB of
-   source, a 252× reduction.
+   alternative (read every file that references `Entity`) is ~92 K
+   tokens of source — a **196× reduction** at the same fidelity.
 
 ## Misses / rough edges
 
@@ -72,13 +72,14 @@ branch at the snapshot where Phase 1 Week 10 just merged. ~2630 entities,
 
 ## Methodology
 
-Token counts in the ratio table are `bytes / 4`, a proxy for modern
-tokenizers. Control commands and their measured output sizes:
+Token counts use OpenAI's `o200k_base` BPE encoding (the GPT-4o/o3
+tokenizer, closest Rust-available match to Claude's on code). Control
+commands and their measured output sizes:
 
-- **PR review**: `git diff --stat --patch HEAD~3..HEAD` → 185,954 tokens
-- **Context `Entity`**: read all 17 files that reference `Entity`
-  (bounded at 100 in the benchmarker) → 90,296 tokens
-- **Cold-start**: cat the first 20 entities-having files → 47,879 tokens
+- **PR review**: `git diff --stat --patch HEAD~3..HEAD` → 195,003 tokens
+- **Context `Entity`**: read all files that reference `Entity`
+  (bounded at 100 in the benchmarker) → 91,937 tokens
+- **Cold-start**: cat the first 20 entity-having files → 44,733 tokens
 
 Sigil output sizes measured from the actual stdout of the equivalent
 command. Nothing staged; `evals/run.sh` is reproducible.
@@ -89,11 +90,13 @@ command. Nothing staged; `evals/run.sh` is reproducible.
 git clone https://github.com/gauravverma/sigil
 cd sigil
 git checkout agent-adoption
-cargo run --release -- index
-cargo run --release -- map --tokens 3000 --write
-cargo run --release -- review HEAD~3..HEAD > worked/sigil-self/review-HEAD~3..HEAD.md
+cargo install --path . --features tokenizer
+sigil index
+sigil map --tokens 3000 --write
+sigil review HEAD~3..HEAD > worked/sigil-self/review-HEAD~3..HEAD.md
+sigil benchmark --refspec HEAD~3..HEAD --tokenizer o200k_base --format json
 # ...etc
 ```
 
-Numbers match the `evals/results/0.2.4-HEAD-3..HEAD.json` snapshot
-within ±5%.
+Numbers match the `evals/results/0.2.4-HEAD-3..HEAD-o200k.json`
+snapshot within ±5%.

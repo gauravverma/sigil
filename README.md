@@ -4,15 +4,15 @@
 
 sigil parses source files with [tree-sitter](https://tree-sitter.github.io/), hashes entities with BLAKE3, runs PageRank over the reference graph, and emits ranked maps, focused context bundles, PR review artifacts, and structural diffs. Zero LLM. Zero inference. The tool tells you *what structurally changed*, *who calls what*, *what depends on this change* — always from a parsed index, never from text search.
 
-Measured on sigil's own source (v0.2.4):
+Measured on sigil's own source (v0.2.4, `o200k_base` tokenizer — GPT-4o/o3):
 
 | Query | Raw tokens | Sigil tokens | Ratio |
 |---|---:|---:|---:|
-| PR review (3 commits) | 185,954 | 7,176 | **25.91×** |
-| Context for `Entity` | 90,296 | 358 | **252.22×** |
-| Cold-start orientation | 47,879 | 1,891 | **25.32×** |
+| PR review (3 commits) | 195,003 | 5,572 | **35.00×** |
+| Context for `Entity` | 91,937 | 467 | **196.87×** |
+| Cold-start orientation | 44,733 | 2,786 | **16.06×** |
 
-Median reduction: **25.91×**. Reproduce with `sigil benchmark` on your own repo. Raw numbers + methodology: [`evals/`](evals/). Worked examples: [`worked/`](worked/). Full roadmap: [`agent-adoption-plan.md`](agent-adoption-plan.md). Release notes: [`blog-agent-adoption.md`](blog-agent-adoption.md).
+Median reduction: **35.00×**. All numbers use BPE-accurate counts via `cargo install sigil --features tokenizer` + `sigil benchmark --tokenizer o200k_base`. Reproduce with `sigil benchmark` on your own repo. Raw numbers + methodology: [`evals/`](evals/). Worked examples: [`worked/`](worked/). Full roadmap: [`agent-adoption-plan.md`](agent-adoption-plan.md). Release notes: [`blog-agent-adoption.md`](blog-agent-adoption.md).
 
 ## What you get
 

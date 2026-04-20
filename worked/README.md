@@ -29,15 +29,16 @@ The first worked example: sigil's own source (~2600 entities across
 88 files). Generated from the `agent-adoption` branch at the v0.2.4
 tag range.
 
-Benchmark numbers captured in `evals/results/0.2.4-HEAD-3..HEAD.json`:
+Benchmark numbers captured in `evals/results/0.2.4-HEAD-3..HEAD-o200k.json`
+(BPE-accurate counts via `sigil benchmark --tokenizer o200k_base`):
 
 | Query | Raw tokens | Sigil tokens | Ratio |
 |---|---:|---:|---:|
-| PR review (3 commits) | 185,954 | 7,176 | 25.91× |
-| Context for `Entity` | 90,296 | 358 | 252.22× |
-| Cold-start orientation | 47,879 | 1,891 | 25.32× |
+| PR review (3 commits) | 195,003 | 5,572 | 35.00× |
+| Context for `Entity` | 91,937 | 467 | 196.87× |
+| Cold-start orientation | 44,733 | 2,786 | 16.06× |
 
-Median reduction: **25.91×**.
+Median reduction: **35.00×** (`o200k_base` tokenizer, GPT-4o/o3).
 
 Read the artifacts in order:
 

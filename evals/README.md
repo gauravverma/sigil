@@ -10,6 +10,12 @@ hand-labeled ground truth, no SWE-bench. Just a reproducible
 token-accounting pass on a real repo (sigil itself) whose numbers we can
 publish without hand-waving.
 
+All published numbers use BPE-accurate counts via OpenAI's `o200k_base`
+tokenizer (closest Rust-available match to Claude's on code). Build sigil
+with `--features tokenizer` to enable it. The default build still has a
+`bytes / 4` proxy for zero-dep usage, but everything in this directory
+and everything quoted in the README, blog, and worked examples is BPE.
+
 Full eval design lives in **§8 of `agent-adoption-plan.md`**. This
 directory is the Week-11 / Week-12 slice: the smoke-level benchmark that
 shipped first so later work (E1 PR review with LLM-judge, E2 navigation
@@ -34,9 +40,8 @@ evals/
 | **Context for `<sym>`** | read every file that references `<sym>` (bounded 100) | `sigil context <sym>` |
 | **Cold-start orientation** | cat 20 random source files | `sigil map --tokens 2000` |
 
-For each, we capture the output of both approaches, estimate tokens as
-`bytes / 4` (a stable proxy for modern tokenizers, ±20% in either
-direction), and publish the ratio. The median across queries is the
+For each, we capture the output of both approaches, count tokens with
+`o200k_base`, and publish the ratio. The median across queries is the
 headline number.
 
 ## What's *not* measured yet
@@ -51,20 +56,32 @@ headline number.
 - **Hand-labeled navigation ground truth** — comparing sigil's caller
   set vs grep's would need a human oracle per symbol. Deferred.
 
-## Why `bytes / 4`
+## Why `o200k_base`
 
-Picked deliberately: real tokenizers (tiktoken, Claude's) vary by model
-and language, but all cluster around 3–5 bytes per token on code.
-bytes/4 is stable across Rust/Python/TS/Go and doesn't require a model
-dependency. When we start reporting dollar figures, the eval harness
-swaps in a real tokenizer (behind a feature flag — see §14.9 of the
-plan for the scale story).
+OpenAI's `o200k_base` (the GPT-4o/o3 tokenizer) is the closest Rust-
+available match to Claude's on code — the token-per-byte rate differs
+by under 5% in our spot checks. Using it keeps the published numbers
+honest (safe to cite dollar-cost math) without requiring a network
+round-trip for every run.
+
+Available via `tiktoken-rs` behind the `tokenizer` cargo feature;
+build once with `cargo install sigil --features tokenizer` and every
+`sigil benchmark` call can use `--tokenizer o200k_base`. Sigil also
+supports `cl100k_base` (GPT-3.5/4) and `p50k_base` (legacy) for
+cross-model comparison.
+
+The zero-dep `proxy` (bytes / 4) path remains available for internal
+comparisons but we never publish proxy numbers — they over-estimate
+ratios by 15–30% depending on query shape.
 
 ## How to capture a snapshot
 
 ```bash
+# One-time: build with the tokenizer feature
+cargo install --path . --features tokenizer
+
 # Make sure the index is fresh and rank is populated
-cargo run --release -- index
+sigil index
 
 # Capture with the current HEAD range
 ./evals/run.sh
@@ -73,9 +90,9 @@ cargo run --release -- index
 ./evals/run.sh HEAD~5..HEAD
 ```
 
-The script writes `evals/results/<sigil-version>-<refspec>.json` and
-prints the median ratio to stderr. Commit the JSON alongside the code
-change that produced it — each result is a dated artifact.
+The script writes `evals/results/<sigil-version>-<refspec>-o200k.json`
+and prints the median ratio to stderr. Commit the JSON alongside the
+code change that produced it — each result is a dated artifact.
 
 ## Cross-repo benchmark
 
@@ -115,30 +132,24 @@ on re-run. Test corpora belong in their own TSV, not the main one.
 
 ## Historical results
 
-| Date | sigil version | refspec | Tokenizer | Median ratio | PR review | Context | Orientation |
-|---|---|---|---|---:|---:|---:|---:|
-| 2026-04-20 | 0.2.4 | HEAD~3..HEAD | bytes/4 proxy | 25.91× | 25.91× | 252.22× | 25.32× |
-| 2026-04-20 | 0.2.4 | HEAD~3..HEAD | o200k_base (GPT-4o) | 16.75× | 13.94× | 184.34× | 16.75× |
+All rows use `o200k_base` (GPT-4o/o3). Add a new row per (sigil version,
+refspec) snapshot; commit the JSON alongside.
 
-Raw JSON:
-- [`results/0.2.4-HEAD-3..HEAD.json`](results/0.2.4-HEAD-3..HEAD.json) (proxy)
-- [`results/0.2.4-HEAD-3..HEAD-o200k.json`](results/0.2.4-HEAD-3..HEAD-o200k.json) (BPE)
+| Date | sigil version | refspec | Median ratio | PR review | Context | Orientation |
+|---|---|---|---:|---:|---:|---:|
+| 2026-04-20 | 0.2.4 | HEAD~3..HEAD | **35.00×** | 35.00× | 196.87× | 16.06× |
 
-**Proxy vs BPE notes.** BPE-accurate counts come in lower than the proxy's
-because tokenizers split code more aggressively than English text (camelCase,
-operators, whitespace). Both sides of the ratio grow, but the raw side grows
-more, so ratios shrink. The 13.94×–184.34× BPE range is the number to cite
-when publishing dollar-cost math; the proxy is fine for order-of-magnitude
-internal comparisons.
+Raw JSON: [`results/0.2.4-HEAD-3..HEAD-o200k.json`](results/0.2.4-HEAD-3..HEAD-o200k.json)
 
 ## Reproducibility
 
 ```bash
 git clone https://github.com/gauravverma/sigil
 cd sigil
-cargo run --release -- index
+cargo install --path . --features tokenizer
+sigil index
 ./evals/run.sh HEAD~3..HEAD
-# Compare against evals/results/0.2.4-HEAD-3..HEAD.json
+# Compare against evals/results/0.2.4-HEAD-3..HEAD-o200k.json
 ```
 
 Numbers should match within ±5% of the published result on the same git

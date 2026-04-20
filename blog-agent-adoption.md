@@ -46,28 +46,29 @@ inside a comment, inside a doc example. `sigil callers foo` returns the
 exact set of references — aliased uses included, strings excluded —
 because it's querying a parsed index, not matching text.
 
-Run this on sigil itself, 0.2.4 refspec `HEAD~3..HEAD`:
+Run this on sigil itself, 0.2.4 refspec `HEAD~3..HEAD`, BPE-accurate
+counts via `o200k_base` (GPT-4o/o3 tokenizer):
 
 | Query | Raw tokens | Sigil tokens | Ratio |
 |---|---:|---:|---:|
-| PR review (3 commits) | 185,954 | 7,176 | **25.91×** |
-| Context for `Entity` | 90,296 | 358 | **252.22×** |
-| Cold-start orientation | 47,879 | 1,891 | **25.32×** |
+| PR review (3 commits) | 195,003 | 5,572 | **35.00×** |
+| Context for `Entity` | 91,937 | 467 | **196.87×** |
+| Cold-start orientation | 44,733 | 2,786 | **16.06×** |
 
-Median reduction: **25.91×**. The eye-catcher is the context query —
-reading every file that references `Entity` is ~90 KB of source; the
-bundle sigil produces is 358 tokens. That's the difference between the
-agent burning a third of its context window on orientation vs one
-tool call.
+Median reduction: **35.00×**. The eye-catcher is the context query —
+reading every file that references `Entity` is ~92 K tokens of source;
+the bundle sigil produces is 467 tokens. That's the difference between
+the agent burning nearly half its context window on orientation vs one
+tool call returning 0.2% of it.
 
 These numbers come from `sigil benchmark`, which is [a shipped command](https://github.com/gauravverma/sigil/blob/main/src/benchmark.rs).
 Reproducible on any codebase:
 
 ```bash
-cargo install sigil
+cargo install sigil --features tokenizer
 cd your-repo
 sigil index
-sigil benchmark --refspec main..HEAD
+sigil benchmark --refspec main..HEAD --tokenizer o200k_base
 ```
 
 ## The honest parts
@@ -162,5 +163,5 @@ numbers. Same format we'll accept for external contributions.
 
 No LLM in the code path. No embeddings. No cloud service. Just
 tree-sitter and BLAKE3 and a ranked reference table — enough structure
-to make an agent 20–250× cheaper per answer on the questions it asks
+to make an agent 16–200× cheaper per answer on the questions it asks
 most.
