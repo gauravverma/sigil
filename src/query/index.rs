@@ -30,8 +30,11 @@ pub enum Scope {
 
 impl Scope {
     /// Parse codeix-compatible scope strings so main.rs's `--scope` flag
-    /// keeps working across the day-6 swap.
-    pub fn from_str(s: &str) -> Self {
+    /// keeps working across the day-6 swap. Deliberately infallible —
+    /// unknown values fall back to `Scope::All` rather than erroring, matching
+    /// codeix's behavior. Named `parse` (not `from_str`) to avoid the
+    /// `std::str::FromStr` trait collision clippy flags.
+    pub fn parse(s: &str) -> Self {
         match s {
             "symbols" | "symbol" => Scope::Symbols,
             "files" | "file" => Scope::Files,
@@ -270,10 +273,10 @@ impl Index {
             std::collections::BTreeMap::new();
 
         for file in self.entities_by_file.keys() {
-            if let Some(prefix) = path_prefix {
-                if !file.starts_with(prefix) {
-                    continue;
-                }
+            if let Some(prefix) = path_prefix
+                && !file.starts_with(prefix)
+            {
+                continue;
             }
             let dir = parent_dir(file).to_string();
             let lang = lang_for(file);
@@ -308,10 +311,10 @@ impl Index {
         files.sort();
 
         for file in files {
-            if let Some(prefix) = path_prefix {
-                if !file.starts_with(prefix) {
-                    continue;
-                }
+            if let Some(prefix) = path_prefix
+                && !file.starts_with(prefix)
+            {
+                continue;
             }
             let dir = parent_dir(file).to_string();
             by_dir.entry(dir).or_default().push(file.clone());
@@ -353,15 +356,15 @@ impl Index {
 
         if want_symbols {
             for e in &self.entities {
-                if let Some(prefix) = path_prefix {
-                    if !e.file.starts_with(prefix) {
-                        continue;
-                    }
+                if let Some(prefix) = path_prefix
+                    && !e.file.starts_with(prefix)
+                {
+                    continue;
                 }
-                if let Some(k) = kind_filter {
-                    if e.kind != k {
-                        continue;
-                    }
+                if let Some(k) = kind_filter
+                    && e.kind != k
+                {
+                    continue;
                 }
                 if e.name.to_lowercase().contains(&q) {
                     hits.push(SearchHit::Symbol(e));
@@ -376,10 +379,10 @@ impl Index {
             let mut files: Vec<&String> = self.entities_by_file.keys().collect();
             files.sort();
             for f in files {
-                if let Some(prefix) = path_prefix {
-                    if !f.starts_with(prefix) {
-                        continue;
-                    }
+                if let Some(prefix) = path_prefix
+                    && !f.starts_with(prefix)
+                {
+                    continue;
                 }
                 if f.to_lowercase().contains(&q) {
                     hits.push(SearchHit::File(FileHit {
@@ -868,12 +871,12 @@ mod tests {
     }
 
     #[test]
-    fn scope_from_str_parses_codeix_strings() {
-        assert_eq!(Scope::from_str("symbols"), Scope::Symbols);
-        assert_eq!(Scope::from_str("symbol"), Scope::Symbols);
-        assert_eq!(Scope::from_str("files"), Scope::Files);
-        assert_eq!(Scope::from_str("all"), Scope::All);
-        assert_eq!(Scope::from_str("gibberish"), Scope::All);
+    fn scope_parse_accepts_codeix_strings() {
+        assert_eq!(Scope::parse("symbols"), Scope::Symbols);
+        assert_eq!(Scope::parse("symbol"), Scope::Symbols);
+        assert_eq!(Scope::parse("files"), Scope::Files);
+        assert_eq!(Scope::parse("all"), Scope::All);
+        assert_eq!(Scope::parse("gibberish"), Scope::All);
     }
 
     #[test]

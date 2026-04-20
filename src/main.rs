@@ -350,7 +350,7 @@ fn main() {
             // first value wins for filtering (matches codeix's prior behavior).
             let scope_enum = scope
                 .first()
-                .map(|s| query::index::Scope::from_str(s))
+                .map(|s| query::index::Scope::parse(s))
                 .unwrap_or(query::index::Scope::All);
             let kind_filter = kind.first().map(|s| s.as_str());
             let results = idx.search(&q, scope_enum, kind_filter, path.as_deref(), limit as usize);
