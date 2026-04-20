@@ -12,6 +12,7 @@ pub mod git;
 pub mod grouping;
 pub mod hasher;
 pub mod index;
+pub mod install;
 pub mod json_index;
 pub mod toml_index;
 pub mod yaml_index;

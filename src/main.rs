@@ -8,7 +8,7 @@ use sigil::output;
 use sigil::query;
 use sigil::writer;
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -351,8 +351,40 @@ enum Cli {
         #[arg(long)]
         write: bool,
     },
+    /// Install or uninstall the Claude Code integration
+    /// (CLAUDE.md capability block + PreToolUse hint hook).
+    Claude {
+        #[command(subcommand)]
+        action: InstallAction,
+    },
+    /// Install or uninstall the Cursor integration
+    /// (`.cursor/rules/sigil.mdc` with `alwaysApply: true`).
+    Cursor {
+        #[command(subcommand)]
+        action: InstallAction,
+    },
+    /// Install or uninstall the Codex integration
+    /// (`AGENTS.md` capability block + `.codex/hooks.json` Bash hint hook).
+    Codex {
+        #[command(subcommand)]
+        action: InstallAction,
+    },
     /// Update sigil to the latest release
     Update,
+}
+
+#[derive(Subcommand)]
+enum InstallAction {
+    Install {
+        /// Project root directory
+        #[arg(short, long, default_value = ".")]
+        root: PathBuf,
+    },
+    Uninstall {
+        /// Project root directory
+        #[arg(short, long, default_value = ".")]
+        root: PathBuf,
+    },
 }
 
 fn main() {
@@ -786,6 +818,64 @@ fn main() {
                     .unwrap_or_else(|e| { eprintln!("error writing .sigil/SIGIL_MAP.md: {}", e); std::process::exit(1); });
             }
         }
+        Cli::Claude { action } => match action {
+            InstallAction::Install { root } => {
+                match sigil::install::claude::install(&root) {
+                    Ok(steps) => {
+                        for s in &steps {
+                            eprintln!("claude: {:?}", s);
+                        }
+                        eprintln!("sigil Claude Code integration installed at {}", root.display());
+                    }
+                    Err(e) => {
+                        eprintln!("error installing Claude integration: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+            InstallAction::Uninstall { root } => {
+                match sigil::install::claude::uninstall(&root) {
+                    Ok(steps) => {
+                        for s in &steps {
+                            eprintln!("claude: {:?}", s);
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("error uninstalling Claude integration: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+        },
+        Cli::Cursor { action } => match action {
+            InstallAction::Install { root } => match sigil::install::cursor::install(&root) {
+                Ok(r) => eprintln!("cursor: {:?}", r),
+                Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
+            },
+            InstallAction::Uninstall { root } => match sigil::install::cursor::uninstall(&root) {
+                Ok(true) => eprintln!("cursor: removed"),
+                Ok(false) => eprintln!("cursor: nothing to remove"),
+                Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
+            },
+        },
+        Cli::Codex { action } => match action {
+            InstallAction::Install { root } => match sigil::install::codex::install(&root) {
+                Ok(steps) => {
+                    for s in &steps {
+                        eprintln!("codex: {:?}", s);
+                    }
+                }
+                Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
+            },
+            InstallAction::Uninstall { root } => match sigil::install::codex::uninstall(&root) {
+                Ok(steps) => {
+                    for s in &steps {
+                        eprintln!("codex: {:?}", s);
+                    }
+                }
+                Err(e) => { eprintln!("error: {}", e); std::process::exit(1); }
+            },
+        },
         Cli::Update => {
             eprintln!("Checking for updates...");
             let mut updater = axoupdater::AxoUpdater::new_for("sigil");
