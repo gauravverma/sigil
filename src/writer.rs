@@ -67,6 +67,9 @@ mod tests {
             body_hash: Some("abcdef1234567890".to_string()),
             sig_hash: Some("1234567890abcdef".to_string()),
             struct_hash: "fedcba0987654321".to_string(),
+            visibility: None,
+            rank: None,
+            blast_radius: None,
         }
     }
 

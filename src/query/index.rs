@@ -475,6 +475,9 @@ mod tests {
             body_hash: None,
             sig_hash: None,
             struct_hash: "deadbeef".to_string(),
+            visibility: None,
+            rank: None,
+            blast_radius: None,
         }
     }
 

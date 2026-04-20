@@ -68,6 +68,12 @@ pub fn parse_single_file(
             body_hash: hasher::body_hash(source, body_start, line_end),
             sig_hash,
             struct_hash: hasher::struct_hash(raw_text.as_bytes()),
+            // Phase 1: capture visibility from the parser (public/private/pub/
+            // pub(crate)/etc.) so rank multipliers can favor exported symbols.
+            // `rank` and `blast_radius` get populated later by src/rank.rs.
+            visibility: sym.visibility.clone(),
+            rank: None,
+            blast_radius: None,
         });
     }
 

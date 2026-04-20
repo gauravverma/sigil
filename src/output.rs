@@ -747,6 +747,9 @@ mod tests {
             body_hash: Some("bh1".to_string()),
             sig_hash: Some("sh1".to_string()),
             struct_hash: "st1".to_string(),
+            visibility: None,
+            rank: None,
+            blast_radius: None,
         }
     }
 

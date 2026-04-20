@@ -197,6 +197,9 @@ mod tests {
             body_hash: body_hash.map(|s| s.to_string()),
             sig_hash: sig_hash.map(|s| s.to_string()),
             struct_hash: struct_hash.to_string(),
+            visibility: None,
+            rank: None,
+            blast_radius: None,
         }
     }
 

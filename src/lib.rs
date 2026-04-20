@@ -20,5 +20,6 @@ pub mod meta;
 pub mod output;
 pub mod parser;
 pub mod query;
+pub mod rank;
 pub mod signature;
 pub mod writer;

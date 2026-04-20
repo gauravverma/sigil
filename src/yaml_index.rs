@@ -322,6 +322,9 @@ fn extract_mapping_entities(
             body_hash,
             sig_hash,
             struct_hash,
+            visibility: None,
+            rank: None,
+            blast_radius: None,
         });
 
         // Recurse into nested mappings

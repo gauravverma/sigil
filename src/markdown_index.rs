@@ -55,6 +55,9 @@ fn close_headings(
                 body_hash,
                 sig_hash,
                 struct_hash,
+                visibility: None,
+                rank: None,
+                blast_radius: None,
             });
         } else {
             break;
@@ -100,6 +103,9 @@ fn flush_accumulator(
         body_hash,
         sig_hash,
         struct_hash,
+        visibility: None,
+        rank: None,
+        blast_radius: None,
     });
 
     acc_kind.clear();
@@ -281,6 +287,9 @@ pub fn parse_markdown_file(
                 body_hash,
                 sig_hash: None,
                 struct_hash,
+                visibility: None,
+                rank: None,
+                blast_radius: None,
             });
 
             // Delegate YAML parsing
@@ -487,6 +496,9 @@ pub fn parse_markdown_file(
                         body_hash,
                         sig_hash,
                         struct_hash,
+                        visibility: None,
+                        rank: None,
+                        blast_radius: None,
                     });
 
                     state = State::Normal;
@@ -527,6 +539,9 @@ pub fn parse_markdown_file(
                         body_hash,
                         sig_hash: None,
                         struct_hash,
+                        visibility: None,
+                        rank: None,
+                        blast_radius: None,
                     });
 
                     state = State::Normal;
@@ -572,6 +587,9 @@ pub fn parse_markdown_file(
             body_hash,
             sig_hash,
             struct_hash,
+            visibility: None,
+            rank: None,
+            blast_radius: None,
         });
     }
 
@@ -598,6 +616,9 @@ pub fn parse_markdown_file(
             body_hash,
             sig_hash: None,
             struct_hash,
+            visibility: None,
+            rank: None,
+            blast_radius: None,
         });
     }
 
