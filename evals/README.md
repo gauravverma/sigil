@@ -115,11 +115,21 @@ on re-run. Test corpora belong in their own TSV, not the main one.
 
 ## Historical results
 
-| Date | sigil version | refspec | Median ratio | PR review | Context | Orientation |
-|---|---|---|---:|---:|---:|---:|
-| 2026-04-20 | 0.2.4 | HEAD~3..HEAD | 25.91× | 25.91× | 252.22× | 25.32× |
+| Date | sigil version | refspec | Tokenizer | Median ratio | PR review | Context | Orientation |
+|---|---|---|---|---:|---:|---:|---:|
+| 2026-04-20 | 0.2.4 | HEAD~3..HEAD | bytes/4 proxy | 25.91× | 25.91× | 252.22× | 25.32× |
+| 2026-04-20 | 0.2.4 | HEAD~3..HEAD | o200k_base (GPT-4o) | 16.75× | 13.94× | 184.34× | 16.75× |
 
-Raw JSON: [`results/0.2.4-HEAD-3..HEAD.json`](results/0.2.4-HEAD-3..HEAD.json)
+Raw JSON:
+- [`results/0.2.4-HEAD-3..HEAD.json`](results/0.2.4-HEAD-3..HEAD.json) (proxy)
+- [`results/0.2.4-HEAD-3..HEAD-o200k.json`](results/0.2.4-HEAD-3..HEAD-o200k.json) (BPE)
+
+**Proxy vs BPE notes.** BPE-accurate counts come in lower than the proxy's
+because tokenizers split code more aggressively than English text (camelCase,
+operators, whitespace). Both sides of the ratio grow, but the raw side grows
+more, so ratios shrink. The 13.94×–184.34× BPE range is the number to cite
+when publishing dollar-cost math; the proxy is fine for order-of-magnitude
+internal comparisons.
 
 ## Reproducibility
 

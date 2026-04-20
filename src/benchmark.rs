@@ -24,6 +24,7 @@ use crate::map as sigil_map;
 use crate::query::index::Index;
 use crate::rank::RankManifest;
 use crate::review;
+use crate::tokens::Tokenizer;
 
 #[derive(Debug, Clone)]
 pub struct BenchmarkOptions {
@@ -33,6 +34,10 @@ pub struct BenchmarkOptions {
     /// highest-blast entity in the index if not provided.
     pub symbol: Option<String>,
     pub format: BenchmarkFormat,
+    /// Which tokenizer to use for both control and treatment counts.
+    /// Defaults to the proxy; BPE variants require the `tokenizer`
+    /// cargo feature.
+    pub tokenizer: Tokenizer,
 }
 
 impl Default for BenchmarkOptions {
@@ -41,6 +46,7 @@ impl Default for BenchmarkOptions {
             refspec: "HEAD~1..HEAD".to_string(),
             symbol: None,
             format: BenchmarkFormat::Markdown,
+            tokenizer: Tokenizer::default(),
         }
     }
 }
@@ -65,6 +71,10 @@ impl BenchmarkFormat {
 pub struct BenchmarkReport {
     pub sigil_version: String,
     pub refspec: String,
+    /// Which tokenizer produced the counts ("bytes/4 proxy", "o200k_base",
+    /// etc.). Included in the JSON so downstream readers can tell proxy
+    /// numbers apart from BPE-accurate ones without guesswork.
+    pub tokenizer: String,
     pub queries: Vec<QueryResult>,
     pub median_ratio: f64,
 }
@@ -84,10 +94,9 @@ pub struct QueryResult {
     pub control_skipped: bool,
 }
 
-/// 4-byte-per-token heuristic. Same as sigil map + context.
-fn tokens(s: &str) -> usize {
-    (s.len() + 3) / 4
-}
+// Token counting now flows through a `Tokenizer` selected per-run. The
+// proxy-only path is still the default and lives in `tokens::proxy_count`,
+// so maps / contexts that don't need BPE-accurate numbers are unaffected.
 
 /// Run the full benchmark. All three queries run with current .sigil/ data
 /// — caller is responsible for running `sigil index` and
@@ -99,19 +108,27 @@ pub fn run_benchmark(root: &Path, opts: &BenchmarkOptions) -> Result<BenchmarkRe
     }
     let rank = sigil_map::load_rank_manifest(root).unwrap_or_default();
 
+    // Fail fast if the user asked for a BPE tokenizer but sigil was built
+    // without the feature. Better to surface the misconfiguration than to
+    // silently fall back to the proxy and publish mismatched numbers.
+    opts.tokenizer
+        .count("")
+        .context("selected tokenizer is not available in this build")?;
+
     let mut queries = Vec::new();
+    let tok = &opts.tokenizer;
 
     // Q1: review vs git diff.
-    queries.push(run_review_query(root, &opts.refspec));
+    queries.push(run_review_query(root, &opts.refspec, tok));
 
     // Q2: context <symbol> vs reading the whole file.
     let symbol = opts.symbol.clone().or_else(|| pick_high_blast_symbol(&idx));
     if let Some(sym) = symbol {
-        queries.push(run_context_query(root, &idx, &sym));
+        queries.push(run_context_query(root, &idx, &sym, tok));
     }
 
     // Q3: map vs a shallow ls + file reads.
-    queries.push(run_map_query(root, &idx, &rank));
+    queries.push(run_map_query(root, &idx, &rank, tok));
 
     let ratios: Vec<f64> = queries.iter().filter(|q| !q.control_skipped).map(|q| q.ratio).collect();
     let median_ratio = median(&ratios);
@@ -119,6 +136,7 @@ pub fn run_benchmark(root: &Path, opts: &BenchmarkOptions) -> Result<BenchmarkRe
     Ok(BenchmarkReport {
         sigil_version: env!("CARGO_PKG_VERSION").to_string(),
         refspec: opts.refspec.clone(),
+        tokenizer: opts.tokenizer.label().to_string(),
         queries,
         median_ratio,
     })
@@ -137,11 +155,11 @@ fn pick_high_blast_symbol(idx: &Index) -> Option<String> {
         .map(|e| e.name.clone())
 }
 
-fn run_review_query(root: &Path, refspec: &str) -> QueryResult {
+fn run_review_query(root: &Path, refspec: &str, tok: &Tokenizer) -> QueryResult {
     let control_cmd = format!("git diff --stat --patch {refspec}");
     let treatment_cmd = format!("sigil review {refspec}");
 
-    let (control_tokens, control_skipped) = git_output_tokens(root, refspec);
+    let (control_tokens, control_skipped) = git_output_tokens(root, refspec, tok);
     let treatment_tokens = match review::run_review(
         root,
         refspec,
@@ -151,7 +169,7 @@ fn run_review_query(root: &Path, refspec: &str) -> QueryResult {
             ..review::ReviewOptions::default()
         },
     ) {
-        Ok(s) => tokens(&s),
+        Ok(s) => count_or_proxy(tok, &s),
         Err(_) => 0,
     };
 
@@ -167,7 +185,7 @@ fn run_review_query(root: &Path, refspec: &str) -> QueryResult {
     }
 }
 
-fn run_context_query(root: &Path, idx: &Index, symbol: &str) -> QueryResult {
+fn run_context_query(root: &Path, idx: &Index, symbol: &str, tok: &Tokenizer) -> QueryResult {
     let control_cmd = format!(
         "cat $(grep -rl '{symbol}' .)   # very rough proxy for a 'read-everywhere' expansion"
     );
@@ -175,13 +193,13 @@ fn run_context_query(root: &Path, idx: &Index, symbol: &str) -> QueryResult {
 
     // Control: reading every file that references the symbol. Bounded for
     // sanity (huge repos) — accumulator caps at 100 files.
-    let control_tokens = read_files_touching_symbol_tokens(root, idx, symbol, 100);
+    let control_tokens = read_files_touching_symbol_tokens(root, idx, symbol, 100, tok);
     let treatment_tokens = match sigil_context::build_context(
         idx,
         symbol,
         &sigil_context::ContextOptions::default(),
     ) {
-        Some(ctx) => tokens(&sigil_context::render_markdown(&ctx)),
+        Some(ctx) => count_or_proxy(tok, &sigil_context::render_markdown(&ctx)),
         None => 0,
     };
     let ratio = ratio(control_tokens, treatment_tokens);
@@ -196,11 +214,11 @@ fn run_context_query(root: &Path, idx: &Index, symbol: &str) -> QueryResult {
     }
 }
 
-fn run_map_query(root: &Path, idx: &Index, rank: &RankManifest) -> QueryResult {
+fn run_map_query(root: &Path, idx: &Index, rank: &RankManifest, tok: &Tokenizer) -> QueryResult {
     let control_cmd = "find . -type f -name '*.rs' | head -20 | xargs cat".to_string();
     let treatment_cmd = "sigil map --tokens 2000".to_string();
 
-    let control_tokens = read_top_files_tokens(root, idx, 20);
+    let control_tokens = read_top_files_tokens(root, idx, 20, tok);
     let map_output = sigil_map::build_map(
         idx,
         rank,
@@ -209,7 +227,7 @@ fn run_map_query(root: &Path, idx: &Index, rank: &RankManifest) -> QueryResult {
             ..sigil_map::MapOptions::default()
         },
     );
-    let treatment_tokens = tokens(&sigil_map::render_markdown(&map_output));
+    let treatment_tokens = count_or_proxy(tok, &sigil_map::render_markdown(&map_output));
     let ratio = ratio(control_tokens, treatment_tokens);
     QueryResult {
         name: "Cold-start orientation".to_string(),
@@ -222,7 +240,7 @@ fn run_map_query(root: &Path, idx: &Index, rank: &RankManifest) -> QueryResult {
     }
 }
 
-fn git_output_tokens(root: &Path, refspec: &str) -> (usize, bool) {
+fn git_output_tokens(root: &Path, refspec: &str, tok: &Tokenizer) -> (usize, bool) {
     let out = Command::new("git")
         .args(["diff", "--stat", "--patch", refspec])
         .current_dir(root)
@@ -230,7 +248,10 @@ fn git_output_tokens(root: &Path, refspec: &str) -> (usize, bool) {
         .stderr(Stdio::null())
         .output();
     match out {
-        Ok(out) if out.status.success() => (tokens(&String::from_utf8_lossy(&out.stdout)), false),
+        Ok(out) if out.status.success() => (
+            count_or_proxy(tok, &String::from_utf8_lossy(&out.stdout)),
+            false,
+        ),
         _ => (0, true),
     }
 }
@@ -240,6 +261,7 @@ fn read_files_touching_symbol_tokens(
     idx: &Index,
     symbol: &str,
     cap: usize,
+    tok: &Tokenizer,
 ) -> usize {
     use std::collections::HashSet;
     let mut files: Vec<&str> = idx
@@ -256,26 +278,33 @@ fn read_files_touching_symbol_tokens(
     files.truncate(cap);
     files
         .iter()
-        .map(|f| read_file_tokens(root, f))
+        .map(|f| read_file_tokens(root, f, tok))
         .sum()
 }
 
-fn read_top_files_tokens(root: &Path, idx: &Index, cap: usize) -> usize {
+fn read_top_files_tokens(root: &Path, idx: &Index, cap: usize, tok: &Tokenizer) -> usize {
     use std::collections::BTreeSet;
     let files: BTreeSet<&str> = idx.entities.iter().map(|e| e.file.as_str()).collect();
     files
         .iter()
         .take(cap)
-        .map(|f| read_file_tokens(root, f))
+        .map(|f| read_file_tokens(root, f, tok))
         .sum()
 }
 
-fn read_file_tokens(root: &Path, relative: &str) -> usize {
+fn read_file_tokens(root: &Path, relative: &str, tok: &Tokenizer) -> usize {
     let path = root.join(relative);
     match std::fs::read_to_string(&path) {
-        Ok(s) => tokens(&s),
+        Ok(s) => count_or_proxy(tok, &s),
         Err(_) => 0,
     }
+}
+
+/// Defense-in-depth wrapper: if the tokenizer errors at runtime we fall
+/// back to the proxy rather than blowing up mid-benchmark. This only
+/// kicks in for BPE variants; the proxy path never errors.
+fn count_or_proxy(tok: &Tokenizer, s: &str) -> usize {
+    tok.count(s).unwrap_or_else(|_| crate::tokens::proxy_count(s))
 }
 
 fn ratio(control: usize, treatment: usize) -> f64 {
@@ -306,8 +335,8 @@ pub fn render_markdown(report: &BenchmarkReport) -> String {
         report.sigil_version
     ));
     out.push_str(&format!(
-        "refspec: `{}`  ·  median reduction: **{:.2}×**\n\n",
-        report.refspec, report.median_ratio
+        "refspec: `{}`  ·  tokenizer: `{}`  ·  median reduction: **{:.2}×**\n\n",
+        report.refspec, report.tokenizer, report.median_ratio
     ));
 
     out.push_str("| Query | Control tokens | Sigil tokens | Ratio |\n");
@@ -324,7 +353,14 @@ pub fn render_markdown(report: &BenchmarkReport) -> String {
         ));
     }
     out.push('\n');
-    out.push_str("_Token estimate uses `bytes / 4` — rough proxy for modern tokenizers, off by ~20% either way. Good enough for relative comparisons, not for billing._\n");
+    if report.tokenizer.contains("proxy") {
+        out.push_str("_Token estimate uses `bytes / 4` — rough proxy for modern tokenizers, off by ~20% either way. Build with `cargo install sigil --features tokenizer` and pass `--tokenizer o200k_base` for BPE-accurate counts._\n");
+    } else {
+        out.push_str(&format!(
+            "_BPE-accurate token counts via {}._\n",
+            report.tokenizer
+        ));
+    }
     out
 }
 
@@ -341,11 +377,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn tokens_estimate_matches_spec() {
-        assert_eq!(tokens(""), 0);
-        assert_eq!(tokens("a"), 1);
-        assert_eq!(tokens("abcd"), 1);
-        assert_eq!(tokens("abcde"), 2);
+    fn proxy_token_count_matches_prior_spec() {
+        // Delegated to `crate::tokens::proxy_count` since the bytes/4 rule
+        // is shared with map.rs and context.rs. Regression guard against
+        // any accidental change in the heuristic.
+        assert_eq!(crate::tokens::proxy_count(""), 0);
+        assert_eq!(crate::tokens::proxy_count("a"), 1);
+        assert_eq!(crate::tokens::proxy_count("abcd"), 1);
+        assert_eq!(crate::tokens::proxy_count("abcde"), 2);
     }
 
     #[test]
@@ -378,6 +417,7 @@ mod tests {
         let report = BenchmarkReport {
             sigil_version: "test".to_string(),
             refspec: "HEAD~1..HEAD".to_string(),
+            tokenizer: "bytes/4 proxy".to_string(),
             queries: vec![QueryResult {
                 name: "test query".to_string(),
                 control_command: "cat".to_string(),

@@ -299,6 +299,11 @@ enum Cli {
         /// Pretty-print when --format=json.
         #[arg(long)]
         pretty: bool,
+        /// Token counter. `proxy` (default) is the zero-dep bytes/4
+        /// heuristic. `cl100k_base`, `o200k_base`, `p50k_base` require
+        /// the `tokenizer` cargo feature and give BPE-accurate counts.
+        #[arg(long, default_value = "proxy")]
+        tokenizer: String,
     },
     /// PR review artifact — structural diff enriched with rank, blast
     /// radius, and co-change misses. Reviewer reads this instead of
@@ -751,15 +756,20 @@ fn main() {
                 }
             }
         }
-        Cli::Benchmark { root, refspec, symbol, format, pretty } => {
+        Cli::Benchmark { root, refspec, symbol, format, pretty, tokenizer } => {
             let Some(fmt) = sigil::benchmark::BenchmarkFormat::parse(&format) else {
                 eprintln!("error: unknown --format {}. expected markdown|json", format);
+                std::process::exit(1);
+            };
+            let Some(tok) = sigil::tokens::Tokenizer::parse(&tokenizer) else {
+                eprintln!("error: unknown --tokenizer {}. expected proxy|cl100k_base|o200k_base|p50k_base", tokenizer);
                 std::process::exit(1);
             };
             let opts = sigil::benchmark::BenchmarkOptions {
                 refspec,
                 symbol,
                 format: fmt,
+                tokenizer: tok,
             };
             match sigil::benchmark::run_benchmark(&root, &opts) {
                 Ok(report) => match fmt {

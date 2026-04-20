@@ -1,0 +1,35 @@
+{
+  "sigil_version": "0.2.4",
+  "refspec": "HEAD~3..HEAD",
+  "tokenizer": "o200k_base (GPT-4o/o3)",
+  "queries": [
+    {
+      "name": "PR review",
+      "control_command": "git diff --stat --patch HEAD~3..HEAD",
+      "treatment_command": "sigil review HEAD~3..HEAD",
+      "control_tokens": 214072,
+      "treatment_tokens": 15353,
+      "ratio": 13.943333550446168,
+      "control_skipped": false
+    },
+    {
+      "name": "Context for `Entity`",
+      "control_command": "cat $(grep -rl 'Entity' .)   # very rough proxy for a 'read-everywhere' expansion",
+      "treatment_command": "sigil context Entity",
+      "control_tokens": 87560,
+      "treatment_tokens": 475,
+      "ratio": 184.33684210526314,
+      "control_skipped": false
+    },
+    {
+      "name": "Cold-start orientation",
+      "control_command": "find . -type f -name '*.rs' | head -20 | xargs cat",
+      "treatment_command": "sigil map --tokens 2000",
+      "control_tokens": 45011,
+      "treatment_tokens": 2688,
+      "ratio": 16.74516369047619,
+      "control_skipped": false
+    }
+  ],
+  "median_ratio": 16.74516369047619
+}

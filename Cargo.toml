@@ -42,6 +42,10 @@ tree-sitter-ruby       = { version = "0.23", optional = true }
 tree-sitter-c-sharp    = { version = "0.23", optional = true }
 tree-sitter-md         = { version = "0.5", features = ["parser"], optional = true }
 
+# Optional: real BPE tokenizer for accurate token counting in `sigil
+# benchmark`. When absent we fall back to the bytes/4 proxy.
+tiktoken-rs = { version = "0.7", optional = true }
+
 [features]
 default = [
     "lang-python", "lang-rust", "lang-javascript", "lang-typescript",
@@ -59,6 +63,12 @@ lang-cpp        = ["dep:tree-sitter-cpp"]
 lang-ruby       = ["dep:tree-sitter-ruby"]
 lang-csharp     = ["dep:tree-sitter-c-sharp"]
 lang-markdown   = ["dep:tree-sitter-md"]
+
+# Accurate BPE token counting (adds ~1.5 MB to the binary). Opt-in via
+# `cargo install sigil --features tokenizer`; `sigil benchmark` then
+# accepts `--tokenizer cl100k_base|o200k_base|p50k_base` in addition to
+# the default bytes/4 proxy.
+tokenizer = ["dep:tiktoken-rs"]
 
 # The profile that 'dist' will build with
 [profile.dist]
