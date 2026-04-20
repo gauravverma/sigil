@@ -512,14 +512,17 @@ impl DuckDbBackend {
     /// since the next staleness-triggered rebuild will blow it away.
     pub fn exec_query(&self, sql: &str) -> Result<QueryResult> {
         let mut stmt = self.conn.prepare(sql)?;
-        let columns: Vec<String> = stmt
-            .column_names()
-            .into_iter()
-            .map(|s| s.to_string())
-            .collect();
+        // `column_names()` reads the schema set up during `query()` —
+        // call query() first, then extract column names, then iterate.
+        // Calling column_names() on a prepared-but-not-yet-executed
+        // statement panics inside duckdb-rs (`schema.unwrap()`).
+        let mut it = stmt.query([])?;
+        let columns: Vec<String> = it
+            .as_ref()
+            .map(|s| s.column_names().into_iter().map(String::from).collect())
+            .unwrap_or_default();
         let col_count = columns.len();
         let mut rows: Vec<Vec<String>> = Vec::new();
-        let mut it = stmt.query([])?;
         while let Some(row) = it.next()? {
             let mut r = Vec::with_capacity(col_count);
             for i in 0..col_count {
@@ -641,14 +644,46 @@ fn format_cell(row: &duckdb::Row<'_>, idx: usize) -> String {
 // ---- internals ----
 
 fn populate(conn: &Connection, sigil_dir: &Path) -> Result<()> {
-    let entities_jsonl = path_for_sql(&sigil_dir.join("entities.jsonl"));
-    let refs_jsonl = path_for_sql(&sigil_dir.join("refs.jsonl"));
+    let entities_path = sigil_dir.join("entities.jsonl");
+    let refs_path = sigil_dir.join("refs.jsonl");
+
+    // `sigil index` only writes refs.jsonl when refs are non-empty, so the
+    // file can legitimately be absent. Build each table conditionally
+    // against read_json_auto when the source exists; otherwise create an
+    // empty table with the right column shape so downstream queries don't
+    // fail with "table not found." Same idea for entities — a freshly
+    // scaffolded .sigil/ with no entities shouldn't crash here.
+    // Use `read_json` with an explicit column spec rather than
+    // `read_json_auto`. Auto-inference only picks up fields that appear
+    // in sampled rows — which means optional fields missing from every
+    // row (e.g., `parent` on a set of top-level entities) get silently
+    // dropped, and subsequent SELECTs fail with "column not found".
+    // Explicit columns make the schema stable regardless of which
+    // optional fields happen to be populated.
+    let entities_sql = if entities_path.exists() {
+        format!(
+            "CREATE TABLE entities AS SELECT * FROM read_json('{}', columns = {});",
+            path_for_sql(&entities_path),
+            ENTITIES_COLUMNS_SPEC,
+        )
+    } else {
+        empty_entities_table_sql().to_string()
+    };
+    let refs_sql = if refs_path.exists() {
+        format!(
+            "CREATE TABLE refs AS SELECT * FROM read_json('{}', columns = {});",
+            path_for_sql(&refs_path),
+            REFS_COLUMNS_SPEC,
+        )
+    } else {
+        empty_refs_table_sql().to_string()
+    };
 
     // Materialize into real tables (not views) so queries don't re-parse
     // JSONL on every call. Rebuild is cheap — zero-ETL via read_json_auto.
     conn.execute_batch(&format!(
-        "CREATE TABLE entities AS SELECT * FROM read_json_auto('{entities_jsonl}');
-         CREATE TABLE refs     AS SELECT * FROM read_json_auto('{refs_jsonl}');
+        "{entities_sql}
+         {refs_sql}
          CREATE INDEX idx_entities_name ON entities(name);
          CREATE INDEX idx_entities_file ON entities(file);
          CREATE INDEX idx_refs_name   ON refs(name);
@@ -658,6 +693,63 @@ fn populate(conn: &Connection, sigil_dir: &Path) -> Result<()> {
     .context("populate entities/refs tables + indexes")?;
     Ok(())
 }
+
+/// Column shape for the entities table when JSONL is missing. Mirrors
+/// the Entity struct's serialized fields so schemas are compatible
+/// when a real JSONL arrives later (but the DB rebuilds on staleness
+/// anyway, so exact match isn't strictly required).
+fn empty_entities_table_sql() -> &'static str {
+    "CREATE TABLE entities (
+        file VARCHAR, name VARCHAR, kind VARCHAR,
+        line_start BIGINT, line_end BIGINT,
+        parent VARCHAR, sig VARCHAR, meta VARCHAR,
+        body_hash VARCHAR, sig_hash VARCHAR, struct_hash VARCHAR,
+        visibility VARCHAR, rank DOUBLE, blast_radius VARCHAR
+    );"
+}
+
+fn empty_refs_table_sql() -> &'static str {
+    "CREATE TABLE refs (
+        file VARCHAR, caller VARCHAR, name VARCHAR,
+        ref_kind VARCHAR, line BIGINT
+    );"
+}
+
+/// Explicit column specs passed to `read_json(..., columns = ...)`.
+/// Covers every Entity / Reference field sigil may emit so optional
+/// fields missing from the input rows still materialize as NULL in
+/// the table rather than causing "column not found" errors.
+///
+/// `meta` is a list in Rust (`Option<Vec<String>>`); we read it back
+/// as JSON text to avoid DuckDB LIST handling in every query site that
+/// doesn't consume it. `blast_radius` is a struct; likewise read as
+/// JSON text for now. Neither is surfaced by the DuckDB-backed query
+/// methods today — consumers that need the typed forms should load
+/// the in-memory Index.
+const ENTITIES_COLUMNS_SPEC: &str = "{ \
+    file: 'VARCHAR', \
+    name: 'VARCHAR', \
+    kind: 'VARCHAR', \
+    line_start: 'BIGINT', \
+    line_end: 'BIGINT', \
+    parent: 'VARCHAR', \
+    sig: 'VARCHAR', \
+    meta: 'JSON', \
+    body_hash: 'VARCHAR', \
+    sig_hash: 'VARCHAR', \
+    struct_hash: 'VARCHAR', \
+    visibility: 'VARCHAR', \
+    rank: 'DOUBLE', \
+    blast_radius: 'JSON' \
+}";
+
+const REFS_COLUMNS_SPEC: &str = "{ \
+    file: 'VARCHAR', \
+    caller: 'VARCHAR', \
+    name: 'VARCHAR', \
+    ref_kind: 'VARCHAR', \
+    line: 'BIGINT' \
+}";
 
 fn row_to_reference(row: &duckdb::Row<'_>) -> duckdb::Result<Reference> {
     Ok(Reference {
@@ -1220,14 +1312,19 @@ mod tests {
     }
 
     #[test]
-    fn missing_jsonl_rebuilds_as_empty_view_and_errors_on_open() {
-        // Opening with no .sigil/entities.jsonl should fail loudly rather
-        // than silently produce an empty backend — consumers need to
-        // know the index wasn't built yet.
+    fn missing_jsonl_opens_as_empty_backend() {
+        // Fresh `.sigil/` with no JSONL files should produce an empty
+        // backend, not an error. Rationale: pre-index callers (e.g.
+        // `sigil query` running before `sigil index` gets a chance)
+        // should get structured "no results" rather than a hard failure.
+        // The caller-facing staleness check (`Backend::load`) handles the
+        // truly-unsafe case of an empty index.
         let root = tmpdir("empty");
         std::fs::create_dir_all(root.join(".sigil")).unwrap();
-        let err = DuckDbBackend::open(&root).err();
-        assert!(err.is_some(), "expected open() to error without JSONL");
+        let db = DuckDbBackend::open(&root).expect("open should succeed on empty .sigil/");
+        assert_eq!(db.len().unwrap(), (0, 0));
+        assert!(db.get_callers("anything", None, 0).unwrap().is_empty());
+        assert!(db.get_file_symbols("missing.rs", None, 0).unwrap().is_empty());
         std::fs::remove_dir_all(&root).ok();
     }
 }
