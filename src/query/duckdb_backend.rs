@@ -499,11 +499,142 @@ impl DuckDbBackend {
         Ok(vec![String::new()])
     }
 
-    /// Where the DuckDB store lives on disk. Exposed for consumers (the
-    /// future `sigil query 'SQL'` REPL) that want to run ad-hoc SQL
-    /// against the same database.
+    /// Where the DuckDB store lives on disk. Exposed for consumers that
+    /// want to run ad-hoc SQL against the same database.
     pub fn db_path(&self) -> PathBuf {
         self.root.join(".sigil/index.duckdb")
+    }
+
+    /// Execute ad-hoc SQL and return the result as a column-labeled
+    /// table. Powers `sigil query 'SQL'`. Read-only in spirit — we
+    /// don't block DDL but also don't document it; mutating the
+    /// materialized store out from under sigil is at the user's risk
+    /// since the next staleness-triggered rebuild will blow it away.
+    pub fn exec_query(&self, sql: &str) -> Result<QueryResult> {
+        let mut stmt = self.conn.prepare(sql)?;
+        let columns: Vec<String> = stmt
+            .column_names()
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
+        let col_count = columns.len();
+        let mut rows: Vec<Vec<String>> = Vec::new();
+        let mut it = stmt.query([])?;
+        while let Some(row) = it.next()? {
+            let mut r = Vec::with_capacity(col_count);
+            for i in 0..col_count {
+                r.push(format_cell(row, i));
+            }
+            rows.push(r);
+        }
+        Ok(QueryResult { columns, rows })
+    }
+}
+
+/// Tabular SQL result. Owned so the CLI layer can outlive the
+/// `DuckDbBackend` connection borrow.
+#[derive(Debug, Clone)]
+pub struct QueryResult {
+    pub columns: Vec<String>,
+    pub rows: Vec<Vec<String>>,
+}
+
+impl QueryResult {
+    /// Render as a pipe-delimited markdown table. Truncates each cell to
+    /// `max_cell_width` chars with `…` so long strings don't break
+    /// terminal line wrap. `0` disables truncation.
+    pub fn to_markdown(&self, max_cell_width: usize) -> String {
+        let truncate = |s: &str| -> String {
+            if max_cell_width == 0 || s.chars().count() <= max_cell_width {
+                s.to_string()
+            } else {
+                let mut out: String = s.chars().take(max_cell_width.saturating_sub(1)).collect();
+                out.push('…');
+                out
+            }
+        };
+        let mut out = String::with_capacity(1024);
+        if self.columns.is_empty() {
+            return "_(no columns)_\n".to_string();
+        }
+        out.push_str("| ");
+        out.push_str(
+            &self
+                .columns
+                .iter()
+                .map(|c| truncate(c))
+                .collect::<Vec<_>>()
+                .join(" | "),
+        );
+        out.push_str(" |\n|");
+        for _ in &self.columns {
+            out.push_str("---|");
+        }
+        out.push('\n');
+        for row in &self.rows {
+            out.push_str("| ");
+            out.push_str(
+                &row.iter()
+                    .map(|c| truncate(c))
+                    .collect::<Vec<_>>()
+                    .join(" | "),
+            );
+            out.push_str(" |\n");
+        }
+        out.push_str(&format!("\n_{} row(s)_\n", self.rows.len()));
+        out
+    }
+
+    /// Render as JSON — a list of objects keyed by column name. Strings
+    /// in every cell; numeric / boolean values come out as string-wrapped
+    /// "42" for uniformity (the CLI is for exploration, not downstream
+    /// typed pipelines).
+    pub fn to_json(&self, pretty: bool) -> String {
+        let objs: Vec<serde_json::Map<String, serde_json::Value>> = self
+            .rows
+            .iter()
+            .map(|row| {
+                let mut m = serde_json::Map::new();
+                for (i, col) in self.columns.iter().enumerate() {
+                    let v = row.get(i).cloned().unwrap_or_default();
+                    m.insert(col.clone(), serde_json::Value::String(v));
+                }
+                m
+            })
+            .collect();
+        if pretty {
+            serde_json::to_string_pretty(&objs).unwrap_or_default()
+        } else {
+            serde_json::to_string(&objs).unwrap_or_default()
+        }
+    }
+}
+
+/// Best-effort cell stringifier. DuckDB returns a `ValueRef` per cell;
+/// we pattern-match the variants we expect to see (text, numeric,
+/// boolean, NULL) and fall through to a fallback for anything exotic
+/// (lists, structs, blobs) which sigil shouldn't produce in its own
+/// tables but might show up in user SQL.
+fn format_cell(row: &duckdb::Row<'_>, idx: usize) -> String {
+    use duckdb::types::ValueRef;
+    match row.get_ref(idx) {
+        Ok(ValueRef::Null) => String::new(),
+        Ok(ValueRef::Boolean(b)) => b.to_string(),
+        Ok(ValueRef::TinyInt(v)) => v.to_string(),
+        Ok(ValueRef::SmallInt(v)) => v.to_string(),
+        Ok(ValueRef::Int(v)) => v.to_string(),
+        Ok(ValueRef::BigInt(v)) => v.to_string(),
+        Ok(ValueRef::HugeInt(v)) => v.to_string(),
+        Ok(ValueRef::UTinyInt(v)) => v.to_string(),
+        Ok(ValueRef::USmallInt(v)) => v.to_string(),
+        Ok(ValueRef::UInt(v)) => v.to_string(),
+        Ok(ValueRef::UBigInt(v)) => v.to_string(),
+        Ok(ValueRef::Float(v)) => v.to_string(),
+        Ok(ValueRef::Double(v)) => v.to_string(),
+        Ok(ValueRef::Text(t)) => String::from_utf8_lossy(t).into_owned(),
+        Ok(ValueRef::Blob(_)) => "<blob>".to_string(),
+        Ok(other) => format!("{other:?}"),
+        Err(e) => format!("<error: {e}>"),
     }
 }
 

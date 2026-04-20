@@ -282,6 +282,27 @@ enum Cli {
         #[arg(long)]
         pretty: bool,
     },
+    /// Execute ad-hoc SQL against the DuckDB-materialized sigil index.
+    /// Requires `--features db` at build time. Power-user escape hatch
+    /// for analytics the built-in commands don't cover.
+    Query {
+        /// SQL statement. The `entities` and `refs` tables are
+        /// populated from `.sigil/entities.jsonl` and `.sigil/refs.jsonl`.
+        sql: String,
+        /// Project root directory
+        #[arg(short, long, default_value = ".")]
+        root: PathBuf,
+        /// Output format: markdown (default) or json.
+        #[arg(long, default_value = "markdown")]
+        format: String,
+        /// Truncate each cell to this many chars in markdown output.
+        /// 0 = no truncation.
+        #[arg(long, default_value = "60")]
+        max_cell_width: usize,
+        /// Pretty-print when --format=json.
+        #[arg(long)]
+        pretty: bool,
+    },
     /// Token-reduction benchmark: sigil commands vs raw alternatives.
     Benchmark {
         /// Project root directory
@@ -772,6 +793,9 @@ fn main() {
                 }
             }
         }
+        Cli::Query { sql, root, format, max_cell_width, pretty } => {
+            run_query(&sql, &root, &format, max_cell_width, pretty);
+        }
         Cli::Benchmark { root, refspec, symbol, format, pretty, tokenizer } => {
             let Some(fmt) = sigil::benchmark::BenchmarkFormat::parse(&format) else {
                 eprintln!("error: unknown --format {}. expected markdown|json", format);
@@ -1081,4 +1105,39 @@ fn main() {
             }
         }
     }
+}
+
+/// Handler for `sigil query 'SQL'`. Feature-gated: builds without
+/// `--features db` get a helpful error pointing at the feature flag.
+#[cfg(feature = "db")]
+fn run_query(sql: &str, root: &std::path::Path, format: &str, max_cell_width: usize, pretty: bool) {
+    let db = match sigil::query::duckdb_backend::DuckDbBackend::open(root) {
+        Ok(db) => db,
+        Err(e) => {
+            eprintln!("error: {}", e);
+            eprintln!("hint: run `sigil index` first — the DuckDB backend is built from .sigil/*.jsonl.");
+            std::process::exit(1);
+        }
+    };
+    let result = match db.exec_query(sql) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("error: {}", e);
+            std::process::exit(1);
+        }
+    };
+    match format {
+        "markdown" | "md" => print!("{}", result.to_markdown(max_cell_width)),
+        "json" => println!("{}", result.to_json(pretty)),
+        other => {
+            eprintln!("error: unknown --format {}. expected markdown|json", other);
+            std::process::exit(1);
+        }
+    }
+}
+
+#[cfg(not(feature = "db"))]
+fn run_query(_sql: &str, _root: &std::path::Path, _format: &str, _max_cell_width: usize, _pretty: bool) {
+    eprintln!("error: `sigil query` requires the `db` feature — rebuild with `cargo install sigil --features db`.");
+    std::process::exit(1);
 }
