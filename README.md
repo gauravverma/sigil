@@ -36,7 +36,7 @@ Measured with the GPT-4o/o3 BPE tokenizer. Reproduce with `sigil benchmark` on y
 - `sigil review A..B` — PR review: `diff` + blast radius + co-change misses. Replaces `git diff` for review.
 
 **For scripts & CI:**
-- `sigil diff --json` / `sigil query "SELECT ..."` (DuckDB, `--features db`) / every command supports `--json`.
+- `sigil diff --json` / `sigil query "SELECT ..."` (DuckDB, baked into the shipped binary) / every command supports `--json`.
 
 ### `git sigil` — the git-native alias
 
@@ -117,9 +117,7 @@ cargo build --release --features db,tokenizer  # match the shipped release
 cargo build --release                          # lean (no DuckDB, no BPE)
 ```
 
-Building with `db` requires a C++17 toolchain (Xcode CLT on macOS, `build-essential` on Debian/Ubuntu, MSVC on Windows).
-
-The compiled binary lands at `target/release/sigil`. Full-feature builds need a C++17 toolchain (Xcode CLT / `build-essential` / MSVC) because DuckDB is bundled from source.
+Building with `db` requires a C++17 toolchain (Xcode CLT on macOS, `build-essential` on Debian/Ubuntu, MSVC on Windows) — DuckDB is bundled from source. The compiled binary lands at `target/release/sigil`.
 
 ### Python bindings
 
@@ -166,7 +164,7 @@ Top files by PageRank over the import graph, top symbols per file ranked by blas
 
 ```
 # Sigil Map
-100 files, 2985 entities, 12963 refs · sigil 0.2.4
+100 files, 2985 entities, 12963 refs · sigil 0.3.2
 
 ## Subsystems (7)
 - **src/parser** (#20) — 12 file(s): src/parser/helpers.rs, src/parser/format.rs, ...
@@ -255,7 +253,7 @@ The agent-shaped wrapper around `diff`: structural changes ranked by blast radiu
 sigil callers Entity             # exact reference sites
 sigil callees build_index        # what a function depends on
 sigil symbols src/entity.rs      # what's in a file
-sigil search parse --scope symbols
+sigil search parse --scope symbol
 sigil blast Entity --depth 5     # impact summary
 ```
 
@@ -428,10 +426,10 @@ Exit code is always 0 on success; non-zero only on fatal errors. Rename / move d
 
 | Command | What it does |
 |---|---|
-| `sigil search <q> [--scope symbol\|file\|all]` | Substring search over symbols + file paths. |
+| `sigil search <q> [--scope symbol\|file\|text]` | Search over symbols, file paths, or text bodies. Omit `--scope` to search all three. |
 | `sigil symbols <file>` | All entities in a file. |
 | `sigil children <file> <parent>` | Entities under a class / module. |
-| `sigil callers <symbol> [--kind call\|import\|type_annotation\|instantiation\|definition]` | All references targeting a symbol. |
+| `sigil callers <symbol> [--kind call\|import\|type_annotation\|instantiation]` | All references targeting a symbol. |
 | `sigil callees <caller>` | What a symbol calls. |
 | `sigil explore [--path PATH]` | Directory overview with file counts by language. |
 | `sigil duplicates [--min-lines N]` | Clone report across the codebase (groups by `body_hash`). |
@@ -464,10 +462,10 @@ Every integration has `sigil <name> uninstall`. All are idempotent and content-p
 
 ## Backend selection
 
-When `--features db` is compiled in, the router picks a backend per query:
+Shipped release binaries include the DuckDB backend; the router picks per query:
 
 1. `SIGIL_BACKEND=memory` → force in-memory.
-2. `SIGIL_BACKEND=db` → force DuckDB (fails loudly if feature wasn't compiled).
+2. `SIGIL_BACKEND=db` → force DuckDB (fails loudly if the `db` feature wasn't compiled, which only happens on bare `cargo build --release` source builds).
 3. Otherwise, auto-engage DuckDB when total `.sigil/*.jsonl` size ≥ `SIGIL_AUTO_ENGAGE_THRESHOLD_MB` (default 5 MB).
 4. Fall back to in-memory.
 

@@ -119,11 +119,13 @@ The script-facing layer. Use these when the agent-facing commands don't fit — 
 
 ```bash
 sigil search "parse_file"                    # everything — symbols, files, text
-sigil search "MyClass" --scope symbols       # symbols only
+sigil search "MyClass" --scope symbol        # symbols only
 sigil search "handler" --kind function       # filter by entity kind
 sigil search "build" --limit 50 --json       # more results, JSON
 sigil search "config" --path "src/*.rs"      # path filter
 ```
+
+Valid `--scope` values: `symbol` | `file` | `text`. Omit to search all three.
 
 ### Symbol layout
 
@@ -142,7 +144,7 @@ sigil callers build_index --kind import                # only import references
 sigil callees build_index                              # what does this function call?
 ```
 
-Valid `--kind` values: `call` | `import` | `type_annotation` | `instantiation` | `definition`.
+Valid `--kind` values: `call` | `import` | `type_annotation` | `instantiation`.
 
 ### Exploration
 
@@ -240,7 +242,7 @@ sigil blast <modified_name> --format agent
 ```bash
 sigil context <name> --format agent         # one call, done
 # Fallback if context isn't enough or the symbol is ambiguous:
-sigil search <name> --scope symbols         # disambiguate
+sigil search <name> --scope symbol          # disambiguate
 sigil callers <name> --kind call --json     # raw call sites
 sigil callees <name> --kind call --json
 ```
@@ -274,7 +276,7 @@ Look for unexpected MODIFIED or BREAKING entries — often catches edits that ri
 | Compare two specific files | `sigil diff --files` | No — unstructured |
 | Cross-file duplication | `sigil duplicates` | No |
 | Ad-hoc analytics ("public fns with no callers") | `sigil query` | No |
-| Symbol location | `sigil search --scope symbols` | Grep `^fn X` is also fine |
+| Symbol location | `sigil search --scope symbol` | Grep `^fn X` is also fine |
 | Free-text search in comments/strings | `sigil search` or `Grep` | Either |
 | File discovery by name | — | `Glob "**/*.go"` |
 | Read a specific file | — | `Read` |
