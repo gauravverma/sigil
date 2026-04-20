@@ -1,0 +1,24 @@
+#!/bin/sh
+# git-sigil — thin shim that lets `git sigil ...` dispatch to the sigil binary.
+#
+# When symlinked or installed on PATH, `git sigil <args>` is equivalent to
+# `sigil <args>` thanks to git's built-in extension mechanism: any executable
+# named `git-<name>` on PATH becomes a `git <name>` subcommand.
+#
+# Purpose per agent-adoption-plan.md §11 / §6 / §9.2: piggyback on git's
+# pretrained name recognition so agents that already know `git diff` /
+# `git log` naturally reach for `git sigil map` / `git sigil review`. No
+# training-data problem to solve — `git <foo>` is in every agent's corpus.
+#
+# Usage:
+#   git sigil map --tokens 4000
+#   git sigil review main..HEAD
+#   git sigil context <symbol>
+#
+# Installation (one of):
+#   1. `sigil hook install-alias` (adds symlink next to the sigil binary)
+#   2. Manual:
+#        ln -s "$(which sigil)" /usr/local/bin/git-sigil
+#   3. Copy this script somewhere on PATH and `chmod +x`.
+
+exec sigil "$@"

@@ -58,6 +58,20 @@ sigil hook install       # git post-commit + post-checkout auto-rebuild
 
 Every installer is idempotent (re-running is a no-op when content matches), preserves user content outside sigil's marker block, and has a matching `uninstall` that cleans up without touching sibling user config.
 
+### `git sigil <cmd>` alias
+
+For agents that reach for `git` before anything else, ship `git-sigil` on PATH so `git sigil map` / `git sigil review` / `git sigil context` work out of the box:
+
+```bash
+# Option A — symlink the sigil binary itself:
+ln -s "$(which sigil)" /usr/local/bin/git-sigil
+
+# Option B — copy the shim from scripts/:
+cp scripts/git-sigil /usr/local/bin/ && chmod +x /usr/local/bin/git-sigil
+```
+
+Git's extension mechanism auto-routes `git <foo>` to any executable named `git-foo` on PATH. This piggybacks on `git`'s pretrained name recognition so agents that already know `git diff` naturally discover `git sigil`.
+
 ## How It Works
 
 ```

@@ -77,6 +77,42 @@ The script writes `evals/results/<sigil-version>-<refspec>.json` and
 prints the median ratio to stderr. Commit the JSON alongside the code
 change that produced it — each result is a dated artifact.
 
+## Cross-repo benchmark
+
+The sigil-self number is one data point. Real adoption decisions need
+multiple points across corpus sizes, languages, and coupling densities.
+`evals/cross_repo.sh` runs the benchmark across a curated OSS set.
+
+```bash
+# Defaults: uses evals/corpus.tsv, persists results to
+# evals/results/cross-repo-<date>/.
+./evals/cross_repo.sh
+
+# Custom corpus:
+./evals/cross_repo.sh path/to/my-corpus.tsv
+
+# Persist clones across runs (skips re-cloning on repeat):
+CORPUS_DIR=/tmp/sigil-corpus ./evals/cross_repo.sh
+```
+
+The script clones each repo (shallow, depth 200), runs `sigil index`,
+and records a benchmark JSON per repo. At the end it emits a
+`README.md` summary table with per-repo medians and per-query detail.
+
+**Expected runtime**: ~1 minute per repo on cold clone. Under 5 minutes
+for the default 3-repo corpus on a decent connection.
+
+### Adding repos
+
+Append a tab-separated row to `evals/corpus.tsv`:
+
+```
+<slug>	<git-url>	<ref>	<refspec>
+```
+
+Keep refs pinned (tag or SHA, not `main`) so results are reproducible
+on re-run. Test corpora belong in their own TSV, not the main one.
+
 ## Historical results
 
 | Date | sigil version | refspec | Median ratio | PR review | Context | Orientation |
