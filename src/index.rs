@@ -31,7 +31,7 @@ pub fn parse_single_file(
         return crate::markdown_index::parse_markdown_file(source, file_path);
     }
 
-    let (symbols, _texts, references) = codeix::parser::treesitter::parse_file(
+    let (symbols, _texts, references) = crate::parser::treesitter::parse_file(
         source.as_bytes(), language, file_path
     ).map_err(|e| format!("parse error: {}", e))?;
 
@@ -150,7 +150,7 @@ pub fn build_index(
         } else if ext == "md" || ext == "markdown" || ext == "mdx" {
             "markdown"
         } else {
-            match codeix::parser::languages::detect_language(ext) {
+            match crate::parser::languages::detect_language(ext) {
                 Some(l) => l,
                 None => {
                     if verbose {
@@ -265,7 +265,7 @@ fn discover_source_files(root: &Path) -> Vec<PathBuf> {
                 .map(|ext| {
                     ext == "md" || ext == "markdown" || ext == "mdx"
                         || ext == "json" || ext == "yaml" || ext == "yml" || ext == "toml"
-                        || codeix::parser::languages::detect_language(ext).is_some()
+                        || crate::parser::languages::detect_language(ext).is_some()
                 })
                 .unwrap_or(false)
         })
