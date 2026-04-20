@@ -74,7 +74,7 @@ use anyhow::{Context as _, Result};
 use duckdb::{Connection, params};
 use serde::{Deserialize, Serialize};
 
-use crate::entity::Reference;
+use crate::entity::{Entity, Reference};
 
 /// Default auto-upgrade threshold in bytes. Set conservatively — the in-
 /// memory index is quite fast up to ~100 MB of JSONL; above 50 MB we
@@ -178,6 +178,171 @@ impl DuckDbBackend {
         Ok(rows)
     }
 
+    /// Callees of `caller` — refs whose `caller` column equals `caller`.
+    /// Mirrors `Index::get_callees`. Dedupe happens implicitly at the
+    /// index level since refs carry `(file, line)` as a natural key.
+    pub fn get_callees(
+        &self,
+        caller: &str,
+        kind_filter: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<Reference>> {
+        let mut sql = String::from(
+            "SELECT file, caller, name, ref_kind, line \
+             FROM refs \
+             WHERE caller = ?",
+        );
+        if kind_filter.is_some() {
+            sql.push_str(" AND ref_kind = ?");
+        }
+        sql.push_str(" ORDER BY file, line");
+        if limit > 0 {
+            sql.push_str(&format!(" LIMIT {}", limit));
+        }
+        let mut stmt = self.conn.prepare(&sql)?;
+        let rows = if let Some(k) = kind_filter {
+            stmt.query_map(params![caller, k], row_to_reference)?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        } else {
+            stmt.query_map(params![caller], row_to_reference)?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        };
+        Ok(rows)
+    }
+
+    /// All entities in `file`, optionally filtered by kind. Ordered by
+    /// `line_start` so successive calls return the same prefix — stable
+    /// behavior callers depend on for pagination.
+    ///
+    /// Returns sigil `Entity` rows; the DuckDB backend only hydrates
+    /// scalar columns (no `meta`, `rank`, or `blast_radius`). Consumers
+    /// needing those fields should load the in-memory `Index`, which
+    /// carries the full struct. Documented on
+    /// [`populate_entity_from_row`] below.
+    pub fn get_file_symbols(
+        &self,
+        file: &str,
+        kind_filter: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<Entity>> {
+        let mut sql = String::from(
+            "SELECT file, name, kind, line_start, line_end, parent, sig, \
+                    visibility, body_hash, sig_hash, struct_hash \
+             FROM entities \
+             WHERE file = ?",
+        );
+        if kind_filter.is_some() {
+            sql.push_str(" AND kind = ?");
+        }
+        sql.push_str(" ORDER BY line_start");
+        if limit > 0 {
+            sql.push_str(&format!(" LIMIT {}", limit));
+        }
+        let mut stmt = self.conn.prepare(&sql)?;
+        let rows = if let Some(k) = kind_filter {
+            stmt.query_map(params![file, k], row_to_entity)?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        } else {
+            stmt.query_map(params![file], row_to_entity)?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        };
+        Ok(rows)
+    }
+
+    /// Children of `(file, parent)` — entities whose `parent` column
+    /// matches. Same column set + limitations as `get_file_symbols`.
+    pub fn get_children(
+        &self,
+        file: &str,
+        parent: &str,
+        kind_filter: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<Entity>> {
+        let mut sql = String::from(
+            "SELECT file, name, kind, line_start, line_end, parent, sig, \
+                    visibility, body_hash, sig_hash, struct_hash \
+             FROM entities \
+             WHERE file = ? AND parent = ?",
+        );
+        if kind_filter.is_some() {
+            sql.push_str(" AND kind = ?");
+        }
+        sql.push_str(" ORDER BY line_start");
+        if limit > 0 {
+            sql.push_str(&format!(" LIMIT {}", limit));
+        }
+        let mut stmt = self.conn.prepare(&sql)?;
+        let rows = if let Some(k) = kind_filter {
+            stmt.query_map(params![file, parent, k], row_to_entity)?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        } else {
+            stmt.query_map(params![file, parent], row_to_entity)?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        };
+        Ok(rows)
+    }
+
+    /// Case-insensitive substring search over entity names, matching the
+    /// `Scope::Symbols` branch of `Index::search`. File search (the
+    /// `Scope::Files` branch) runs a separate DISTINCT scan.
+    ///
+    /// Unlike `Index::search`, this only returns the symbol form for now
+    /// — file-path matching without entity hits is rare in agent
+    /// workflows, and adding it requires another query + enum serde
+    /// gymnastics. Deferred until a consumer needs it.
+    pub fn search_symbols(
+        &self,
+        query: &str,
+        kind_filter: Option<&str>,
+        path_prefix: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<Entity>> {
+        if query.is_empty() {
+            return Ok(Vec::new());
+        }
+        let needle = format!("%{}%", query.to_lowercase());
+        let mut sql = String::from(
+            "SELECT file, name, kind, line_start, line_end, parent, sig, \
+                    visibility, body_hash, sig_hash, struct_hash \
+             FROM entities \
+             WHERE lower(name) LIKE ?",
+        );
+        if kind_filter.is_some() {
+            sql.push_str(" AND kind = ?");
+        }
+        if path_prefix.is_some() {
+            sql.push_str(" AND file LIKE ?");
+        }
+        sql.push_str(" ORDER BY file, line_start");
+        if limit > 0 {
+            sql.push_str(&format!(" LIMIT {}", limit));
+        }
+        let mut stmt = self.conn.prepare(&sql)?;
+        let rows = match (kind_filter, path_prefix) {
+            (Some(k), Some(p)) => stmt
+                .query_map(params![needle, k, format!("{p}%")], row_to_entity)?
+                .collect::<std::result::Result<Vec<_>, _>>()?,
+            (Some(k), None) => stmt
+                .query_map(params![needle, k], row_to_entity)?
+                .collect::<std::result::Result<Vec<_>, _>>()?,
+            (None, Some(p)) => stmt
+                .query_map(params![needle, format!("{p}%")], row_to_entity)?
+                .collect::<std::result::Result<Vec<_>, _>>()?,
+            (None, None) => stmt
+                .query_map(params![needle], row_to_entity)?
+                .collect::<std::result::Result<Vec<_>, _>>()?,
+        };
+        Ok(rows)
+    }
+
+    /// Sigil operates in single-project mode — the empty-string project
+    /// is the whole tree. `Index::list_projects` returns `vec![""]` for
+    /// compatibility with pre-decodeix call sites that expected the
+    /// codeix MountTable convention; we mirror it here.
+    pub fn list_projects(&self) -> Result<Vec<String>> {
+        Ok(vec![String::new()])
+    }
+
     /// Where the DuckDB store lives on disk. Exposed for consumers (the
     /// future `sigil query 'SQL'` REPL) that want to run ad-hoc SQL
     /// against the same database.
@@ -214,6 +379,33 @@ fn row_to_reference(row: &duckdb::Row<'_>) -> duckdb::Result<Reference> {
         name: row.get::<_, String>(2)?,
         ref_kind: row.get::<_, String>(3)?,
         line: row.get::<_, i64>(4)? as u32,
+    })
+}
+
+/// Hydrate the subset of `Entity` that the DuckDB backend extracts —
+/// scalar columns only. `meta`, `rank`, and `blast_radius` stay `None`
+/// because reading them back requires DuckDB STRUCT/LIST parsing that
+/// isn't necessary for the query methods we serve today. Any consumer
+/// that needs the full struct should load the in-memory `Index` (which
+/// parses JSONL directly into the Rust struct and keeps every field).
+///
+/// Column order must match the SELECT lists in the methods above.
+fn row_to_entity(row: &duckdb::Row<'_>) -> duckdb::Result<Entity> {
+    Ok(Entity {
+        file: row.get::<_, String>(0)?,
+        name: row.get::<_, String>(1)?,
+        kind: row.get::<_, String>(2)?,
+        line_start: row.get::<_, i64>(3)? as u32,
+        line_end: row.get::<_, i64>(4)? as u32,
+        parent: row.get::<_, Option<String>>(5)?,
+        sig: row.get::<_, Option<String>>(6)?,
+        meta: None,
+        body_hash: row.get::<_, Option<String>>(8)?,
+        sig_hash: row.get::<_, Option<String>>(9)?,
+        struct_hash: row.get::<_, String>(10)?,
+        visibility: row.get::<_, Option<String>>(7)?,
+        rank: None,
+        blast_radius: None,
     })
 }
 
@@ -461,6 +653,162 @@ mod tests {
         assert!(!should_auto_engage(&root, 50 * 1024 * 1024));
         // Tiny threshold → even the one-entity fixture flips the gate.
         assert!(should_auto_engage(&root, 1));
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn get_callees_mirrors_caller_column_lookup() {
+        let root = tmpdir("callees");
+        seed(
+            &root,
+            vec![ent("a.rs", "main", "function")],
+            vec![
+                refr("a.rs", Some("main"), "foo", "call", 1),
+                refr("a.rs", Some("main"), "bar", "call", 2),
+                refr("a.rs", Some("helper"), "foo", "call", 3),
+            ],
+        );
+        let db = DuckDbBackend::open(&root).unwrap();
+        let from_main = db.get_callees("main", None, 0).unwrap();
+        assert_eq!(from_main.len(), 2);
+        let from_helper = db.get_callees("helper", None, 0).unwrap();
+        assert_eq!(from_helper.len(), 1);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn get_file_symbols_returns_entities_ordered_by_line() {
+        let root = tmpdir("file_symbols");
+        let mut a = ent("a.rs", "Foo", "struct");
+        a.line_start = 10;
+        let mut b = ent("a.rs", "bar", "function");
+        b.line_start = 3;
+        let mut c = ent("b.rs", "other", "function");
+        c.line_start = 1;
+        seed(&root, vec![a, b, c], vec![]);
+
+        let db = DuckDbBackend::open(&root).unwrap();
+        let in_a = db.get_file_symbols("a.rs", None, 0).unwrap();
+        assert_eq!(in_a.len(), 2);
+        assert_eq!(in_a[0].name, "bar", "line 3 sorts before line 10");
+        assert_eq!(in_a[1].name, "Foo");
+
+        let only_structs = db.get_file_symbols("a.rs", Some("struct"), 0).unwrap();
+        assert_eq!(only_structs.len(), 1);
+        assert_eq!(only_structs[0].name, "Foo");
+
+        let missing = db.get_file_symbols("nonexistent.rs", None, 0).unwrap();
+        assert!(missing.is_empty());
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn get_children_filters_by_parent() {
+        let root = tmpdir("children");
+        let mut m1 = ent("a.rs", "method_one", "method");
+        m1.parent = Some("Foo".to_string());
+        m1.line_start = 5;
+        let mut m2 = ent("a.rs", "method_two", "method");
+        m2.parent = Some("Foo".to_string());
+        m2.line_start = 10;
+        let mut m3 = ent("a.rs", "other", "method");
+        m3.parent = Some("Bar".to_string());
+        seed(&root, vec![m1, m2, m3], vec![]);
+
+        let db = DuckDbBackend::open(&root).unwrap();
+        let foo_methods = db.get_children("a.rs", "Foo", None, 0).unwrap();
+        assert_eq!(foo_methods.len(), 2);
+        assert!(foo_methods.iter().all(|e| e.parent.as_deref() == Some("Foo")));
+        let bar_methods = db.get_children("a.rs", "Bar", None, 0).unwrap();
+        assert_eq!(bar_methods.len(), 1);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn search_symbols_case_insensitive_with_path_prefix() {
+        let root = tmpdir("search");
+        seed(
+            &root,
+            vec![
+                ent("src/a.rs", "ParseError", "struct"),
+                ent("src/a.rs", "parse", "function"),
+                ent("tests/parse_test.rs", "parse", "function"),
+            ],
+            vec![],
+        );
+        let db = DuckDbBackend::open(&root).unwrap();
+
+        // Case-insensitive match hits both "parse" and "ParseError".
+        let all = db.search_symbols("PARSE", None, None, 0).unwrap();
+        assert_eq!(all.len(), 3);
+
+        // Filter by kind.
+        let only_fns = db.search_symbols("parse", Some("function"), None, 0).unwrap();
+        assert_eq!(only_fns.len(), 2);
+
+        // Filter by path prefix (src/) — tests/ excluded.
+        let src_only = db.search_symbols("parse", None, Some("src/"), 0).unwrap();
+        assert_eq!(src_only.len(), 2);
+
+        // Empty query short-circuits.
+        let empty = db.search_symbols("", None, None, 0).unwrap();
+        assert!(empty.is_empty());
+
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn list_projects_returns_single_root() {
+        let root = tmpdir("list_proj");
+        seed(
+            &root,
+            vec![ent("a.rs", "x", "function")],
+            vec![refr("b.rs", Some("c"), "x", "call", 1)],
+        );
+        let db = DuckDbBackend::open(&root).unwrap();
+        assert_eq!(db.list_projects().unwrap(), vec![String::new()]);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn get_file_symbols_parity_with_in_memory() {
+        let root = tmpdir("file_parity");
+        let mut entities = Vec::new();
+        for i in 0..15 {
+            let mut e = ent("src/core.rs", &format!("sym{i}"), "function");
+            e.line_start = (i as u32) * 10 + 1;
+            e.line_end = e.line_start + 5;
+            entities.push(e);
+        }
+        entities.push(ent("src/other.rs", "other", "function"));
+        seed(&root, entities, vec![]);
+
+        let db = DuckDbBackend::open(&root).unwrap();
+        let idx = crate::query::index::Index::load(&root).unwrap();
+
+        let mut from_db = db.get_file_symbols("src/core.rs", None, 0).unwrap();
+        let mut from_idx: Vec<Entity> = idx
+            .get_file_symbols("src/core.rs", None, 0)
+            .into_iter()
+            .cloned()
+            .collect();
+        // Both backends should produce the same set; DuckDB already
+        // sorts by line_start, so we sort the in-memory side to match.
+        from_db.sort_by_key(|e| e.line_start);
+        from_idx.sort_by_key(|e| e.line_start);
+
+        // Compare the scalar columns the DuckDB backend populates.
+        let project = |e: &Entity| (
+            e.file.clone(),
+            e.name.clone(),
+            e.kind.clone(),
+            e.line_start,
+            e.line_end,
+            e.parent.clone(),
+        );
+        let a: Vec<_> = from_db.iter().map(project).collect();
+        let b: Vec<_> = from_idx.iter().map(project).collect();
+        assert_eq!(a, b);
         std::fs::remove_dir_all(&root).ok();
     }
 
