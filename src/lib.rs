@@ -17,6 +17,7 @@ pub mod inline_diff;
 pub mod markdown_formatter;
 pub mod matcher;
 pub mod meta;
+pub mod context;
 pub mod map;
 pub mod output;
 pub mod parser;

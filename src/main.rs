@@ -213,6 +213,29 @@ enum Cli {
         #[arg(long)]
         json: bool,
     },
+    /// Minimum-viable context for a symbol — signature, callers, callees,
+    /// related types. One call replaces the read-6-files orientation loop.
+    Context {
+        /// Symbol name, or qualified form like `file::name`,
+        /// `Parent::name`, `file::Parent::name`.
+        query: String,
+        /// Project root directory
+        #[arg(short, long, default_value = ".")]
+        root: PathBuf,
+        /// Output token cap. 0 = unlimited.
+        #[arg(long, default_value = "1500")]
+        budget: usize,
+        /// How many callers / callees / related types to show per section.
+        #[arg(long, default_value = "10")]
+        depth: usize,
+        /// Output format: `markdown` (default), `agent` (compact JSON for
+        /// LLM ingestion), `json` / `full` (structured JSON).
+        #[arg(long, default_value = "markdown")]
+        format: String,
+        /// Pretty-print when --format=json. Ignored otherwise.
+        #[arg(long)]
+        pretty: bool,
+    },
     /// Budget-aware ranked digest of the codebase — drop into an agent's
     /// context for cold-start orientation.
     Map {
@@ -486,6 +509,35 @@ fn main() {
                 println!();
             } else {
                 print!("{}", query::format_refs(&refs));
+            }
+        }
+        Cli::Context { query: q, root, budget, depth, format, pretty } => {
+            let idx = query::load(&root)
+                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+            let Some(fmt) = sigil::context::ContextFormat::parse(&format) else {
+                eprintln!("error: unknown --format {}. expected `markdown`, `agent`, or `json`", format);
+                std::process::exit(1);
+            };
+            let opts = sigil::context::ContextOptions {
+                budget,
+                depth,
+                format: fmt,
+            };
+            let Some(ctx) = sigil::context::build_context(&idx, &q, &opts) else {
+                eprintln!("no entity matches `{}`", q);
+                eprintln!("hint: try `sigil search {}` to find similar symbols", q);
+                std::process::exit(2);
+            };
+            match fmt {
+                sigil::context::ContextFormat::Markdown => {
+                    print!("{}", sigil::context::render_markdown(&ctx));
+                }
+                sigil::context::ContextFormat::Agent => {
+                    println!("{}", sigil::context::render_agent_json(&ctx));
+                }
+                sigil::context::ContextFormat::Full => {
+                    println!("{}", sigil::context::render_full_json(&ctx, pretty));
+                }
             }
         }
         Cli::Map { root, tokens, focus, depth, format, write } => {
