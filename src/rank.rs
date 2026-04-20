@@ -40,6 +40,8 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use serde::{Deserialize, Serialize};
+
 use crate::entity::{BlastRadius, Entity, Reference};
 
 /// Output of a single rank pass. Pure data; callers decide how to persist it.
@@ -100,6 +102,46 @@ impl Default for RankConfig {
 /// entity. Pure function — no I/O, no ordering assumptions on the inputs.
 pub fn rank(entities: &[Entity], references: &[Reference]) -> RankedIndex {
     rank_with_config(entities, references, &RankConfig::default())
+}
+
+/// Populate `Entity.blast_radius` in place from a rank pass. `Entity.rank`
+/// is intentionally left alone — file-level scores live in `.sigil/rank.json`
+/// and get joined on read. A future week layers visibility multipliers on
+/// top to produce per-entity rank values.
+pub fn apply_blast_radius(entities: &mut [Entity], ranked: &RankedIndex) {
+    for e in entities.iter_mut() {
+        let key = EntityKey::from_entity(e);
+        if let Some(br) = ranked.blast.get(&key) {
+            e.blast_radius = Some(*br);
+        }
+    }
+}
+
+/// Serializable on-disk form of the file-level rank pass. Written to
+/// `.sigil/rank.json` by `sigil index --rank` (default on).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RankManifest {
+    pub version: String,
+    pub sigil_version: String,
+    pub damping: f64,
+    pub iterations_max: u32,
+    pub transitive_depth: u32,
+    pub file_count: usize,
+    pub file_rank: HashMap<String, f64>,
+}
+
+impl RankManifest {
+    pub fn from_ranked(ranked: &RankedIndex, cfg: &RankConfig) -> Self {
+        Self {
+            version: "1".to_string(),
+            sigil_version: env!("CARGO_PKG_VERSION").to_string(),
+            damping: cfg.damping,
+            iterations_max: cfg.max_iterations,
+            transitive_depth: cfg.transitive_depth,
+            file_count: ranked.file_rank.len(),
+            file_rank: ranked.file_rank.clone(),
+        }
+    }
 }
 
 pub fn rank_with_config(
@@ -543,6 +585,64 @@ mod tests {
         assert_ne!(a_key, b_key);
         assert_eq!(r.blast[&a_key].direct_callers, 1);
         assert_eq!(r.blast[&b_key].direct_callers, 1);
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Week 2: apply_blast_radius + RankManifest plumbing.
+    // ──────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn apply_blast_radius_populates_matching_entities() {
+        let mut entities = vec![
+            ent("a.rs", "foo", "function"),
+            ent("a.rs", "bar", "function"),
+        ];
+        let refs = vec![
+            refr("b.rs", Some("m"), "foo"),
+            refr("b.rs", Some("n"), "foo"),
+            refr("c.rs", Some("m"), "bar"),
+        ];
+        let ranked = rank(&entities, &refs);
+        apply_blast_radius(&mut entities, &ranked);
+
+        let foo_br = entities[0].blast_radius.unwrap();
+        assert_eq!(foo_br.direct_callers, 2);
+        assert_eq!(foo_br.direct_files, 1); // both callers in b.rs
+
+        let bar_br = entities[1].blast_radius.unwrap();
+        assert_eq!(bar_br.direct_callers, 1);
+        assert_eq!(bar_br.direct_files, 1);
+    }
+
+    #[test]
+    fn apply_blast_radius_leaves_unmatched_none() {
+        // Entities that have no row in the rank pass (impossible under
+        // normal use — rank covers all entities — but covered for safety).
+        let mut entities = vec![ent("a.rs", "foo", "function")];
+        let empty = RankedIndex::default();
+        apply_blast_radius(&mut entities, &empty);
+        assert!(entities[0].blast_radius.is_none());
+    }
+
+    #[test]
+    fn rank_manifest_roundtrips_through_json() {
+        let entities = vec![ent("a.rs", "foo", "function")];
+        let refs = vec![refr("b.rs", Some("m"), "foo")];
+        let cfg = RankConfig::default();
+        let ranked = rank_with_config(&entities, &refs, &cfg);
+
+        let manifest = RankManifest::from_ranked(&ranked, &cfg);
+        assert_eq!(manifest.version, "1");
+        assert_eq!(manifest.damping, 0.85);
+        assert_eq!(manifest.transitive_depth, 3);
+        assert_eq!(manifest.file_count, 2); // a.rs + b.rs
+
+        let json = serde_json::to_string(&manifest).unwrap();
+        let back: RankManifest = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.file_count, manifest.file_count);
+        for (k, v) in &manifest.file_rank {
+            assert!((back.file_rank[k] - v).abs() < 1e-12);
+        }
     }
 
     #[test]

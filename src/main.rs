@@ -40,6 +40,11 @@ enum Cli {
         #[arg(long)]
         no_refs: bool,
 
+        /// Skip the rank + blast-radius pass (Phase 1). Rank is on by
+        /// default; this flag is a one-off opt-out for CI/speed cases.
+        #[arg(long)]
+        no_rank: bool,
+
         /// Print progress information
         #[arg(short, long)]
         verbose: bool,
@@ -216,9 +221,29 @@ fn main() {
     let cli = Cli::parse();
 
     match cli {
-        Cli::Index { root, files, stdout, pretty, full, no_refs, verbose } => {
+        Cli::Index { root, files, stdout, pretty, full, no_refs, no_rank, verbose } => {
             let files_arg = if files.is_empty() { None } else { Some(files.as_slice()) };
-            let result = index::build_index(&root, files_arg, full, !no_refs, verbose);
+            let mut result = index::build_index(&root, files_arg, full, !no_refs, verbose);
+
+            // Phase 1 rank pass. On by default; `--no-rank` skips it (useful
+            // in CI or when refs are also skipped). Rank is a whole-repo
+            // computation — a changed subset of files still re-ranks globally
+            // because cross-file references affect the graph.
+            let rank_manifest = if !no_rank && !result.refs.is_empty() {
+                let cfg = sigil::rank::RankConfig::default();
+                let ranked = sigil::rank::rank_with_config(&result.entities, &result.refs, &cfg);
+                sigil::rank::apply_blast_radius(&mut result.entities, &ranked);
+                Some(sigil::rank::RankManifest::from_ranked(&ranked, &cfg))
+            } else {
+                // If the user opted out, also wipe any stale rank/blast_radius
+                // that cached entities carried over from a previous run — the
+                // on-disk output should reflect the requested mode.
+                for e in &mut result.entities {
+                    e.rank = None;
+                    e.blast_radius = None;
+                }
+                None
+            };
 
             if stdout {
                 let out = std::io::stdout();
@@ -232,14 +257,30 @@ fn main() {
                     writer::write_refs_jsonl(&result.refs, &mut err, pretty)
                         .expect("Failed to write refs to stderr");
                 }
+                // rank.json is a project-level artifact; we don't emit it on
+                // stdout. blast_radius is already on each entity above.
             } else {
                 writer::write_to_files(&result.entities, &result.refs, &root, pretty)
                     .expect("Failed to write index");
+                match &rank_manifest {
+                    Some(m) => writer::write_rank_json(m, &root, pretty)
+                        .expect("Failed to write rank.json"),
+                    None => {
+                        // Clean up any stale rank.json from a prior run when
+                        // the user explicitly disables ranking.
+                        let _ = writer::remove_rank_json(&root);
+                    }
+                }
                 if verbose {
+                    let rank_note = match &rank_manifest {
+                        Some(m) => format!(", {} files ranked", m.file_count),
+                        None => " (rank skipped)".to_string(),
+                    };
                     eprintln!(
-                        "Wrote {} entities and {} refs to .sigil/",
+                        "Wrote {} entities and {} refs to .sigil/{}",
                         result.entities.len(),
-                        result.refs.len()
+                        result.refs.len(),
+                        rank_note
                     );
                 }
             }
