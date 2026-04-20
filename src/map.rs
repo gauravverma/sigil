@@ -51,6 +51,10 @@ pub struct MapOptions {
     /// Drop entities whose file path matches common test-file conventions
     /// (`tests/`, `*_test.rs`, `*.spec.ts`, etc.). Default off — opt-in.
     pub exclude_tests: bool,
+    /// Run community detection and add a "## Subsystems" section grouping
+    /// shown files by cluster. Defaults on — cheap to compute and high
+    /// orientation value on repos with more than a handful of files.
+    pub clusters: bool,
 }
 
 impl Default for MapOptions {
@@ -61,6 +65,7 @@ impl Default for MapOptions {
             depth: 5,
             focus_boost: 2.0,
             exclude_tests: false,
+            clusters: true,
         }
     }
 }
@@ -92,6 +97,21 @@ pub struct MapFile {
     pub rank: f64,
     pub lang: Option<String>,
     pub entities: Vec<MapEntity>,
+    /// Community id assigned by `community::detect_file_communities`. Omitted
+    /// when clustering is disabled (see `MapOptions::clusters`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subsystem: Option<u32>,
+}
+
+/// Human-readable summary for one community in the map output.
+#[derive(Debug, Clone, Serialize)]
+pub struct MapSubsystem {
+    pub id: u32,
+    pub label: String,
+    pub file_count: usize,
+    /// Files in this cluster, sorted by rank desc (only those shown in
+    /// the map — truncated files don't appear here).
+    pub top_files: Vec<String>,
 }
 
 /// Full map output.
@@ -100,6 +120,10 @@ pub struct Map {
     pub meta: MapMeta,
     pub files: Vec<MapFile>,
     pub skipped_file_count: usize,
+    /// Subsystems detected via file-graph community detection. Empty when
+    /// `MapOptions::clusters` is false.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub subsystems: Vec<MapSubsystem>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -193,6 +217,7 @@ pub fn build_map(idx: &Index, rank: &RankManifest, opts: &MapOptions) -> Map {
             rank: *file_score,
             lang: lang_for(file).map(|s| s.to_string()),
             entities: rendered_entities,
+            subsystem: None,
         };
 
         // Budget check on the rendered file block.
@@ -210,6 +235,17 @@ pub fn build_map(idx: &Index, rank: &RankManifest, opts: &MapOptions) -> Map {
     let skipped = files_ranked.len().saturating_sub(out_files.len());
     let (total_entities, total_refs) = idx.len();
 
+    // Community detection — runs over the full index (not just shown
+    // files) so cluster membership is stable across --tokens changes.
+    // We only surface subsystems whose members appear in the rendered
+    // file list, though; subsystems of purely truncated files are not
+    // interesting to the agent consumer.
+    let subsystems = if opts.clusters {
+        attach_subsystems(&mut out_files, &idx.entities, &idx.references)
+    } else {
+        Vec::new()
+    };
+
     Map {
         meta: MapMeta {
             sigil_version: env!("CARGO_PKG_VERSION").to_string(),
@@ -222,7 +258,55 @@ pub fn build_map(idx: &Index, rank: &RankManifest, opts: &MapOptions) -> Map {
         },
         files: out_files,
         skipped_file_count: skipped,
+        subsystems,
     }
+}
+
+/// Run community detection, tag each MapFile with its subsystem id, and
+/// return the summary list for rendering. Subsystems that contain only
+/// truncated files are elided from the summary but remain discoverable
+/// by re-running `sigil map` with a larger `--tokens` budget.
+fn attach_subsystems(
+    files: &mut [MapFile],
+    entities: &[crate::entity::Entity],
+    references: &[crate::entity::Reference],
+) -> Vec<MapSubsystem> {
+    let communities = crate::community::detect_file_communities(entities, references);
+    // For each shown file, record its community id.
+    for f in files.iter_mut() {
+        f.subsystem = communities.get(&f.path).copied();
+    }
+    // Group shown files by community for the summary section.
+    let mut by_comm: std::collections::BTreeMap<u32, Vec<&MapFile>> =
+        std::collections::BTreeMap::new();
+    for f in files.iter() {
+        if let Some(id) = f.subsystem {
+            by_comm.entry(id).or_default().push(f);
+        }
+    }
+    let mut out: Vec<MapSubsystem> = by_comm
+        .into_iter()
+        .map(|(id, mut fs)| {
+            fs.sort_by(|a, b| {
+                b.rank
+                    .partial_cmp(&a.rank)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+            let paths: Vec<&str> = fs.iter().map(|f| f.path.as_str()).collect();
+            let label = crate::community::subsystem_label(&paths);
+            MapSubsystem {
+                id,
+                label,
+                file_count: fs.len(),
+                top_files: fs.iter().take(5).map(|f| f.path.clone()).collect(),
+            }
+        })
+        .collect();
+    // Sort subsystems by the highest-ranked file in each — biggest clusters
+    // tend to rise to the top, giving an agent the same "what to look at
+    // first" signal the file list already uses.
+    out.sort_by(|a, b| b.file_count.cmp(&a.file_count).then_with(|| a.label.cmp(&b.label)));
+    out
 }
 
 /// Per-entity sort key: `direct_files` as the primary axis, nudged upward
@@ -268,6 +352,25 @@ pub fn render_markdown(m: &Map) -> String {
         },
         m.meta.estimated_tokens,
     ));
+    if !m.subsystems.is_empty() {
+        out.push_str(&format!("## Subsystems ({})\n\n", m.subsystems.len()));
+        for s in &m.subsystems {
+            out.push_str(&format!(
+                "- **{}** (#{}) — {} file(s): {}\n",
+                s.label,
+                s.id,
+                s.file_count,
+                s.top_files
+                    .iter()
+                    .take(3)
+                    .map(|p| format!("`{}`", p))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
+        out.push('\n');
+    }
+
     out.push_str("## Top files by impact\n\n");
 
     for f in &m.files {
@@ -287,9 +390,13 @@ pub fn render_markdown(m: &Map) -> String {
 fn render_file_block(f: &MapFile) -> String {
     let mut out = String::with_capacity(512);
     let lang_tag = f.lang.as_deref().unwrap_or("?");
+    let subsystem_tag = f
+        .subsystem
+        .map(|id| format!(", subsystem #{}", id))
+        .unwrap_or_default();
     out.push_str(&format!(
-        "### {} — rank {:.4} ({})\n",
-        f.path, f.rank, lang_tag
+        "### {} — rank {:.4} ({}{})\n",
+        f.path, f.rank, lang_tag, subsystem_tag
     ));
     if f.entities.is_empty() {
         out.push_str("_no symbols surfaced_\n\n");

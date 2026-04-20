@@ -22,6 +22,7 @@ pub mod markdown_formatter;
 pub mod matcher;
 pub mod meta;
 pub mod cochange;
+pub mod community;
 pub mod context;
 pub mod map;
 pub mod output;

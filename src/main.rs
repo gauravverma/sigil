@@ -396,6 +396,10 @@ enum Cli {
         /// `*.spec.ts`, etc.) from the map output.
         #[arg(long)]
         exclude_tests: bool,
+        /// Skip the community-detection pass. Default is to include a
+        /// `## Subsystems` section in the markdown output.
+        #[arg(long)]
+        no_clusters: bool,
     },
     /// Install or uninstall the Claude Code integration
     /// (CLAUDE.md capability block + PreToolUse hint hook).
@@ -863,7 +867,7 @@ fn main() {
                 }
             }
         }
-        Cli::Map { root, tokens, focus, depth, format, write, exclude_tests } => {
+        Cli::Map { root, tokens, focus, depth, format, write, exclude_tests, no_clusters } => {
             let idx = query::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let rank_manifest = sigil::map::load_rank_manifest(&root)
@@ -878,6 +882,7 @@ fn main() {
                 focus,
                 depth,
                 exclude_tests,
+                clusters: !no_clusters,
                 ..sigil::map::MapOptions::default()
             };
             let map = sigil::map::build_map(&idx, &rank_manifest, &opts);
