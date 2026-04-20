@@ -132,6 +132,9 @@ mod tests {
             body_hash: body_hash.map(|s| s.into()),
             sig_hash: sig_hash.map(|s| s.into()),
             struct_hash: struct_hash.into(),
+            visibility: None,
+            rank: None,
+            blast_radius: None,
         }
     }
 

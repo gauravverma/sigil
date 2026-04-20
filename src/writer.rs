@@ -1,5 +1,7 @@
 use std::io::Write;
+use std::path::Path;
 use crate::entity::{Entity, Reference};
+use crate::rank::RankManifest;
 
 pub fn write_entities_jsonl(entities: &[Entity], output: &mut dyn Write, pretty: bool) -> std::io::Result<()> {
     for entity in entities {
@@ -49,6 +51,30 @@ pub fn write_to_files(
     Ok(())
 }
 
+/// Write the file-level PageRank manifest to `.sigil/rank.json`.
+/// Called by `sigil index` when rank is enabled (the default).
+pub fn write_rank_json(manifest: &RankManifest, root: &Path, pretty: bool) -> std::io::Result<()> {
+    let dir = root.join(".sigil");
+    std::fs::create_dir_all(&dir)?;
+    let content = if pretty {
+        serde_json::to_string_pretty(manifest)
+    } else {
+        serde_json::to_string(manifest)
+    }
+    .map_err(std::io::Error::other)?;
+    std::fs::write(dir.join("rank.json"), content)
+}
+
+/// Remove a stale `.sigil/rank.json` when the user runs `sigil index --no-rank`.
+/// Missing file is not an error.
+pub fn remove_rank_json(root: &Path) -> std::io::Result<()> {
+    let path = root.join(".sigil").join("rank.json");
+    if !path.exists() {
+        return Ok(());
+    }
+    std::fs::remove_file(path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -67,6 +93,9 @@ mod tests {
             body_hash: Some("abcdef1234567890".to_string()),
             sig_hash: Some("1234567890abcdef".to_string()),
             struct_hash: "fedcba0987654321".to_string(),
+            visibility: None,
+            rank: None,
+            blast_radius: None,
         }
     }
 

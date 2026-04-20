@@ -31,7 +31,7 @@ pub fn parse_single_file(
         return crate::markdown_index::parse_markdown_file(source, file_path);
     }
 
-    let (symbols, _texts, references) = codeix::parser::treesitter::parse_file(
+    let (symbols, _texts, references) = crate::parser::treesitter::parse_file(
         source.as_bytes(), language, file_path
     ).map_err(|e| format!("parse error: {}", e))?;
 
@@ -68,6 +68,12 @@ pub fn parse_single_file(
             body_hash: hasher::body_hash(source, body_start, line_end),
             sig_hash,
             struct_hash: hasher::struct_hash(raw_text.as_bytes()),
+            // Phase 1: capture visibility from the parser (public/private/pub/
+            // pub(crate)/etc.) so rank multipliers can favor exported symbols.
+            // `rank` and `blast_radius` get populated later by src/rank.rs.
+            visibility: sym.visibility.clone(),
+            rank: None,
+            blast_radius: None,
         });
     }
 
@@ -150,7 +156,7 @@ pub fn build_index(
         } else if ext == "md" || ext == "markdown" || ext == "mdx" {
             "markdown"
         } else {
-            match codeix::parser::languages::detect_language(ext) {
+            match crate::parser::languages::detect_language(ext) {
                 Some(l) => l,
                 None => {
                     if verbose {
@@ -215,7 +221,7 @@ pub fn build_index(
     IndexResult { entities: all_entities, refs: all_refs }
 }
 
-/// Check if a codeix entity kind represents an import.
+/// Check if a parser-emitted entity kind represents an import.
 fn is_import_kind(kind: &str) -> bool {
     kind == "import" || kind == "use" || kind == "package"
 }
@@ -265,7 +271,7 @@ fn discover_source_files(root: &Path) -> Vec<PathBuf> {
                 .map(|ext| {
                     ext == "md" || ext == "markdown" || ext == "mdx"
                         || ext == "json" || ext == "yaml" || ext == "yml" || ext == "toml"
-                        || codeix::parser::languages::detect_language(ext).is_some()
+                        || crate::parser::languages::detect_language(ext).is_some()
                 })
                 .unwrap_or(false)
         })

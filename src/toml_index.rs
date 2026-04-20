@@ -409,6 +409,9 @@ fn extract_table_entities(
             body_hash,
             sig_hash,
             struct_hash,
+            visibility: None,
+            rank: None,
+            blast_radius: None,
         });
 
         // Recurse into nested tables

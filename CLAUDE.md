@@ -2,64 +2,118 @@
 
 ## Project Overview
 
-sigil is a Rust CLI tool for structural code fingerprinting and diffing. It uses tree-sitter (via codeix) to parse source files, extract code entities (functions, classes, methods), compute content hashes, and produce entity-level diffs.
+sigil is a Rust CLI tool for structural code fingerprinting and diffing. It uses tree-sitter to parse source files, extract code entities (functions, classes, methods), compute content hashes, and produce entity-level diffs. Parsing and code-intelligence queries are fully in-house — no external indexer required.
 
 ## Build & Test
 
 ```bash
-cargo build              # Build
-cargo test               # Run all tests (unit + integration)
-cargo test --lib         # Unit tests only
-cargo test --test integration       # Index integration tests
-cargo test --test diff_integration  # Diff integration tests
-cargo test --test markdown_integration  # Markdown integration tests
+cargo build                          # default (lean) build
+cargo build --features db,tokenizer  # full build: DuckDB backend + BPE tokenizer
+cargo test                           # all tests
+cargo test --lib                     # unit tests only
+cargo test --test integration        # Index integration tests
+cargo test --test diff_integration   # Diff integration tests
+cargo test --test markdown_integration
 ```
 
 ## Architecture
 
 ```
 src/
-  lib.rs           — Library crate: re-exports all modules for use by Python bindings and tests
-  main.rs          — CLI binary (clap): sigil subcommands (index, diff, explore, search, symbols, children, callers, callees)
-  entity.rs        — Entity and Reference structs (serde-serializable)
-  hasher.rs        — BLAKE3 hashing (struct_hash, body_hash, sig_hash)
-  signature.rs     — Signature extraction from source (language-aware)
-  meta.rs          — Metaprogramming marker detection (decorators, derives)
+  lib.rs           — Library crate: re-exports modules for Python bindings and tests
+  main.rs          — CLI binary (clap). Two-tier command surface:
+                      Agent-facing: map, context, review, blast, benchmark
+                      Script-facing: search, symbols, children, callers, callees,
+                                     explore, duplicates, cochange, query, diff, index
+                      Installers:    claude, cursor, codex, gemini, opencode, aider,
+                                     copilot, hook
+  entity.rs        — Entity + Reference structs (serde); visibility, rank,
+                      blast_radius slots used by Phase 1 commands
+  hasher.rs        — BLAKE3 (struct_hash, body_hash, sig_hash)
+  signature.rs     — Signature extraction, language-aware
+  meta.rs          — Metaprogramming marker detection
   cache.rs         — Incremental indexing cache (.sigil/cache.json)
   writer.rs        — JSONL output writer
   index.rs         — Index orchestration + parse_single_file
-  json_index.rs    — JSON file parsing (custom parser, not tree-sitter); array item expansion, derived field marking, minified JSON normalization
-  yaml_index.rs    — YAML file parsing (custom parser, not tree-sitter)
-  toml_index.rs    — TOML file parsing (custom parser, not tree-sitter)
-  markdown_index.rs — Markdown file parsing (custom parser: headings, code blocks, tables, lists, blockquotes, paragraphs, front matter)
-  query.rs         — codeix SearchDb wrapper (load_index, explore, search, format helpers)
-  git.rs           — Git operations (changed_files, file_at_ref)
-  matcher.rs       — Entity matching across versions (exact/moved/renamed); parent-aware matching keys
+  json_index.rs    — JSON parsing (sigil-native); array item expansion, derived marking
+  yaml_index.rs    — YAML parsing (sigil-native)
+  toml_index.rs    — TOML parsing (sigil-native)
+  markdown_index.rs — Markdown parsing (headings, code blocks, tables, lists, front matter)
+  parser/          — Vendored tree-sitter extractors for 11 languages; see parser/NOTICE
+  git.rs           — Git operations (changed_files, file_at_ref, git log for cochange)
+  matcher.rs       — Entity matching across versions (exact/moved/renamed)
   classifier.rs    — Change classification (sig/body hash matrix)
-  diff.rs          — Diff orchestration (git refs or direct file comparison → parse → match → classify); minified JSON normalization
+  diff.rs          — Diff orchestration (refspec or --files → parse → match → classify)
   diff_json.rs     — Diff output structs (EntityDiff, DiffResult)
   inline_diff.rs   — Line-level diffs within entities
   change_detail.rs — Token-level change extraction
-  output.rs        — DiffOutput intermediate model for formatters; derived entity filtering, qualified JSON names, parent suppression
-  formatter.rs     — Colored terminal output (format_terminal_v2 with FormatOptions); context truncation, derived line filtering
-  markdown_formatter.rs — GitHub-flavored Markdown output (format_markdown with MarkdownOptions); context truncation, derived line filtering
+  output.rs        — DiffOutput intermediate model for formatters
+  formatter.rs     — Colored terminal output
+  markdown_formatter.rs — GitHub-flavored Markdown output
+
+  # Phase 1 — rank, blast radius, agent commands
+  rank.rs          — File-level PageRank + per-entity blast-radius BFS (pure fn)
+  community.rs     — Label-propagation subsystem detection for `sigil map`
+  map.rs           — `sigil map` — budget-aware ranked codebase digest
+  context.rs       — `sigil context <symbol>` — minimum-viable symbol bundle
+  blast.rs         — `sigil blast <symbol>` — impact summary
+  review.rs        — `sigil review <refspec>` — diff + blast + co-change
+  benchmark.rs     — `sigil benchmark` — token-reduction vs raw alternatives
+  duplicates.rs    — `sigil duplicates` — body_hash clone report
+  cochange.rs      — Git-history file-pair co-change mining (.sigil/cochange.json)
+  tokens.rs        — Tokenizer enum (proxy / cl100k / o200k / p50k); BPE feature-gated
+
+  query/
+    mod.rs               — Backend router (InMemory | DuckDb), format_* helpers
+    index.rs             — In-memory Index: loads .sigil/ jsonl, hash-map lookups
+    duckdb_backend.rs    — DuckDB-backed Index (feature = "db"); materialized index
+                            at .sigil/index.duckdb with staleness stamp
+
+  install/
+    mod.rs               — Shared marker-scoped idempotent upsert helpers
+    claude.rs            — CLAUDE.md + .claude/settings.json PreToolUse hook
+    cursor.rs            — .cursor/rules/sigil.mdc (alwaysApply: true)
+    codex.rs             — AGENTS.md + .codex/hooks.json Bash hook
+    gemini.rs            — GEMINI.md + .gemini/settings.json BeforeTool hook
+    opencode.rs          — AGENTS.md + .opencode/plugins/sigil.js
+    aider.rs             — AGENTS.md block
+    copilot.rs           — ~/.copilot/skills/sigil/SKILL.md
+    githook.rs           — .git/hooks/post-commit + post-checkout auto-rebuild
 
 python/
   Cargo.toml       — PyO3 crate (sigil-python) depending on sigil lib
   pyproject.toml   — maturin config; package name: sigil-diff, import name: sigil
   src/lib.rs       — Python bindings: diff_json, diff_files, diff_refs, index_json
   README.md        — Python API documentation
+
+scripts/
+  git-sigil        — Shim enabling `git sigil <cmd>` on PATH
+
+evals/
+  bench_multilang.py, compare_rg.py, corpus.tsv, cross_repo.sh, run.sh
+  results/         — Benchmark writeups (ripgrep/fastapi/zod/cobra + self-benchmarks)
 ```
+
+## Cargo features
+
+- `db` — DuckDB backend (`dep:duckdb`); adds `sigil query 'SQL'` and the persistent
+  materialized index at `.sigil/index.duckdb`. Auto-engages over 5 MB of JSONL
+  (override with `SIGIL_AUTO_ENGAGE_THRESHOLD_MB`; force with `SIGIL_BACKEND=db|memory`).
+- `tokenizer` — tiktoken-rs for BPE-accurate token counting in `sigil benchmark`.
+- Per-language grammars gated as `lang-<name>` flags; default enables all 11.
 
 ## Key Dependencies
 
-- **codeix** — tree-sitter parser + SearchDb code intelligence (git dependency from github.com/montanetech/codeix)
-- **anyhow** — error handling (used by codeix Result types)
+- **tree-sitter** — AST parsing (vendored in `src/parser/`, forked from codeix v0.5.0 under Apache-2.0; see `src/parser/NOTICE`)
 - **blake3** — content hashing
 - **similar** — line and word diffing
 - **clap** — CLI argument parsing
 - **colored** — terminal colors
+- **serde / serde_json** — (de)serialization
+- **anyhow** — error handling
 - **toml** — TOML parsing
+- **duckdb** (feature = db) — persistent columnar index backend
+- **tiktoken-rs** (feature = tokenizer) — BPE tokenization
 
 ## Conventions
 
@@ -78,27 +132,39 @@ python/
 ## Useful Commands
 
 ```bash
-# Run sigil on its own codebase
+# Build the index (produces .sigil/entities.jsonl + refs.jsonl + rank.json)
 sigil index -v
+sigil index --full        # force re-parse
+sigil index --no-rank     # skip PageRank + blast radius
+
+# Structural diff
 sigil diff HEAD~1
+sigil diff main..HEAD --markdown           # PR-ready
+sigil diff HEAD~1 --json --pretty          # script input
+sigil diff --files old.py new.py           # no git required
+sigil diff HEAD~1 --summary --group --lines --context 5
 
-# JSON diff for AI review
-sigil diff main..HEAD --json --pretty
+# Agent-facing (Phase 1)
+sigil map --tokens 2000 [--write]          # codebase digest → .sigil/SIGIL_MAP.md
+sigil context Entity --budget 1000         # minimum-viable symbol context
+sigil review HEAD~3..HEAD [--markdown]     # diff + blast + co-change
+sigil blast Entity --depth 5               # impact summary
+sigil benchmark --tokenizer o200k_base     # BPE-accurate token reduction
 
-# Markdown output for PRs
-sigil diff main..HEAD --markdown
+# Navigation (script-facing, unbounded, JSON-friendly)
+sigil explore
+sigil search "parse" --scope symbols
+sigil symbols src/main.rs
+sigil children src/entity.rs Entity
+sigil callers struct_hash [--kind call|import|type_annotation|instantiation|definition]
+sigil callees build_index
+sigil duplicates --min-lines 10
+sigil cochange --commits 500               # → .sigil/cochange.json
 
-# Terminal with line numbers and code context
-sigil diff HEAD~1 --lines --context
+# DuckDB (requires --features db)
+sigil query "SELECT kind, COUNT(*) FROM entities GROUP BY kind ORDER BY 2 DESC"
 
-# Compare two files directly (no git required)
-sigil diff --files old.py new.py
-
-# Code intelligence queries (powered by codeix SearchDb)
-sigil explore                            # Project structure overview
-sigil search "parse_file"                # Full-text search across symbols, files, texts
-sigil symbols src/main.rs                # List symbols in a file
-sigil children src/entity.rs Entity      # Children of a class/module
-sigil callers struct_hash                # Find all callers of a symbol
-sigil callees build_index                # Find all callees of a symbol
+# Agent / editor integrations (idempotent, content-preserving)
+sigil claude install    # and: cursor / codex / gemini / opencode / aider / copilot / hook
+sigil <name> uninstall  # matching uninstaller for each
 ```

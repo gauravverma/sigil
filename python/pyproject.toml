@@ -6,9 +6,37 @@ build-backend = "maturin"
 name = "sigil-diff"
 version = "0.2.4"
 description = "Structural code fingerprinting and diffing — Python bindings"
+readme = "README.md"
 requires-python = ">=3.8"
 license = "MIT"
-keywords = ["diff", "code", "structural", "json"]
+keywords = ["diff", "code", "structural", "json", "tree-sitter", "ast"]
+authors = [
+    { name = "Gaurav Verma", email = "gaurav@suprsend.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Version Control",
+    "Topic :: Text Processing :: General",
+]
+
+[project.urls]
+Homepage = "https://github.com/gauravverma/sigil"
+Repository = "https://github.com/gauravverma/sigil"
+Issues = "https://github.com/gauravverma/sigil/issues"
 
 [tool.maturin]
 module-name = "sigil"

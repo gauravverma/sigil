@@ -1,9 +1,22 @@
 target/
+docs/
+.codeindex/
+python/.venv/
+
+# scratch / planning artifacts (not part of the shipped repo)
 TODO.md
 SPEC.md
 CXDIFF_SPEC.md
-docs/
-docs/superpowers/
-docs/superpowers/plans/
+ARCHITECTURE.md
+agent-adoption-plan.md
+blog-agent-adoption.md
+codesight-analysis.md
+grouping-implementation-plan.md
+worked/
 skills/sigil-workspace/
-.codeindexpython/.venv/
+
+# generated sigil artifacts (optional; the JSONL + rank.json are committable)
+.sigil/SIGIL_MAP.md
+.sigil/index.duckdb
+.sigil/index.duckdb.stamp
+.sigil/index.duckdb.wal

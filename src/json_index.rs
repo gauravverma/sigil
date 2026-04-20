@@ -368,6 +368,9 @@ fn extract_array_items(
             body_hash,
             sig_hash,
             struct_hash,
+            visibility: None,
+            rank: None,
+            blast_radius: None,
         });
 
         // Recurse into object items to extract their properties as children
@@ -437,6 +440,9 @@ fn extract_object_entities(
             body_hash,
             sig_hash,
             struct_hash,
+            visibility: None,
+            rank: None,
+            blast_radius: None,
         });
 
         // Recurse into nested objects

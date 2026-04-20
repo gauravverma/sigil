@@ -14,7 +14,6 @@ name = "sigil"
 path = "src/main.rs"
 
 [dependencies]
-codeix = { git = "https://github.com/montanetech/codeix", tag = "v0.5.0" }
 anyhow = "1"
 blake3 = "1"
 clap = { version = "4", features = ["derive"] }
@@ -26,6 +25,62 @@ ignore = "0.4"
 similar = "2"
 toml = "0.8"
 axoupdater = { version = "0.10", features = ["github_releases", "blocking"] }
+
+# Tree-sitter core (for the vendored src/parser/).
+# Language grammars are feature-gated; defaults match codeix's defaults.
+tree-sitter = "0.26"
+
+tree-sitter-python     = { version = "0.25", optional = true }
+tree-sitter-rust       = { version = "0.24", optional = true }
+tree-sitter-javascript = { version = "0.25", optional = true }
+tree-sitter-typescript = { version = "0.23", optional = true }
+tree-sitter-go         = { version = "0.25", optional = true }
+tree-sitter-java       = { version = "0.23", optional = true }
+tree-sitter-c          = { version = "0.24", optional = true }
+tree-sitter-cpp        = { version = "0.23", optional = true }
+tree-sitter-ruby       = { version = "0.23", optional = true }
+tree-sitter-c-sharp    = { version = "0.23", optional = true }
+tree-sitter-md         = { version = "0.5", features = ["parser"], optional = true }
+
+# Optional: real BPE tokenizer for accurate token counting in `sigil
+# benchmark`. When absent we fall back to the bytes/4 proxy.
+tiktoken-rs = { version = "0.7", optional = true }
+
+# Optional: DuckDB backend for large-index workloads (~500k+ entities).
+# Lazily built from the JSONL source of truth, invalidated on mtime/size
+# change. Adds ~20 MB to the binary, so opt-in via `--features db`.
+duckdb = { version = "1", features = ["bundled"], optional = true }
+
+[features]
+default = [
+    "lang-python", "lang-rust", "lang-javascript", "lang-typescript",
+    "lang-go", "lang-java", "lang-c", "lang-cpp", "lang-ruby",
+    "lang-csharp", "lang-markdown",
+]
+lang-python     = ["dep:tree-sitter-python"]
+lang-rust       = ["dep:tree-sitter-rust"]
+lang-javascript = ["dep:tree-sitter-javascript"]
+lang-typescript = ["dep:tree-sitter-typescript"]
+lang-go         = ["dep:tree-sitter-go"]
+lang-java       = ["dep:tree-sitter-java"]
+lang-c          = ["dep:tree-sitter-c"]
+lang-cpp        = ["dep:tree-sitter-cpp"]
+lang-ruby       = ["dep:tree-sitter-ruby"]
+lang-csharp     = ["dep:tree-sitter-c-sharp"]
+lang-markdown   = ["dep:tree-sitter-md"]
+
+# Accurate BPE token counting (adds ~1.5 MB to the binary). Opt-in via
+# `cargo install sigil --features tokenizer`; `sigil benchmark` then
+# accepts `--tokenizer cl100k_base|o200k_base|p50k_base` in addition to
+# the default bytes/4 proxy.
+tokenizer = ["dep:tiktoken-rs"]
+
+# DuckDB query backend for very large indexes. See
+# src/query/duckdb_backend.rs; auto-engages above 50 MB of JSONL, or
+# when `--db` is passed on an Index query. Adds ~20 MB to the binary.
+# Requires a working C++17 toolchain on the host (libduckdb-sys bundles
+# DuckDB sources). Xcode CLT / build-essential / MSVC as appropriate.
+db = ["dep:duckdb"]
 
 # The profile that 'dist' will build with
 [profile.dist]

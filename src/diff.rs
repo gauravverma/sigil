@@ -58,7 +58,7 @@ pub fn compute_diff(
         } else if ext == "md" || ext == "markdown" || ext == "mdx" {
             "markdown"
         } else {
-            match codeix::parser::languages::detect_language(ext) {
+            match crate::parser::languages::detect_language(ext) {
                 Some(l) => l,
                 None => continue,
             }
@@ -211,7 +211,7 @@ fn detect_lang(ext: &str) -> Option<&str> {
         "yaml" | "yml" => Some("yaml"),
         "toml" => Some("toml"),
         "md" | "markdown" | "mdx" => Some("markdown"),
-        _ => codeix::parser::languages::detect_language(ext),
+        _ => crate::parser::languages::detect_language(ext),
     }
 }
 
