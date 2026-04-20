@@ -10,5 +10,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 sigil_core = { path = "..", package = "sigil" }
-pyo3 = { version = "0.24", features = ["extension-module"] }
+pyo3 = { version = "0.28", features = ["extension-module"] }
 serde_json = { version = "1", features = ["preserve_order"] }

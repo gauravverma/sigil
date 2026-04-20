@@ -11,7 +11,7 @@ use std::path::Path;
 /// Returns:
 ///     A dict with the diff result (same structure as `sigil diff --json`)
 #[pyfunction]
-fn diff_json(old: &str, new: &str) -> PyResult<PyObject> {
+fn diff_json(old: &str, new: &str) -> PyResult<Py<PyAny>> {
     // Normalize minified JSON
     let old_source = sigil_core::json_index::normalize_json_source(old)
         .unwrap_or_else(|| old.to_string());
@@ -85,10 +85,10 @@ fn diff_json(old: &str, new: &str) -> PyResult<PyObject> {
     let json_str = serde_json::to_string(&output)
         .map_err(|e| PyValueError::new_err(format!("serialization error: {}", e)))?;
 
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         let json_mod = py.import("json")?;
         let dict = json_mod.call_method1("loads", (json_str,))?;
-        Ok(dict.into())
+        Ok(dict.unbind())
     })
 }
 
@@ -101,7 +101,7 @@ fn diff_json(old: &str, new: &str) -> PyResult<PyObject> {
 /// Returns:
 ///     A dict with the diff result (same structure as `sigil diff --json`)
 #[pyfunction]
-fn diff_files(old_path: &str, new_path: &str) -> PyResult<PyObject> {
+fn diff_files(old_path: &str, new_path: &str) -> PyResult<Py<PyAny>> {
     let opts = sigil_core::diff::DiffOptions {
         include_unchanged: false,
         verbose: false,
@@ -120,10 +120,10 @@ fn diff_files(old_path: &str, new_path: &str) -> PyResult<PyObject> {
     let json_str = serde_json::to_string(&output)
         .map_err(|e| PyValueError::new_err(format!("serialization error: {}", e)))?;
 
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         let json_mod = py.import("json")?;
         let dict = json_mod.call_method1("loads", (json_str,))?;
-        Ok(dict.into())
+        Ok(dict.unbind())
     })
 }
 
@@ -135,7 +135,7 @@ fn diff_files(old_path: &str, new_path: &str) -> PyResult<PyObject> {
 /// Returns:
 ///     A list of entity dicts with name, kind, parent, line_start, line_end, etc.
 #[pyfunction]
-fn index_json(source: &str) -> PyResult<PyObject> {
+fn index_json(source: &str) -> PyResult<Py<PyAny>> {
     let effective = sigil_core::json_index::normalize_json_source(source)
         .unwrap_or_else(|| source.to_string());
 
@@ -145,10 +145,10 @@ fn index_json(source: &str) -> PyResult<PyObject> {
     let json_str = serde_json::to_string(&entities)
         .map_err(|e| PyValueError::new_err(format!("serialization error: {}", e)))?;
 
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         let json_mod = py.import("json")?;
         let list = json_mod.call_method1("loads", (json_str,))?;
-        Ok(list.into())
+        Ok(list.unbind())
     })
 }
 
@@ -162,7 +162,7 @@ fn index_json(source: &str) -> PyResult<PyObject> {
 /// Returns:
 ///     A dict with the diff result
 #[pyfunction]
-fn diff_refs(repo_path: &str, base_ref: &str, head_ref: &str) -> PyResult<PyObject> {
+fn diff_refs(repo_path: &str, base_ref: &str, head_ref: &str) -> PyResult<Py<PyAny>> {
     let opts = sigil_core::diff::DiffOptions {
         include_unchanged: false,
         verbose: false,
@@ -182,10 +182,10 @@ fn diff_refs(repo_path: &str, base_ref: &str, head_ref: &str) -> PyResult<PyObje
     let json_str = serde_json::to_string(&output)
         .map_err(|e| PyValueError::new_err(format!("serialization error: {}", e)))?;
 
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         let json_mod = py.import("json")?;
         let dict = json_mod.call_method1("loads", (json_str,))?;
-        Ok(dict.into())
+        Ok(dict.unbind())
     })
 }
 
