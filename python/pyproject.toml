@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "sigil-diff"
-version = "0.2.4"
+version = "0.3.0"
 description = "Structural code fingerprinting and diffing — Python bindings"
 readme = "README.md"
 requires-python = ">=3.8"

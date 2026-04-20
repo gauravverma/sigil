@@ -4,12 +4,48 @@ All notable changes to sigil are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — Phase 0: in-house parsing + code intelligence
+## [0.3.0] — 2026-04-20 — Phase 0 + Phase 1: in-house parsing, agent surface, DuckDB backend
 
-Sigil's last external runtime dependency on `codeix` is gone. Parsing and
-all code-intelligence queries (`search`, `symbols`, `children`, `callers`,
-`callees`, `explore`) now run against sigil-owned code. No behavior
-changes visible to end users — the CLI output format is preserved.
+Three bundled releases shipping together: the codeix-free parser layer,
+the agent-adoption command surface (rank + blast + map/context/review),
+and the DuckDB-materialized backend for monorepo scale. See the
+[agent-adoption PR](https://github.com/gauravverma/sigil/pull/3) for the
+full rationale.
+
+### Agent-adoption surface (Phase 1)
+
+- `sigil map [--tokens N]` — budget-aware ranked codebase digest with
+  label-propagation subsystems. Cold-start orientation artifact.
+- `sigil context <symbol> [--budget N]` — signature + callers + callees
+  + related types for a single symbol, capped to a token budget.
+- `sigil review <refspec>` — PR-review wrapper: structural diff ranked
+  by blast radius, plus co-change misses mined from `git log`.
+- `sigil blast <symbol>` — impact summary (direct callers / files /
+  transitive reach).
+- `sigil duplicates` — body-hash clone report across the codebase.
+- `sigil benchmark [--tokenizer o200k_base|cl100k_base|p50k_base]` —
+  publishes median token-reduction vs raw alternatives. BPE-accurate
+  counts via `--features tokenizer` (tiktoken-rs).
+- `sigil cochange` — mines `git log --name-only` for file-pair
+  co-change weights; written to `.sigil/cochange.json`.
+- `src/rank.rs` — file-level PageRank over the import graph + per-entity
+  blast-radius BFS (depth-capped at 3); persisted to `.sigil/rank.json`.
+- `Entity.rank` / `Entity.blast_radius` / `Entity.visibility` fields
+  added (serde-skipped when absent, back-compatible with 0.2.x indexes).
+
+### Phase 0.5 — DuckDB-materialized backend
+
+- `--features db` → `src/query/duckdb_backend.rs` ships a DuckDB-backed
+  query engine with identical API to the in-memory `Index`. Lazily
+  built from `.sigil/*.jsonl` on first query, refreshed on staleness
+  stamp mismatch.
+- Auto-engages when total JSONL size ≥ 5 MB (tunable via
+  `SIGIL_AUTO_ENGAGE_THRESHOLD_MB`); force via `SIGIL_BACKEND=db|memory`.
+  Unknown values are a hard error (no silent fallback).
+- `sigil query 'SELECT ...'` — power-user escape hatch for ad-hoc SQL
+  against the materialized index.
+
+### Phase 0 — decodeix
 
 ### Added
 
@@ -75,6 +111,43 @@ changes visible to end users — the CLI output format is preserved.
   No Python-side code changes needed — the crate depends on
   `sigil_core` by path, which picked up the decodeix work
   transparently.
+
+### Platform integrations
+
+- Eight idempotent, marker-scoped, content-preserving installers:
+  Claude Code, Cursor, Codex, Gemini CLI, OpenCode, Aider, GitHub
+  Copilot CLI, and git post-commit / post-checkout hooks. Each
+  installer has a matching `uninstall` that reverses exactly what
+  was written. All preserve sibling user content — running
+  `sigil claude install` on a repo with a hand-edited `CLAUDE.md`
+  leaves user sections untouched.
+- `git sigil <cmd>` alias via a tiny shim in `scripts/git-sigil`
+  (`exec sigil "$@"`). Symlink or install the shim onto `PATH` and
+  every `sigil <cmd>` becomes `git sigil <cmd>` — piggybacks on
+  git's pretrained name recognition for agents that know `git diff`.
+
+### CI / distribution
+
+- `.github/workflows/release-full.yml` — new workflow ships a
+  full-feature binary (`--features db,tokenizer`) alongside the
+  existing lean cargo-dist build for macOS (arm64/x86_64), Linux
+  (x86_64), and Windows (x86_64). Attached to the same GitHub
+  Release as `sigil-full-<target>.{tar.gz,zip}`.
+- README install flow switched from `cargo install --git` to
+  pre-built release archives (no Rust toolchain required).
+
+### Docs
+
+- README.md rewritten as a single end-to-end document: hero hook →
+  install (lean + full) → 5-minute tour → `git sigil` setup →
+  agent installers → benchmarks → architecture → supported
+  languages → command reference → backend selection → CI/CD →
+  honest caveats → FAQ.
+- `CLAUDE.md` refreshed to reflect Phase 1 modules, cargo features
+  (`db`, `tokenizer`), and the full command surface.
+- Planning scratches removed from git (`agent-adoption-plan.md`,
+  `blog-agent-adoption.md`, `ARCHITECTURE.md`, `worked/`,
+  `docs/superpowers/`).
 
 ## [0.2.4] — 2026-04-16
 
