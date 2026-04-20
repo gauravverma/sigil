@@ -4,6 +4,10 @@ use anyhow::{Context, Result};
 use codeix::server::db::SearchDb;
 use codeix::mount::MountTable;
 
+// In-house index + query engine. Populated on Phase 0 days 3–5 and swapped in on
+// day 6; the codeix-backed functions below stay in place until then.
+pub mod index;
+
 /// Load the codeix index for a project. Returns (MountTable, SearchDb).
 /// Loads from .codeindex/ cache if available, builds from source otherwise.
 pub fn load_index(root: &Path) -> Result<(Arc<Mutex<MountTable>>, Arc<Mutex<SearchDb>>)> {
