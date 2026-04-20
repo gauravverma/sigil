@@ -4,6 +4,31 @@ All notable changes to sigil are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] — 2026-04-21
+
+### Changed
+
+- Agent-facing skill (`skills/sigil/SKILL.md`) rewritten to cover the
+  full v0.3.x command surface: `map`, `context`, `review`, `blast`,
+  `duplicates`, `query`, `cochange`, `benchmark`. Previous skill only
+  documented the 0.2.x primitives.
+
+### Fixed
+
+- CLI flag documentation across README, CLAUDE.md, and the skill. The
+  valid `sigil search --scope` values are `symbol | file | text`
+  (singular); `sigil callers --kind` does not accept `definition`;
+  `sigil query` no longer requires `--features db` on shipped binaries
+  since 0.3.2.
+
+### CI / build
+
+- `release.yml`: inject `Swatinem/rust-cache@v2` before every matrix
+  `dist build` via cargo-dist's `github-build-setup` hook. First
+  (cold-cache) run after this change is still full-compile; warm runs
+  should drop Windows from ~20 min to ~3–5 min and total wall-clock
+  from ~22 min to ~7 min.
+
 ## [0.3.2] — 2026-04-21
 
 ### Changed
