@@ -52,8 +52,8 @@ sudo ln -s "$(command -v sigil)" /usr/local/bin/git-sigil
 mkdir -p ~/.local/bin
 ln -s "$(command -v sigil)" ~/.local/bin/git-sigil
 
-# 3. Inline shim (for filesystems where symlinks are awkward, e.g. Windows).
-cat > /usr/local/bin/git-sigil <<'SHIM'
+# 3. Inline shim (for filesystems where symlinks are awkward).
+sudo tee /usr/local/bin/git-sigil > /dev/null <<'SHIM'
 #!/bin/sh
 exec sigil "$@"
 SHIM
