@@ -41,13 +41,10 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: release-full-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          key: release-full-${{ matrix.target }}
+          shared-key: release-full
 
       - name: Build (full features)
         run: cargo build --release --features db,tokenizer --target ${{ matrix.target }}
