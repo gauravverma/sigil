@@ -42,21 +42,29 @@ Measured with the GPT-4o/o3 BPE tokenizer. Reproduce with `sigil benchmark` on y
 
 Agents that know `git diff` / `git log` discover `git sigil diff` / `git sigil map` naturally. Git auto-wires any `git-<name>` executable on `PATH` as a `git <name>` subcommand — no extra config, no aliases to maintain.
 
-**Setup** — pick one:
+**Setup** — pick one. All three use only the installed `sigil` binary; none require a local clone of the repo.
 
 ```bash
-# 1. Symlink the sigil binary (simplest).
-#    Works because `exec`-ing through the symlink leaves argv[0] == "git-sigil"
-#    but sigil's clap parser ignores it.
-sudo ln -s "$(which sigil)" /usr/local/bin/git-sigil
+# 1. Symlink the sigil binary (simplest). Works on macOS / Linux.
+sudo ln -s "$(command -v sigil)" /usr/local/bin/git-sigil
 
-# 2. Copy the shim that ships in the repo (explicit `exec sigil "$@"`).
-sudo install -m 0755 scripts/git-sigil /usr/local/bin/git-sigil
-
-# 3. Put ~/.local/bin on PATH and install there (no sudo).
+# 2. No-sudo variant — install into ~/.local/bin (ensure it's on PATH).
 mkdir -p ~/.local/bin
-ln -s "$(which sigil)" ~/.local/bin/git-sigil
-# make sure ~/.local/bin is on PATH in your shell rc file
+ln -s "$(command -v sigil)" ~/.local/bin/git-sigil
+
+# 3. Inline shim (for filesystems where symlinks are awkward, e.g. Windows).
+cat > /usr/local/bin/git-sigil <<'SHIM'
+#!/bin/sh
+exec sigil "$@"
+SHIM
+sudo chmod +x /usr/local/bin/git-sigil
+```
+
+Windows (PowerShell): create `git-sigil.cmd` anywhere on `PATH`:
+
+```powershell
+# adjust destination to any folder already on PATH
+Set-Content -Path "$env:USERPROFILE\bin\git-sigil.cmd" -Value '@sigil %*'
 ```
 
 Verify:
