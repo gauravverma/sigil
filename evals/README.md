@@ -141,6 +141,26 @@ refspec) snapshot; commit the JSON alongside.
 
 Raw JSON: [`results/0.2.4-HEAD-3..HEAD-o200k.json`](results/0.2.4-HEAD-3..HEAD-o200k.json)
 
+## Backend selection (`SIGIL_BACKEND`)
+
+Queries that the router covers (`sigil callers` / `callees` / `symbols`
+/ `children`) pick a backend automatically:
+
+- JSONL total < 50 MB → in-memory `Index` (fast, zero deps).
+- JSONL ≥ 50 MB → DuckDB (columnar, handles Chromium-scale).
+
+Override via the `SIGIL_BACKEND` environment variable:
+
+```bash
+SIGIL_BACKEND=memory sigil callers Entity   # force in-memory
+SIGIL_BACKEND=db     sigil callers Entity   # force DuckDB (needs --features db)
+```
+
+Any other value is a hard error — no silent fallbacks, to keep
+reproducibility explicit. The analytical commands (`map`, `context`,
+`review`, `blast`, `benchmark`) stay on the in-memory path
+unconditionally until the corresponding DuckDB methods land.
+
 ## Reproducibility
 
 ```bash

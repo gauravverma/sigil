@@ -670,47 +670,51 @@ fn main() {
             }
         }
         Cli::Symbols { file, root, limit, json } => {
-            let idx = query::load(&root)
+            let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
-            let symbols = idx.get_file_symbols(&file, None, limit as usize);
+            let symbols = backend.get_file_symbols(&file, None, limit as usize);
+            let refs: Vec<&sigil::entity::Entity> = symbols.iter().collect();
             if json {
                 serde_json::to_writer_pretty(std::io::stdout(), &symbols).ok();
                 println!();
             } else {
-                print!("{}", query::format_entities(&symbols));
+                print!("{}", query::format_entities(&refs));
             }
         }
         Cli::Children { file, parent, root, limit, json } => {
-            let idx = query::load(&root)
+            let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
-            let children = idx.get_children(&file, &parent, None, limit as usize);
+            let children = backend.get_children(&file, &parent, None, limit as usize);
+            let refs: Vec<&sigil::entity::Entity> = children.iter().collect();
             if json {
                 serde_json::to_writer_pretty(std::io::stdout(), &children).ok();
                 println!();
             } else {
-                print!("{}", query::format_entities(&children));
+                print!("{}", query::format_entities(&refs));
             }
         }
         Cli::Callers { name, root, kind, limit, json } => {
-            let idx = query::load(&root)
+            let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
-            let refs = idx.get_callers(&name, kind.as_deref(), limit as usize);
+            let refs = backend.get_callers(&name, kind.as_deref(), limit as usize);
+            let borrowed: Vec<&sigil::entity::Reference> = refs.iter().collect();
             if json {
                 serde_json::to_writer_pretty(std::io::stdout(), &refs).ok();
                 println!();
             } else {
-                print!("{}", query::format_refs(&refs));
+                print!("{}", query::format_refs(&borrowed));
             }
         }
         Cli::Callees { caller, root, kind, limit, json } => {
-            let idx = query::load(&root)
+            let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
-            let refs = idx.get_callees(&caller, kind.as_deref(), limit as usize);
+            let refs = backend.get_callees(&caller, kind.as_deref(), limit as usize);
+            let borrowed: Vec<&sigil::entity::Reference> = refs.iter().collect();
             if json {
                 serde_json::to_writer_pretty(std::io::stdout(), &refs).ok();
                 println!();
             } else {
-                print!("{}", query::format_refs(&refs));
+                print!("{}", query::format_refs(&borrowed));
             }
         }
         Cli::Blast { symbol, root, depth, format, pretty, exclude_tests } => {
