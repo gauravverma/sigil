@@ -20,10 +20,10 @@ clap = { version = "4", features = ["derive"] }
 colored = "3"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-serde_yaml = "0.9"
+serde_yml = "0.0.12"
 ignore = "0.4"
-similar = "2"
-toml = "0.8"
+similar = "3"
+toml = "1"
 axoupdater = { version = "0.10", features = ["github_releases", "blocking"] }
 
 # Tree-sitter core (for the vendored src/parser/).
@@ -44,7 +44,7 @@ tree-sitter-md         = { version = "0.5", features = ["parser"], optional = tr
 
 # Optional: real BPE tokenizer for accurate token counting in `sigil
 # benchmark`. When absent we fall back to the bytes/4 proxy.
-tiktoken-rs = { version = "0.7", optional = true }
+tiktoken-rs = { version = "0.11", optional = true }
 
 # Optional: DuckDB backend for large-index workloads (~500k+ entities).
 # Lazily built from the JSONL source of truth, invalidated on mtime/size

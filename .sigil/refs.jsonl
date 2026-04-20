@@ -75,7 +75,8 @@
 {"file":"python/src/lib.rs","name":"pyo3::exceptions::PyValueError","ref_kind":"import","line":2}
 {"file":"python/src/lib.rs","name":"std::path::Path","ref_kind":"import","line":3}
 {"file":"python/src/lib.rs","caller":"diff_json","name":"PyResult","ref_kind":"type_annotation","line":14}
-{"file":"python/src/lib.rs","caller":"diff_json","name":"PyObject","ref_kind":"type_annotation","line":14}
+{"file":"python/src/lib.rs","caller":"diff_json","name":"Py","ref_kind":"type_annotation","line":14}
+{"file":"python/src/lib.rs","caller":"diff_json","name":"PyAny","ref_kind":"type_annotation","line":14}
 {"file":"python/src/lib.rs","caller":"diff_json","name":"sigil_core::json_index::normalize_json_source(old)\n        .unwrap_or_else","ref_kind":"call","line":16}
 {"file":"python/src/lib.rs","caller":"diff_json","name":"sigil_core::json_index::normalize_json_source","ref_kind":"call","line":16}
 {"file":"python/src/lib.rs","caller":"diff_json","name":"old.to_string","ref_kind":"call","line":17}
@@ -120,12 +121,13 @@
 {"file":"python/src/lib.rs","caller":"diff_json","name":"serde_json::to_string(&output)\n        .map_err","ref_kind":"call","line":85}
 {"file":"python/src/lib.rs","caller":"diff_json","name":"serde_json::to_string","ref_kind":"call","line":85}
 {"file":"python/src/lib.rs","caller":"diff_json","name":"PyValueError::new_err","ref_kind":"call","line":86}
-{"file":"python/src/lib.rs","caller":"diff_json","name":"Python::with_gil","ref_kind":"call","line":88}
+{"file":"python/src/lib.rs","caller":"diff_json","name":"Python::attach","ref_kind":"call","line":88}
 {"file":"python/src/lib.rs","caller":"diff_json","name":"py.import","ref_kind":"call","line":89}
 {"file":"python/src/lib.rs","caller":"diff_json","name":"json_mod.call_method1","ref_kind":"call","line":90}
-{"file":"python/src/lib.rs","caller":"diff_json","name":"dict.into","ref_kind":"call","line":91}
+{"file":"python/src/lib.rs","caller":"diff_json","name":"dict.unbind","ref_kind":"call","line":91}
 {"file":"python/src/lib.rs","caller":"diff_files","name":"PyResult","ref_kind":"type_annotation","line":104}
-{"file":"python/src/lib.rs","caller":"diff_files","name":"PyObject","ref_kind":"type_annotation","line":104}
+{"file":"python/src/lib.rs","caller":"diff_files","name":"Py","ref_kind":"type_annotation","line":104}
+{"file":"python/src/lib.rs","caller":"diff_files","name":"PyAny","ref_kind":"type_annotation","line":104}
 {"file":"python/src/lib.rs","caller":"diff_files","name":"sigil_core::diff::compute_file_diff(\n        Path::new(old_path),\n        Path::new(new_path),\n        &opts,\n    ).map_err","ref_kind":"call","line":112}
 {"file":"python/src/lib.rs","caller":"diff_files","name":"sigil_core::diff::compute_file_diff","ref_kind":"call","line":112}
 {"file":"python/src/lib.rs","caller":"diff_files","name":"Path::new","ref_kind":"call","line":113}
@@ -135,12 +137,13 @@
 {"file":"python/src/lib.rs","caller":"diff_files","name":"serde_json::to_string(&output)\n        .map_err","ref_kind":"call","line":120}
 {"file":"python/src/lib.rs","caller":"diff_files","name":"serde_json::to_string","ref_kind":"call","line":120}
 {"file":"python/src/lib.rs","caller":"diff_files","name":"PyValueError::new_err","ref_kind":"call","line":121}
-{"file":"python/src/lib.rs","caller":"diff_files","name":"Python::with_gil","ref_kind":"call","line":123}
+{"file":"python/src/lib.rs","caller":"diff_files","name":"Python::attach","ref_kind":"call","line":123}
 {"file":"python/src/lib.rs","caller":"diff_files","name":"py.import","ref_kind":"call","line":124}
 {"file":"python/src/lib.rs","caller":"diff_files","name":"json_mod.call_method1","ref_kind":"call","line":125}
-{"file":"python/src/lib.rs","caller":"diff_files","name":"dict.into","ref_kind":"call","line":126}
+{"file":"python/src/lib.rs","caller":"diff_files","name":"dict.unbind","ref_kind":"call","line":126}
 {"file":"python/src/lib.rs","caller":"index_json","name":"PyResult","ref_kind":"type_annotation","line":138}
-{"file":"python/src/lib.rs","caller":"index_json","name":"PyObject","ref_kind":"type_annotation","line":138}
+{"file":"python/src/lib.rs","caller":"index_json","name":"Py","ref_kind":"type_annotation","line":138}
+{"file":"python/src/lib.rs","caller":"index_json","name":"PyAny","ref_kind":"type_annotation","line":138}
 {"file":"python/src/lib.rs","caller":"index_json","name":"sigil_core::json_index::normalize_json_source(source)\n        .unwrap_or_else","ref_kind":"call","line":139}
 {"file":"python/src/lib.rs","caller":"index_json","name":"sigil_core::json_index::normalize_json_source","ref_kind":"call","line":139}
 {"file":"python/src/lib.rs","caller":"index_json","name":"source.to_string","ref_kind":"call","line":140}
@@ -150,12 +153,13 @@
 {"file":"python/src/lib.rs","caller":"index_json","name":"serde_json::to_string(&entities)\n        .map_err","ref_kind":"call","line":145}
 {"file":"python/src/lib.rs","caller":"index_json","name":"serde_json::to_string","ref_kind":"call","line":145}
 {"file":"python/src/lib.rs","caller":"index_json","name":"PyValueError::new_err","ref_kind":"call","line":146}
-{"file":"python/src/lib.rs","caller":"index_json","name":"Python::with_gil","ref_kind":"call","line":148}
+{"file":"python/src/lib.rs","caller":"index_json","name":"Python::attach","ref_kind":"call","line":148}
 {"file":"python/src/lib.rs","caller":"index_json","name":"py.import","ref_kind":"call","line":149}
 {"file":"python/src/lib.rs","caller":"index_json","name":"json_mod.call_method1","ref_kind":"call","line":150}
-{"file":"python/src/lib.rs","caller":"index_json","name":"list.into","ref_kind":"call","line":151}
+{"file":"python/src/lib.rs","caller":"index_json","name":"list.unbind","ref_kind":"call","line":151}
 {"file":"python/src/lib.rs","caller":"diff_refs","name":"PyResult","ref_kind":"type_annotation","line":165}
-{"file":"python/src/lib.rs","caller":"diff_refs","name":"PyObject","ref_kind":"type_annotation","line":165}
+{"file":"python/src/lib.rs","caller":"diff_refs","name":"Py","ref_kind":"type_annotation","line":165}
+{"file":"python/src/lib.rs","caller":"diff_refs","name":"PyAny","ref_kind":"type_annotation","line":165}
 {"file":"python/src/lib.rs","caller":"diff_refs","name":"sigil_core::diff::compute_diff(\n        Path::new(repo_path),\n        base_ref,\n        head_ref,\n        &opts,\n    ).map_err","ref_kind":"call","line":173}
 {"file":"python/src/lib.rs","caller":"diff_refs","name":"sigil_core::diff::compute_diff","ref_kind":"call","line":173}
 {"file":"python/src/lib.rs","caller":"diff_refs","name":"Path::new","ref_kind":"call","line":174}
@@ -164,10 +168,10 @@
 {"file":"python/src/lib.rs","caller":"diff_refs","name":"serde_json::to_string(&output)\n        .map_err","ref_kind":"call","line":182}
 {"file":"python/src/lib.rs","caller":"diff_refs","name":"serde_json::to_string","ref_kind":"call","line":182}
 {"file":"python/src/lib.rs","caller":"diff_refs","name":"PyValueError::new_err","ref_kind":"call","line":183}
-{"file":"python/src/lib.rs","caller":"diff_refs","name":"Python::with_gil","ref_kind":"call","line":185}
+{"file":"python/src/lib.rs","caller":"diff_refs","name":"Python::attach","ref_kind":"call","line":185}
 {"file":"python/src/lib.rs","caller":"diff_refs","name":"py.import","ref_kind":"call","line":186}
 {"file":"python/src/lib.rs","caller":"diff_refs","name":"json_mod.call_method1","ref_kind":"call","line":187}
-{"file":"python/src/lib.rs","caller":"diff_refs","name":"dict.into","ref_kind":"call","line":188}
+{"file":"python/src/lib.rs","caller":"diff_refs","name":"dict.unbind","ref_kind":"call","line":188}
 {"file":"python/src/lib.rs","caller":"sigil","name":"Bound","ref_kind":"type_annotation","line":194}
 {"file":"python/src/lib.rs","caller":"sigil","name":"PyModule","ref_kind":"type_annotation","line":194}
 {"file":"python/src/lib.rs","caller":"sigil","name":"PyResult","ref_kind":"type_annotation","line":194}
@@ -13398,8 +13402,8 @@
 {"file":"src/yaml_index.rs","caller":"parse_yaml_file","name":"Reference","ref_kind":"type_annotation","line":8}
 {"file":"src/yaml_index.rs","caller":"parse_yaml_file","name":"Vec","ref_kind":"type_annotation","line":8}
 {"file":"src/yaml_index.rs","caller":"parse_yaml_file","name":"Entity","ref_kind":"type_annotation","line":8}
-{"file":"src/yaml_index.rs","caller":"parse_yaml_file","name":"serde_yaml::from_str(source).map_err","ref_kind":"call","line":10}
-{"file":"src/yaml_index.rs","caller":"parse_yaml_file","name":"serde_yaml::from_str","ref_kind":"call","line":10}
+{"file":"src/yaml_index.rs","caller":"parse_yaml_file","name":"serde_yml::from_str(source).map_err","ref_kind":"call","line":10}
+{"file":"src/yaml_index.rs","caller":"parse_yaml_file","name":"serde_yml::from_str","ref_kind":"call","line":10}
 {"file":"src/yaml_index.rs","caller":"parse_yaml_file","name":"Vec::new","ref_kind":"call","line":12}
 {"file":"src/yaml_index.rs","caller":"parse_yaml_file","name":"source.lines().collect","ref_kind":"call","line":13}
 {"file":"src/yaml_index.rs","caller":"parse_yaml_file","name":"source.lines","ref_kind":"call","line":13}
@@ -13425,7 +13429,7 @@
 {"file":"src/yaml_index.rs","caller":"indent_level","name":"line.len","ref_kind":"call","line":91}
 {"file":"src/yaml_index.rs","caller":"indent_level","name":"line.trim_start().len","ref_kind":"call","line":91}
 {"file":"src/yaml_index.rs","caller":"indent_level","name":"line.trim_start","ref_kind":"call","line":91}
-{"file":"src/yaml_index.rs","caller":"find_value_end_line","name":"serde_yaml::Value","ref_kind":"type_annotation","line":99}
+{"file":"src/yaml_index.rs","caller":"find_value_end_line","name":"serde_yml::Value","ref_kind":"type_annotation","line":99}
 {"file":"src/yaml_index.rs","caller":"find_value_end_line","name":"indent_level","ref_kind":"call","line":102}
 {"file":"src/yaml_index.rs","caller":"find_value_end_line","name":"key_line.trim_start","ref_kind":"call","line":107}
 {"file":"src/yaml_index.rs","caller":"find_value_end_line","name":"find_after_colon","ref_kind":"call","line":109}
@@ -13454,15 +13458,15 @@
 {"file":"src/yaml_index.rs","caller":"find_block_end_line","name":"line.trim_start().starts_with","ref_kind":"call","line":234}
 {"file":"src/yaml_index.rs","caller":"find_block_end_line","name":"line.trim_start","ref_kind":"call","line":234}
 {"file":"src/yaml_index.rs","caller":"find_block_end_line","name":"indent_level","ref_kind":"call","line":238}
-{"file":"src/yaml_index.rs","caller":"yaml_type_name","name":"serde_yaml::Value","ref_kind":"type_annotation","line":251}
+{"file":"src/yaml_index.rs","caller":"yaml_type_name","name":"serde_yml::Value","ref_kind":"type_annotation","line":251}
 {"file":"src/yaml_index.rs","caller":"yaml_type_name","name":"yaml_type_name","ref_kind":"call","line":259}
-{"file":"src/yaml_index.rs","caller":"entity_kind","name":"serde_yaml::Value","ref_kind":"type_annotation","line":264}
+{"file":"src/yaml_index.rs","caller":"entity_kind","name":"serde_yml::Value","ref_kind":"type_annotation","line":264}
 {"file":"src/yaml_index.rs","caller":"entity_kind","name":"entity_kind","ref_kind":"call","line":268}
-{"file":"src/yaml_index.rs","caller":"key_as_string","name":"serde_yaml::Value","ref_kind":"type_annotation","line":274}
+{"file":"src/yaml_index.rs","caller":"key_as_string","name":"serde_yml::Value","ref_kind":"type_annotation","line":274}
 {"file":"src/yaml_index.rs","caller":"key_as_string","name":"String","ref_kind":"type_annotation","line":274}
 {"file":"src/yaml_index.rs","caller":"key_as_string","name":"key.as_str","ref_kind":"call","line":275}
 {"file":"src/yaml_index.rs","caller":"key_as_string","name":"s.to_string","ref_kind":"call","line":276}
-{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"serde_yaml::Mapping","ref_kind":"type_annotation","line":285}
+{"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"serde_yml::Mapping","ref_kind":"type_annotation","line":285}
 {"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"Option","ref_kind":"type_annotation","line":286}
 {"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"Vec","ref_kind":"type_annotation","line":289}
 {"file":"src/yaml_index.rs","caller":"extract_mapping_entities","name":"Entity","ref_kind":"type_annotation","line":289}
