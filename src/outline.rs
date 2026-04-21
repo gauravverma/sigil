@@ -25,8 +25,6 @@ pub struct OutlineEntry {
     pub line_end: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sig: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub visibility: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -72,7 +70,6 @@ pub fn build_outline(idx: &Index, path_prefix: Option<&str>) -> OutlineReport {
                     None
                 },
                 sig: e.sig.clone(),
-                visibility: e.visibility.clone(),
             })
             .collect();
         entities.sort_by_key(|o| o.line);
@@ -102,12 +99,7 @@ pub fn render_markdown(report: &OutlineReport) -> String {
                 Some(end) => format!("{}-{}", e.line, end),
                 None => format!("{}", e.line),
             };
-            let vis = e
-                .visibility
-                .as_deref()
-                .map(|v| format!(" ({v})"))
-                .unwrap_or_default();
-            out.push_str(&format!("- **{}** `{}` — {}{vis}\n", e.kind, e.name, range));
+            out.push_str(&format!("- **{}** `{}` — {}\n", e.kind, e.name, range));
         }
         out.push('\n');
     }

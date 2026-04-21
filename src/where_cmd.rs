@@ -36,6 +36,12 @@ const DEFINITION_KINDS: &[&str] = &[
 
 /// One definition surfaced by `sigil where`. Compact shape that maps
 /// directly to the JSON row emitted on `--json`.
+///
+/// The `name` field is the entity's **tail segment only** (e.g.
+/// `get_default`, not `Parameter.get_default`). The qualifying class
+/// lives in `parent`; duplicating it in `name` just wastes bytes on
+/// every row. Consumers that want the full qualified name can join
+/// `parent` + `.` + `name` when parent is non-null.
 #[derive(Debug, Clone, Serialize)]
 pub struct Definition {
     pub name: String,
@@ -125,13 +131,15 @@ pub fn find_definitions(idx: &Index, symbol: &str, include_tests: bool) -> Where
 
     let mut definitions = Vec::with_capacity(order.len());
     for key in order {
-        let (line_start, line_end, sig, overloads, in_test, name) = groups[&key].clone();
+        let (line_start, line_end, sig, overloads, in_test, full_name) = groups[&key].clone();
         let (file, parent, kind) = key;
         let line_end = if line_end != line_start {
             Some(line_end)
         } else {
             None
         };
+        // Tail-only name — parent already carries the qualifying class.
+        let name = tail_segment(&full_name).to_string();
         definitions.push(Definition {
             name,
             file,
@@ -170,7 +178,7 @@ pub fn render_markdown(report: &WhereReport) -> String {
         let test_note = if d.in_test { ", test" } else { "" };
         out.push_str(&format!(
             "  {class}.{name}  {range}  ({kind}{overload_note}{test_note})\n",
-            name = d.name.split(|c| c == ':' || c == '.').last().unwrap_or(&d.name),
+            name = d.name,
             kind = d.kind,
         ));
         if let Some(sig) = d.sig.as_deref() {
@@ -226,7 +234,9 @@ mod tests {
         let report = find_definitions(&idx, "get_default", false);
         assert_eq!(report.definitions.len(), 2, "only exact tail match, not prefix");
         assert_eq!(report.definitions[0].parent.as_deref(), Some("Parameter"));
+        assert_eq!(report.definitions[0].name, "get_default", "name is tail-only, not qualified");
         assert_eq!(report.definitions[1].parent.as_deref(), Some("Option"));
+        assert_eq!(report.definitions[1].name, "get_default");
     }
 
     #[test]
