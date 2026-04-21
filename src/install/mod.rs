@@ -52,13 +52,15 @@ multi-grep exploration.
 | \"where is X defined?\"                  | `sigil where <X>`                              |
 | \"how does X fit in the codebase?\"      | `sigil context <X>`                            |
 | \"who calls X?\"                         | `sigil callers <X>` (add `--group-by file`)    |
-| \"what does X call?\"                    | `sigil callees <X>`                            |
+| \"what does X call?\"                    | `sigil callees <X>` (add `--group-by name`)    |
 | \"list the Xs in file F (just names)\"   | `sigil symbols <F> --depth 1 --names-only`     |
 | \"full entities in file F\"              | `sigil symbols <F> --depth 1`                  |
 | \"structural tree under dir D\"          | `sigil outline --path <D>`                     |
 | \"find anything matching 'foo'\"         | `sigil search foo`                             |
 | \"impact of editing X?\"                 | `sigil blast <X>`                              |
-| \"structural diff of this change\"       | `sigil review A..B`                            |
+| \"entity-level diff of a commit range\"  | `sigil diff A..B --markdown`                   |
+| \"PR review (diff + blast + co-change)\" | `sigil review A..B --markdown`                 |
+| \"diff two files without git\"           | `sigil diff --files OLD NEW`                   |
 | \"clones / duplicated functions\"        | `sigil duplicates`                             |
 | cold-start orientation                   | `sigil map --tokens N`                         |
 
@@ -89,6 +91,10 @@ Two rules of thumb:
 Empty sigil results are data, not failure. Sigil prints a \
 `Did you mean: X, Y, Z?` hint on stderr when the queried name is close \
 to something known — retry with a suggestion before falling back to grep.
+
+First-query note: sigil auto-runs `sigil index` if `.sigil/` is missing \
+and emits a one-line `sigil: no index at ...` to stderr. Not an error — \
+just zero-config onboarding. Set `SIGIL_NO_AUTO_INDEX=1` to disable.
 
 ## Worked example — one-shot find-definition
 
