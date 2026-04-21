@@ -1,0 +1,46 @@
+id: E4_002
+kind: code_location_django
+repo: evals/_workbench/django
+pinned_ref: 42e8cf47c7ee2db238bf91197ea398126c546741  # base_commit for django__django-13933 / #32347
+question: |
+  You are looking at a clone of the django/django repository at a
+  specific commit (the base_commit of a real SWE-bench-Lite task).
+
+  A user has filed the following bug report:
+
+    "I'm using a `ModelChoiceField` in a form and I want to customize
+    the `invalid_choice` error message to include the value the user
+    entered. I set `error_messages={'invalid_choice': '%(value)s is
+    not a valid choice'}`, but when a bad value is submitted the
+    message shows up literally as `%(value)s is not a valid choice`
+    instead of substituting the actual value. Other fields like
+    `IntegerField` support this placeholder just fine — the issue
+    seems specific to `ModelChoiceField`."
+
+  Investigate: locate the method that needs to change to fix this
+  bug, and explain in one sentence what needs to be modified.
+
+  Return ONLY a JSON object with exactly these keys:
+
+    - "file":         repo-relative path to the file containing the
+                      method that needs to change
+    - "class":        the class name that owns the method
+    - "method":       the method name
+    - "parent_class": the class the owner inherits from (the immediate
+                      parent in the MRO, not the grandparent)
+    - "fix_summary":  a single-sentence description of what needs to
+                      change. Mention "params" and "value".
+
+  Example of the shape you must return (made-up values):
+  {"file":"some/file.py","class":"SomeClass","method":"some_method","parent_class":"SomeParent","fix_summary":"..."}
+grader:
+  type: fact_match
+  expected:
+    file: django/forms/models.py
+    class: ModelChoiceField
+    method: to_python
+    parent_class: ChoiceField
+    # NB: fix_summary isn't fact-matched — it's a free-form sentence. Grading
+    # looks for fact_match on the four structural fields above; a secondary
+    # pass can eyeball fix_summary for the keywords "params" and "value" but
+    # isn't required to pass.

@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
-# One-shot spike: measure token usage on one SWE-bench-Lite-style task.
+# E4: SWE-bench-Lite-shaped evals. Currently covers:
 #
-# Target: pallets/click at 04ef3a6 — "find the Parameter.get_default method
-# that resolves default values" (code-localization task, SWE-bench phase 1
-# style: locate the relevant code without writing a patch).
+#   001  pallets/click   @ 04ef3a6   "find Parameter.get_default"
+#   002  django/django   @ 42e8cf4   "#32347 / PR 13933 — ModelChoiceField
+#                                     invalid_choice doesn't substitute %(value)s"
+#
+# Each task is pinned to a specific pre-fix commit and graded by exact match
+# against the verified-correct answer (file / class / method / parent_class
+# extracted from the actual upstream fix commit).
 #
 # Usage:
 #   export ANTHROPIC_API_KEY=sk-ant-...
 #   bash evals/runner/run-e4-click-spike.sh
 #
-# Cost estimate: ~$1–2 total (Haiku smoke + Sonnet N=3).
+# Cost estimate with 2 tasks × N=3 Sonnet + N=1 Haiku:
+#   ~$2–4 total (Django task is larger — ~350k LOC repo vs click's 2.3k).
 
 set -euo pipefail
 
