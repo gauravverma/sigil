@@ -187,8 +187,8 @@ enum Cli {
         /// Project root directory
         #[arg(short, long, default_value = ".")]
         root: PathBuf,
-        /// Max results
-        #[arg(long, default_value = "100")]
+        /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
+        #[arg(long, default_value = "0")]
         limit: u32,
         /// Output as JSON
         #[arg(long)]
@@ -203,8 +203,8 @@ enum Cli {
         /// Project root directory
         #[arg(short, long, default_value = ".")]
         root: PathBuf,
-        /// Max results
-        #[arg(long, default_value = "100")]
+        /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
+        #[arg(long, default_value = "0")]
         limit: u32,
         /// Output as JSON
         #[arg(long)]
@@ -220,8 +220,8 @@ enum Cli {
         /// Filter by reference kind (call, import, type_annotation, instantiation)
         #[arg(long)]
         kind: Option<String>,
-        /// Max results
-        #[arg(long, default_value = "100")]
+        /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
+        #[arg(long, default_value = "0")]
         limit: u32,
         /// Output as JSON
         #[arg(long)]
@@ -237,8 +237,8 @@ enum Cli {
         /// Filter by reference kind
         #[arg(long)]
         kind: Option<String>,
-        /// Max results
-        #[arg(long, default_value = "100")]
+        /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
+        #[arg(long, default_value = "0")]
         limit: u32,
         /// Output as JSON
         #[arg(long)]

@@ -159,18 +159,26 @@ impl DuckDbBackend {
     }
 
     /// Callers of `name`, in (file, line) order for stable output.
-    /// `limit == 0` → unlimited.
+    /// `limit == 0` → unlimited. A bare `name` also matches refs whose
+    /// stored name is a `::`-qualified path ending in `::name` (parity
+    /// with `Index::build`'s qualified-tail indexing).
     pub fn get_callers(
         &self,
         name: &str,
         kind_filter: Option<&str>,
         limit: usize,
     ) -> Result<Vec<Reference>> {
+        let want_qualified = !name.contains("::");
+        let like_pattern = format!("%::{}", name);
         let mut sql = String::from(
             "SELECT file, caller, name, ref_kind, line \
              FROM refs \
-             WHERE name = ?",
+             WHERE (name = ?",
         );
+        if want_qualified {
+            sql.push_str(" OR name LIKE ?");
+        }
+        sql.push(')');
         if kind_filter.is_some() {
             sql.push_str(" AND ref_kind = ?");
         }
@@ -180,12 +188,19 @@ impl DuckDbBackend {
         }
 
         let mut stmt = self.conn.prepare(&sql)?;
-        let rows = if let Some(k) = kind_filter {
-            stmt.query_map(params![name, k], row_to_reference)?
-                .collect::<std::result::Result<Vec<_>, _>>()?
-        } else {
-            stmt.query_map(params![name], row_to_reference)?
-                .collect::<std::result::Result<Vec<_>, _>>()?
+        let rows = match (want_qualified, kind_filter) {
+            (true, Some(k)) => stmt
+                .query_map(params![name, like_pattern, k], row_to_reference)?
+                .collect::<std::result::Result<Vec<_>, _>>()?,
+            (true, None) => stmt
+                .query_map(params![name, like_pattern], row_to_reference)?
+                .collect::<std::result::Result<Vec<_>, _>>()?,
+            (false, Some(k)) => stmt
+                .query_map(params![name, k], row_to_reference)?
+                .collect::<std::result::Result<Vec<_>, _>>()?,
+            (false, None) => stmt
+                .query_map(params![name], row_to_reference)?
+                .collect::<std::result::Result<Vec<_>, _>>()?,
         };
         Ok(rows)
     }
@@ -1064,6 +1079,38 @@ mod tests {
         from_db.sort_by(|a, b| a.file.cmp(&b.file).then_with(|| a.line.cmp(&b.line)));
         from_idx.sort_by(|a, b| a.file.cmp(&b.file).then_with(|| a.line.cmp(&b.line)));
         assert_eq!(from_db, from_idx);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn get_callers_matches_qualified_tail() {
+        // Parity with `Index::build`: a bare-name search (`foo`) must also
+        // surface refs whose stored name is a `::`-qualified path ending in
+        // `::foo`. Prevents the src/index.rs-calls-crate::parser::tree
+        // sitter::parse_file regression from coming back under DuckDB.
+        let root = tmpdir("qualified_callers");
+        seed(
+            &root,
+            vec![ent("a.rs", "foo", "function")],
+            vec![
+                refr("b.rs", Some("main"), "foo", "call", 1),
+                refr("c.rs", Some("caller"), "crate::a::b::foo", "call", 2),
+                refr("d.rs", Some("caller"), "Foo::foo", "call", 3),
+                refr("e.rs", Some("caller"), "bar", "call", 4),     // no match
+                refr("f.rs", Some("caller"), "foobar", "call", 5), // no match (no `::` boundary)
+            ],
+        );
+        let db = DuckDbBackend::open(&root).unwrap();
+
+        let bare = db.get_callers("foo", None, 0).unwrap();
+        assert_eq!(bare.len(), 3, "bare `foo` matches plain + both qualified refs");
+
+        let qualified = db.get_callers("crate::a::b::foo", None, 0).unwrap();
+        assert_eq!(qualified.len(), 1);
+
+        let miss = db.get_callers("baz", None, 0).unwrap();
+        assert!(miss.is_empty());
+
         std::fs::remove_dir_all(&root).ok();
     }
 

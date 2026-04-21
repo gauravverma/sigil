@@ -4,6 +4,27 @@ All notable changes to sigil are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Script-facing commands (`symbols`, `children`, `callers`, `callees`) now
+  default to unbounded results (`--limit 0`) as documented in the plan's
+  agent-facing-vs-script-facing taxonomy. Previously defaulted to `100`,
+  which silently truncated large result sets — `sigil callers parse_file
+  --kind call` returned 100 refs across 8 files when the true answer was
+  128 refs across 11 files. Users who want the previous behavior can pass
+  `--limit 100` explicitly.
+- `sigil callers <name>` now also surfaces refs whose stored name is a
+  `::`-qualified path ending in `::<name>`. Previously the Rust extractor
+  emitted a call site like `crate::parser::treesitter::parse_file(...)`
+  under its full qualified name, so `sigil callers parse_file` missed it.
+  Both the in-memory backend (`Index::build`) and the DuckDB backend
+  (`get_callers` SQL) index/query under the trailing segment. Searches
+  for an already-qualified name keep their exact-match semantics.
+  Combined with the `--limit` fix above, `sigil callers parse_file
+  --kind call` now returns 129 refs across 12 files (grep parity).
+
 ## [0.3.3] — 2026-04-21
 
 ### Changed
