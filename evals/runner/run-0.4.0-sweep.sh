@@ -27,7 +27,7 @@ echo "==================================="
 echo "1/3: Haiku sanity sweep (20 runs)"
 echo "==================================="
 python3 evals/runner/run.py --sweep --seeds 1 \
-  --model claude-haiku-4-5-20251001 --max-turns 20 --workers 8
+  --model claude-haiku-4-5-20251001 --max-turns 20 --workers 12
 
 echo
 echo "==================================="
@@ -40,7 +40,7 @@ echo "==================================="
 echo "2/3: Sonnet N=3 published sweep (54 runs)"
 echo "==================================="
 python3 evals/runner/run.py --sweep --seeds 3 \
-  --model claude-sonnet-4-6 --max-turns 20 --workers 8
+  --model claude-sonnet-4-6 --max-turns 20 --workers 12
 
 echo
 echo "==================================="
