@@ -1,0 +1,15 @@
+{
+  "task_id": "E2_006",
+  "arm": "control",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 2,
+  "tokens_in": 3139,
+  "tokens_out": 181,
+  "final_text": "Looking at the file, I can identify the top-level functions:\n\n1. `get_language` (line 8) - a public function\n2. `detect_language` (line 53) - a public function\n\nBoth are top-level functions, not part of an impl block, not trait methods, and not inside a test module.\n\n```json\n[\"detect_language\", \"get_language\"]\n```",
+  "parsed_answer": [
+    "detect_language",
+    "get_language"
+  ],
+  "timestamp": "2026-04-20T20:37:21.984319+00:00"
+}

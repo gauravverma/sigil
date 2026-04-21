@@ -1,0 +1,16 @@
+{
+  "task_id": "E2_003",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 5067,
+  "tokens_out": 145,
+  "final_text": "From the output, filtering only `kind: \"struct\"` at the top-level scope (excluding anything inside `impl`, `mod`, or test modules), the structs are: **BlastRadius**, **Entity**, and **Reference**.\n\n[\"BlastRadius\", \"Entity\", \"Reference\"]",
+  "parsed_answer": [
+    "BlastRadius",
+    "Entity",
+    "Reference"
+  ],
+  "timestamp": "2026-04-20T21:05:46.874652+00:00"
+}

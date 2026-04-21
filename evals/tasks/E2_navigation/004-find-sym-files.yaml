@@ -1,0 +1,20 @@
+id: E2_004
+kind: cross_file_definition
+pinned_ref: 81db5bd
+question: |
+  List every file in this repository that defines a function named
+  `find_sym` (declared with `fn find_sym`). Return ONLY a JSON array of
+  repo-relative file paths, sorted lexicographically.
+grader:
+  type: set_match
+  expected:
+    - src/parser/c_lang.rs
+    - src/parser/cpp.rs
+    - src/parser/csharp.rs
+    - src/parser/go.rs
+    - src/parser/java.rs
+    - src/parser/javascript.rs
+    - src/parser/python.rs
+    - src/parser/ruby.rs
+    - src/parser/rust_lang.rs
+    - src/parser/typescript.rs

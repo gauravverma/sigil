@@ -1,0 +1,29 @@
+id: E2_009
+kind: call_site_lookup
+pinned_ref: 81db5bd
+question: |
+  List every file in this repository that contains a CALL to a function
+  named `parse_file` (i.e., the identifier `parse_file` appears in a
+  call-site position, such as `parse_file(...)`, `foo::parse_file(...)`,
+  `self.parse_file(...)`). Exclude files where `parse_file` only appears
+  as a definition (`fn parse_file`) or inside a comment or string literal.
+  Return ONLY a JSON array of repo-relative file paths, sorted
+  lexicographically, deduplicated.
+grader:
+  type: set_match
+  expected:
+    # Ground truth via `rg -l 'parse_file\s*\('` at pinned_ref (12 files).
+    # NB: `sigil callers parse_file --kind call` currently misses test-module
+    # call-sites (returns only 8 files); tracked as a separate issue.
+    - src/index.rs
+    - src/parser/c_lang.rs
+    - src/parser/cpp.rs
+    - src/parser/csharp.rs
+    - src/parser/go.rs
+    - src/parser/java.rs
+    - src/parser/javascript.rs
+    - src/parser/python.rs
+    - src/parser/ruby.rs
+    - src/parser/rust_lang.rs
+    - src/parser/treesitter.rs
+    - src/parser/typescript.rs

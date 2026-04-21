@@ -1,0 +1,15 @@
+{
+  "task_id": "E2_006",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 4112,
+  "tokens_out": 135,
+  "final_text": "[\"detect_language\", \"get_language\"]",
+  "parsed_answer": [
+    "detect_language",
+    "get_language"
+  ],
+  "timestamp": "2026-04-20T21:01:26.890538+00:00"
+}

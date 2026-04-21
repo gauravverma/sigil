@@ -1,0 +1,12 @@
+{
+  "task_id": "E2_010",
+  "arm": "control",
+  "seed": 3,
+  "model": "claude-sonnet-4-6",
+  "turns": 20,
+  "tokens_in": 246717,
+  "tokens_out": 10371,
+  "final_text": "The result shifted when I fixed string/comment handling. Let me verify the top files more carefully by examining them directly:",
+  "parsed_answer": null,
+  "timestamp": "2026-04-20T21:43:12.492922+00:00"
+}

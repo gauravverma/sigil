@@ -1,0 +1,15 @@
+{
+  "task_id": "E2_002",
+  "arm": "control",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 2,
+  "tokens_in": 6970,
+  "tokens_out": 274,
+  "final_text": "I can now analyze the file to identify all top-level public functions. Looking at `src/index.rs`, the top-level public functions (declared with `pub fn` or `pub async fn` at file scope, not in impl blocks, not in nested mods, and not in test modules) are:\n\n1. `parse_single_file` - line 16\n2. `build_index` - line 93\n\nAll other functions in the file are either:\n- Private (`fn` without `pub`) like `is_import_kind`, `find_decorator_start`, `normalize_kind`, `discover_source_files`, `load_previous_entities`, `load_previous_refs`\n- Inside the test module (lines 304-363)\n\nSorted lexicographically:\n\n```json\n[\"build_index\", \"parse_single_file\"]\n```",
+  "parsed_answer": [
+    "build_index",
+    "parse_single_file"
+  ],
+  "timestamp": "2026-04-20T20:39:15.363246+00:00"
+}

@@ -2,6 +2,8 @@ target/
 docs/
 .codeindex/
 python/.venv/
+__pycache__/
+*.pyc
 
 # scratch / planning artifacts (not part of the shipped repo)
 TODO.md

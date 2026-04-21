@@ -1,0 +1,19 @@
+id: E2_010
+kind: cross_file_aggregation
+pinned_ref: 81db5bd
+question: |
+  List the 5 source files in this repository with the HIGHEST count of
+  top-level function definitions. Count only `fn` or `pub fn` items at
+  the file's top scope — exclude methods inside `impl` blocks, items
+  inside nested `mod`s, and items inside `#[cfg(test)]` test modules.
+  Return ONLY a JSON array of 5 repo-relative file paths, sorted from
+  highest count to lowest; break ties with lexicographic ordering of the
+  path. The array MUST contain exactly 5 elements.
+grader:
+  type: set_match
+  expected:
+    - src/parser/csharp.rs
+    - src/markdown_formatter.rs
+    - src/formatter.rs
+    - src/parser/cpp.rs
+    - src/parser/typescript.rs

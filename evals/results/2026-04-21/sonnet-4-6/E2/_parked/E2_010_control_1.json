@@ -1,0 +1,12 @@
+{
+  "task_id": "E2_010",
+  "arm": "control",
+  "seed": 1,
+  "model": "claude-sonnet-4-6",
+  "turns": 20,
+  "tokens_in": 278431,
+  "tokens_out": 13817,
+  "final_text": "Good - `tests/diff_integration.rs` has no `#[cfg(test)]` and no `mod` blocks - all functions are at top level. These are integration test functions that are at the file's top scope. They count.\n\nNow let me also verify that `java.rs` has 20 (not 21 as the first buggy run showed - the test fn was in that file):",
+  "parsed_answer": null,
+  "timestamp": "2026-04-20T21:46:21.324686+00:00"
+}

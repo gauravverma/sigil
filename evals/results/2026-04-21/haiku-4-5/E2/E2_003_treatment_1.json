@@ -1,0 +1,16 @@
+{
+  "task_id": "E2_003",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 4,
+  "tokens_in": 13144,
+  "tokens_out": 413,
+  "final_text": "Perfect! The grep confirms there are exactly three top-level struct definitions in the file.\n\n[\"BlastRadius\", \"Entity\", \"Reference\"]",
+  "parsed_answer": [
+    "BlastRadius",
+    "Entity",
+    "Reference"
+  ],
+  "timestamp": "2026-04-20T20:57:32.208539+00:00"
+}

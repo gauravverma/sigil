@@ -1,0 +1,15 @@
+{
+  "task_id": "E2_002",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 2,
+  "tokens_in": 7242,
+  "tokens_out": 325,
+  "final_text": "Now I'll analyze the file to identify top-level public functions:\n\nLooking at the file, I can identify the following top-level public functions (declared with `pub fn` at the file's top scope, not inside impl blocks, nested mods, or test modules):\n\n1. Line 16: `pub fn parse_single_file(...)` - top-level public function\n2. Line 93: `pub fn build_index(...)` - top-level public function\n\nThe other functions in the file are private (no `pub` keyword):\n- `is_import_kind` (line 225)\n- `find_decorator_start` (line 230)\n- `normalize_kind` (line 251)\n- `discover_source_files` (line 260)\n- `load_previous_entities` (line 282)\n- `load_previous_refs` (line 293)\n\nThe test functions are inside a `#[cfg(test)] mod tests` block (lines 304-363), so they don't count.\n\n[\"build_index\", \"parse_single_file\"]",
+  "parsed_answer": [
+    "build_index",
+    "parse_single_file"
+  ],
+  "timestamp": "2026-04-20T20:57:14.373421+00:00"
+}
