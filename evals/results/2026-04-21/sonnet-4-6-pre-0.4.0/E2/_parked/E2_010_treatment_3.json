@@ -1,0 +1,12 @@
+{
+  "task_id": "E2_010",
+  "arm": "treatment",
+  "seed": 3,
+  "model": "claude-sonnet-4-6",
+  "turns": 20,
+  "tokens_in": 285170,
+  "tokens_out": 11540,
+  "final_text": "The results differ from my first script. The second approach seems to be overcounting in some cases. Let me verify the top candidates manually and fix the parsing logic:",
+  "parsed_answer": null,
+  "timestamp": "2026-04-20T21:38:01.628297+00:00"
+}

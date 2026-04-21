@@ -1,0 +1,20 @@
+id: E2_007
+kind: file_enumeration
+pinned_ref: 81db5bd
+question: |
+  List every platform installer module under `src/install/` (one `.rs`
+  file per platform, excluding `mod.rs`). Return ONLY a JSON array of
+  filenames WITHOUT directory prefix and WITHOUT the `.rs` extension,
+  sorted lexicographically. Example format: ["foo", "bar"] not
+  ["src/install/foo.rs"].
+grader:
+  type: set_match
+  expected:
+    - aider
+    - claude
+    - codex
+    - copilot
+    - cursor
+    - gemini
+    - githook
+    - opencode

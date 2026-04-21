@@ -1,0 +1,27 @@
+{
+  "task_id": "E2_006",
+  "arm": "control",
+  "seed": 1,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 3250,
+  "tokens_out": 146,
+  "final_text": "There is no `#[cfg(test)] mod tests` block, no `impl` blocks, and no nested helpers. The file contains exactly two top-level functions.\n\n```json\n[\"detect_language\", \"get_language\"]\n```",
+  "parsed_answer": [
+    "detect_language",
+    "get_language"
+  ],
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "read_file",
+      "input": {
+        "path": "src/parser/languages.rs",
+        "limit": 5000
+      },
+      "result_len": 3042,
+      "result_preview": "     1\tuse anyhow::Result;\n     2\tuse tree_sitter::Language;\n     3\t\n     4\t/// Return the tree-sitter [`Language`] for the given language name.\n     5\t///\n     6\t/// Languages are feature-gated \u2014 only grammars enabled at compile time are\n     7\t/// available.\n     8\tpub fn get_language(name: &str) -> Result<Language> {\n     9\t    match name {\n    10\t        #[cfg(feature = \"lang-python\")]\n    11\t"
+    }
+  ],
+  "timestamp": "2026-04-21T12:39:00.967632+00:00"
+}

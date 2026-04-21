@@ -1,0 +1,28 @@
+{
+  "task_id": "E2_003",
+  "arm": "treatment",
+  "seed": 2,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 5932,
+  "tokens_out": 92,
+  "final_text": "[\"BlastRadius\", \"Entity\", \"Reference\"]",
+  "parsed_answer": [
+    "BlastRadius",
+    "Entity",
+    "Reference"
+  ],
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "sigil_symbol_details",
+      "input": {
+        "file": "src/entity.rs",
+        "depth": 1
+      },
+      "result_len": 2345,
+      "result_preview": "[{\"file\":\"src/entity.rs\",\"name\":\"Entity\",\"kind\":\"struct\",\"line_start\":7,\"line_end\":35,\"sig\":\"pub struct Entity\",\"visibility\":\"public\"},{\"file\":\"src/entity.rs\",\"name\":\"is_none_or_empty\",\"kind\":\"function\",\"line_start\":45,\"line_end\":47,\"sig\":\"fn is_none_or_empty(v: &Option<Vec<String>>) -> bool\"},{\"file\":\"src/entity.rs\",\"name\":\"is_none_or_private\",\"kind\":\"function\",\"line_start\":54,\"line_end\":59,\"sig\""
+    }
+  ],
+  "timestamp": "2026-04-21T12:39:01.892555+00:00"
+}

@@ -1,0 +1,15 @@
+{
+  "task_id": "E2_002",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 2,
+  "tokens_in": 7242,
+  "tokens_out": 248,
+  "final_text": "Now I'll identify all top-level public functions declared with `pub fn` or `pub async fn` that are NOT inside impl blocks, nested modules, or test modules.\n\nLooking at the file:\n- Line 16: `pub fn parse_single_file` - TOP-LEVEL PUBLIC FUNCTION \u2713\n- Line 93: `pub fn build_index` - TOP-LEVEL PUBLIC FUNCTION \u2713\n\nThe other functions starting at lines 225, 230, 251, 260, 282, and 293 are all private (declared with `fn`, not `pub fn`).\n\nThe test module at line 304 is excluded as requested.\n\nSorted lexicographically:\n\n[\"build_index\", \"parse_single_file\"]",
+  "parsed_answer": [
+    "build_index",
+    "parse_single_file"
+  ],
+  "timestamp": "2026-04-21T06:38:08.506953+00:00"
+}

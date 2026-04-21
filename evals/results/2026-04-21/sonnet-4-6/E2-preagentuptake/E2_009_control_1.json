@@ -1,0 +1,25 @@
+{
+  "task_id": "E2_009",
+  "arm": "control",
+  "seed": 1,
+  "model": "claude-sonnet-4-6",
+  "turns": 7,
+  "tokens_in": 29836,
+  "tokens_out": 1079,
+  "final_text": "Confirmed:\n- `src/parser/treesitter.rs` line 271: actual call (`match parse_file(...)`) \u2014 **included**\n- `src/query/index.rs`: all in comments \u2014 **excluded**\n- `src/query/duckdb_backend.rs`: in comment \u2014 **excluded**\n\nThe files with actual calls to `parse_file` (sorted lexicographically):\n\n[\n  \"src/index.rs\",\n  \"src/parser/c_lang.rs\",\n  \"src/parser/cpp.rs\",\n  \"src/parser/csharp.rs\",\n  \"src/parser/go.rs\",\n  \"src/parser/java.rs\",\n  \"src/parser/javascript.rs\",\n  \"src/parser/python.rs\",\n  \"src/parser/ruby.rs\",\n  \"src/parser/rust_lang.rs\",\n  \"src/parser/treesitter.rs\",\n  \"src/parser/typescript.rs\"\n]",
+  "parsed_answer": [
+    "src/index.rs",
+    "src/parser/c_lang.rs",
+    "src/parser/cpp.rs",
+    "src/parser/csharp.rs",
+    "src/parser/go.rs",
+    "src/parser/java.rs",
+    "src/parser/javascript.rs",
+    "src/parser/python.rs",
+    "src/parser/ruby.rs",
+    "src/parser/rust_lang.rs",
+    "src/parser/treesitter.rs",
+    "src/parser/typescript.rs"
+  ],
+  "timestamp": "2026-04-21T06:51:53.230297+00:00"
+}

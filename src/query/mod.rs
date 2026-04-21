@@ -70,6 +70,7 @@ impl Backend {
         let root = root
             .canonicalize()
             .with_context(|| format!("cannot resolve path: {}", root.display()))?;
+        ensure_indexed(&root)?;
         let forced = std::env::var("SIGIL_BACKEND").ok();
         match forced.as_deref() {
             Some("memory") => load_in_memory(&root),
@@ -318,12 +319,61 @@ fn auto_engage_threshold_bytes() -> u64 {
     duckdb_backend::DEFAULT_AUTO_UPGRADE_THRESHOLD_BYTES
 }
 
+/// Auto-index on first query: if `.sigil/entities.jsonl` is missing (or
+/// the directory doesn't exist at all), run `build_index` once to bring
+/// the repo to a queryable state. Prints a one-line heads-up to stderr
+/// so the agent (or user) knows there's a first-run cost.
+///
+/// Respects an opt-out via `SIGIL_NO_AUTO_INDEX=1` for users who want
+/// the old "empty index -> no-op" behavior (e.g. during bulk scripting
+/// where indexing cost matters).
+pub fn ensure_indexed(root: &Path) -> Result<()> {
+    if std::env::var("SIGIL_NO_AUTO_INDEX").ok().as_deref() == Some("1") {
+        return Ok(());
+    }
+    let entities_path = root.join(".sigil").join("entities.jsonl");
+    if entities_path.exists() {
+        return Ok(());
+    }
+    eprintln!(
+        "sigil: no index at {}/.sigil — running `sigil index` once (set SIGIL_NO_AUTO_INDEX=1 to skip)",
+        root.display()
+    );
+    let result = crate::index::build_index(
+        root,
+        /* files */ None,
+        /* full */ true,
+        /* include_refs */ true,
+        /* verbose */ false,
+    );
+    // Populate file-level PageRank and per-entity blast radius so
+    // downstream commands (`map`, `blast`, `review`) see a ranked
+    // index on the very first run. Mirrors `sigil index` (without
+    // `--no-rank`) and costs a single extra pass.
+    let mut entities = result.entities;
+    let refs = result.refs;
+    let cfg = crate::rank::RankConfig::default();
+    let ranked = crate::rank::rank(&entities, &refs);
+    crate::rank::apply_blast_radius(&mut entities, &ranked);
+    // Best-effort writes — failures don't abort the query (we have the
+    // data in memory; the next build fills the cache).
+    let _ = crate::writer::write_to_files(&entities, &refs, root, /* pretty */ false);
+    let manifest = crate::rank::RankManifest::from_ranked(&ranked, &cfg);
+    let _ = crate::writer::write_rank_json(&manifest, root, /* pretty */ false);
+    Ok(())
+}
+
 /// Load the sigil index from `.sigil/` under `root`. Thin wrapper over
 /// `Index::load` for call-site symmetry with the old `load_index`.
+///
+/// Auto-indexes on first run (see `ensure_indexed`) so that `sigil
+/// where` / `sigil context` / `sigil outline` on a fresh repo Just
+/// Works rather than failing with "no index found."
 pub fn load(root: &Path) -> Result<Index> {
     let root = root
         .canonicalize()
         .with_context(|| format!("cannot resolve path: {}", root.display()))?;
+    ensure_indexed(&root)?;
     let idx = Index::load(&root).context("failed to load .sigil/ index")?;
     if idx.is_empty() {
         anyhow::bail!(
@@ -515,4 +565,303 @@ pub fn format_refs(refs: &[&Reference]) -> String {
         ));
     }
     out
+}
+
+/// Emit a slice of entities as JSON on `w`. Default is minified; pass
+/// `pretty=true` for indented output. When `with_hashes=false` the internal
+/// BLAKE3 columns (`struct_hash`, `body_hash`, `sig_hash`) are stripped —
+/// they rarely help downstream consumers (agents, grep pipelines) and
+/// usually just inflate the payload. Set `with_hashes=true` for scripts
+/// that want the raw JSONL view.
+pub fn emit_entities_json<W: std::io::Write>(
+    mut w: W,
+    entities: &[&Entity],
+    pretty: bool,
+    with_hashes: bool,
+) -> std::io::Result<()> {
+    let mut values: Vec<serde_json::Value> = entities
+        .iter()
+        .map(|e| serde_json::to_value(e).expect("Entity serializes infallibly"))
+        .collect();
+    if !with_hashes {
+        strip_hashes_in_place(&mut values);
+    }
+    if pretty {
+        serde_json::to_writer_pretty(&mut w, &values)?;
+    } else {
+        serde_json::to_writer(&mut w, &values)?;
+    }
+    writeln!(w)
+}
+
+/// Emit a slice of references as JSON on `w`. References carry no hash
+/// columns, so there's no `with_hashes` knob — the compact schema is the
+/// only form. `pretty=true` gives indented output.
+pub fn emit_references_json<W: std::io::Write>(
+    mut w: W,
+    refs: &[&Reference],
+    pretty: bool,
+) -> std::io::Result<()> {
+    if pretty {
+        serde_json::to_writer_pretty(&mut w, refs)?;
+    } else {
+        serde_json::to_writer(&mut w, refs)?;
+    }
+    writeln!(w)
+}
+
+/// Tail segment of a `::`- or `.`-qualified name (the last piece).
+pub fn tail_segment(name: &str) -> &str {
+    name.rsplit(|c| c == ':' || c == '.').next().unwrap_or(name)
+}
+
+/// Levenshtein edit distance — iterative two-row impl. Used for
+/// "did-you-mean" suggestions when a sigil query returns empty.
+fn levenshtein(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    if a.is_empty() {
+        return b.len();
+    }
+    if b.is_empty() {
+        return a.len();
+    }
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    let mut curr = vec![0_usize; b.len() + 1];
+    for i in 1..=a.len() {
+        curr[0] = i;
+        for j in 1..=b.len() {
+            let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
+            curr[j] = (curr[j - 1] + 1).min(prev[j] + 1).min(prev[j - 1] + cost);
+        }
+        std::mem::swap(&mut prev, &mut curr);
+    }
+    prev[b.len()]
+}
+
+/// Suggest entity tail-segment names most similar to `query` by edit
+/// distance. Used in didactic error messages — when an agent queries a
+/// name that doesn't exist, sigil should say "try this instead" rather
+/// than return empty and let the agent fall back to grep.
+///
+/// Returns up to `limit` unique tail names, sorted by ascending edit
+/// distance. Filters out the query itself and distances larger than
+/// half the query length (anything further is rarely a typo).
+pub fn suggest_similar(idx: &Index, query: &str, limit: usize) -> Vec<String> {
+    if query.is_empty() {
+        return Vec::new();
+    }
+    let q_lower = query.to_lowercase();
+    let max_dist = (query.len() / 2).max(2);
+
+    use std::collections::BTreeSet;
+    let mut tails: BTreeSet<&str> = BTreeSet::new();
+    for e in &idx.entities {
+        tails.insert(tail_segment(&e.name));
+    }
+
+    let mut scored: Vec<(usize, String)> = tails
+        .into_iter()
+        .filter(|t| !t.eq_ignore_ascii_case(query) && !t.is_empty())
+        .map(|t| (levenshtein(&t.to_lowercase(), &q_lower), t.to_string()))
+        .filter(|(d, _)| *d <= max_dist)
+        .collect();
+    scored.sort_by_key(|(d, _)| *d);
+    scored.into_iter().take(limit).map(|(_, t)| t).collect()
+}
+
+/// Predicate used by `sigil symbols --depth 1` to keep only the file's
+/// top-level "outline" items — classes, top-level functions, structs,
+/// enums, traits, and markdown sections. Drops imports, variables,
+/// constants, and anything nested inside a parent (methods, inner
+/// helpers). The intended consumer is an agent that wants a file's
+/// rough shape without the full entity dump (~95% byte reduction on
+/// mid-sized source files).
+pub fn is_top_level_outline(e: &Entity) -> bool {
+    if e.parent.is_some() {
+        return false;
+    }
+    matches!(
+        e.kind.as_str(),
+        "class"
+            | "struct"
+            | "enum"
+            | "trait"
+            | "interface"
+            | "function"
+            | "fn"
+            | "module"
+            | "section"
+            | "type_alias"
+            | "impl"
+    )
+}
+
+/// Emit a reference slice as a grouped count map — `{key: count}` — on
+/// `w`. Supported dimensions: `file`, `caller`, `name`, `kind`. Used by
+/// `sigil callers --group-by file` to collapse 128 rows of per-call-site
+/// detail into a handful of `{file: count}` entries when the agent only
+/// needs distribution, not line-level detail.
+pub fn emit_refs_grouped<W: std::io::Write>(
+    mut w: W,
+    refs: &[&Reference],
+    dim: &str,
+    pretty: bool,
+) -> anyhow::Result<()> {
+    use std::collections::BTreeMap;
+    let mut counts: BTreeMap<String, u32> = BTreeMap::new();
+    for r in refs {
+        let key = match dim {
+            "file" => r.file.clone(),
+            "caller" => r.caller.clone().unwrap_or_else(|| "<top-level>".into()),
+            "name" => r.name.clone(),
+            "kind" => r.ref_kind.clone(),
+            other => {
+                anyhow::bail!(
+                    "unknown --group-by {other}. expected: file | caller | name | kind"
+                );
+            }
+        };
+        *counts.entry(key).or_insert(0) += 1;
+    }
+    let value = serde_json::to_value(&counts)?;
+    if pretty {
+        serde_json::to_writer_pretty(&mut w, &value)?;
+    } else {
+        serde_json::to_writer(&mut w, &value)?;
+    }
+    writeln!(w)?;
+    Ok(())
+}
+
+fn strip_hashes_in_place(values: &mut [serde_json::Value]) {
+    for v in values {
+        if let Some(obj) = v.as_object_mut() {
+            obj.remove("struct_hash");
+            obj.remove("body_hash");
+            obj.remove("sig_hash");
+        }
+    }
+}
+
+#[cfg(test)]
+mod json_emit_tests {
+    use super::*;
+    use crate::entity::{BlastRadius, Entity};
+
+    fn sample_struct() -> Entity {
+        Entity {
+            file: "src/x.rs".into(),
+            name: "Foo".into(),
+            kind: "struct".into(),
+            line_start: 10,
+            line_end: 20,
+            parent: None,
+            sig: Some("pub struct Foo".into()),
+            meta: Some(vec!["Debug".into(), "Clone".into()]),
+            body_hash: Some("abc".into()),
+            sig_hash: Some("def".into()),
+            struct_hash: "ghi".into(),
+            visibility: Some("public".into()),
+            rank: None,
+            blast_radius: Some(BlastRadius {
+                direct_callers: 3,
+                direct_files: 1,
+                transitive_callers: 7,
+            }),
+        }
+    }
+
+    fn sample_import() -> Entity {
+        Entity {
+            file: "src/x.rs".into(),
+            name: "std::collections::HashMap".into(),
+            kind: "import".into(),
+            line_start: 1,
+            line_end: 1,
+            parent: None,
+            sig: None,
+            meta: Some(vec![]), // parser emits empty vec often
+            body_hash: None,
+            sig_hash: None,
+            struct_hash: "h".into(),
+            visibility: Some("private".into()),
+            rank: None,
+            blast_radius: Some(BlastRadius::default()), // all zeros
+        }
+    }
+
+    #[test]
+    fn compact_entity_drops_hashes_by_default() {
+        let e = sample_struct();
+        let es = vec![&e];
+        let mut buf = Vec::new();
+        emit_entities_json(&mut buf, &es, false, false).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(!s.contains("struct_hash"));
+        assert!(!s.contains("body_hash"));
+        assert!(!s.contains("sig_hash"));
+        assert!(s.contains("\"name\":\"Foo\""));
+        assert!(s.contains("\"blast_radius\""));
+    }
+
+    #[test]
+    fn compact_entity_keeps_hashes_when_requested() {
+        let e = sample_struct();
+        let es = vec![&e];
+        let mut buf = Vec::new();
+        emit_entities_json(&mut buf, &es, false, true).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("\"struct_hash\":\"ghi\""));
+        assert!(s.contains("\"body_hash\":\"abc\""));
+    }
+
+    #[test]
+    fn compact_entity_drops_noise_on_import() {
+        let e = sample_import();
+        let es = vec![&e];
+        let mut buf = Vec::new();
+        emit_entities_json(&mut buf, &es, false, false).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        // visibility "private" elided; zero blast_radius elided; empty meta
+        // elided; hashes elided. Only the positive identity fields remain.
+        assert!(!s.contains("visibility"));
+        assert!(!s.contains("blast_radius"));
+        assert!(!s.contains("meta"));
+        assert!(!s.contains("struct_hash"));
+        assert!(s.contains("\"kind\":\"import\""));
+    }
+
+    #[test]
+    fn compact_output_is_minified_by_default() {
+        let e = sample_struct();
+        let es = vec![&e];
+        let mut buf = Vec::new();
+        emit_entities_json(&mut buf, &es, false, false).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        // Minified: no indented whitespace after commas, no newlines inside
+        // the JSON payload.
+        assert!(!s.contains(",\n  "));
+        assert!(!s.contains(": "));
+    }
+
+    #[test]
+    fn reference_serializes_kind_not_ref_kind() {
+        use crate::entity::Reference;
+        let r = Reference {
+            file: "a.rs".into(),
+            caller: Some("m".into()),
+            name: "foo".into(),
+            ref_kind: "call".into(),
+            line: 7,
+        };
+        let s = serde_json::to_string(&r).unwrap();
+        assert!(s.contains("\"kind\":\"call\""));
+        assert!(!s.contains("ref_kind"));
+
+        // And the alias lets us read old-format refs.jsonl.
+        let old = r#"{"file":"a.rs","caller":"m","name":"foo","ref_kind":"call","line":7}"#;
+        let parsed: Reference = serde_json::from_str(old).unwrap();
+        assert_eq!(parsed.ref_kind, "call");
+    }
 }

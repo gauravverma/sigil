@@ -1,0 +1,27 @@
+{
+  "task_id": "E2_006",
+  "arm": "control",
+  "seed": 3,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 3250,
+  "tokens_out": 140,
+  "final_text": "The file is short and contains exactly two top-level functions, with no `impl` blocks, trait methods, nested helpers, or test modules.\n\n```json\n[\"detect_language\", \"get_language\"]\n```",
+  "parsed_answer": [
+    "detect_language",
+    "get_language"
+  ],
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "read_file",
+      "input": {
+        "path": "src/parser/languages.rs",
+        "limit": 5000
+      },
+      "result_len": 3042,
+      "result_preview": "     1\tuse anyhow::Result;\n     2\tuse tree_sitter::Language;\n     3\t\n     4\t/// Return the tree-sitter [`Language`] for the given language name.\n     5\t///\n     6\t/// Languages are feature-gated \u2014 only grammars enabled at compile time are\n     7\t/// available.\n     8\tpub fn get_language(name: &str) -> Result<Language> {\n     9\t    match name {\n    10\t        #[cfg(feature = \"lang-python\")]\n    11\t"
+    }
+  ],
+  "timestamp": "2026-04-21T10:28:36.887070+00:00"
+}

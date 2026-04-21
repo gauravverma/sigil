@@ -1,0 +1,15 @@
+{
+  "task_id": "E2_002",
+  "arm": "treatment",
+  "seed": 3,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 6597,
+  "tokens_out": 145,
+  "final_text": "From the symbols output, filtering for `kind: \"function\"`, `visibility: \"public\"`, and at the top scope (not inside any `impl` or `mod`), the matching functions are `parse_single_file` and `build_index`.\n\n[\"build_index\", \"parse_single_file\"]",
+  "parsed_answer": [
+    "build_index",
+    "parse_single_file"
+  ],
+  "timestamp": "2026-04-20T21:06:32.870041+00:00"
+}

@@ -2,6 +2,12 @@ target/
 docs/
 .codeindex/
 python/.venv/
+__pycache__/
+*.pyc
+
+# External Python repos cloned for SWE-bench-like eval spikes.
+# Large, regenerable, not part of sigil itself.
+evals/_workbench/
 
 # scratch / planning artifacts (not part of the shipped repo)
 TODO.md

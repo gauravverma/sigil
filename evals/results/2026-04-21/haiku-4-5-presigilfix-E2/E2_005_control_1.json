@@ -1,0 +1,16 @@
+{
+  "task_id": "E2_005",
+  "arm": "control",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 2,
+  "tokens_in": 11873,
+  "tokens_out": 560,
+  "final_text": "Now I need to identify top-level functions (not inside impl blocks or the tests module) and calculate their spans.\n\nLet me analyze the file:\n\n1. Line 101-103: `rank` - span = 103-101 = 2 lines (too short)\n2. Line 109-116: `apply_blast_radius` - span = 116-109 = 7 lines (too short)\n3. Line 145-168: `rank_with_config` - span = 168-145 = 23 lines (too short)\n4. Line 173-187: `build_name_index` - span = 187-173 = 14 lines (too short)\n5. Line 191-213: `build_file_edges` - span = 213-191 = 22 lines (too short)\n6. Line 217-279: `pagerank` - span = 279-217 = 62 lines \u2713 (qualifies)\n7. Line 284-314: `compute_blast` - span = 314-284 = 30 lines \u2713 (qualifies, inclusive)\n8. Line 319-352: `transitive_caller_count` - span = 352-319 = 33 lines \u2713 (qualifies)\n\nFunctions in `#[cfg(test)] mod tests` starting at line 354 should be excluded.\n\nLet me verify the exact line counts for the qualifying functions:\n\n- `pagerank`: lines 217-279 = 63 lines inclusive (279-217+1 = 63) \u2713\n- `compute_blast`: lines 284-314 = 31 lines inclusive (314-284+1 = 31) \u2713\n- `transitive_caller_count`: lines 319-352 = 34 lines inclusive (352-319+1 = 34) \u2713\n\nAll three qualify with spans \u2265 30 lines.\n\n[\"compute_blast\", \"pagerank\", \"transitive_caller_count\"]",
+  "parsed_answer": [
+    "compute_blast",
+    "pagerank",
+    "transitive_caller_count"
+  ],
+  "timestamp": "2026-04-20T20:40:29.653459+00:00"
+}

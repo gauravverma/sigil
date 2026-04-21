@@ -1,0 +1,28 @@
+{
+  "task_id": "E2_006",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 2,
+  "tokens_in": 5403,
+  "tokens_out": 135,
+  "final_text": "```json\n[\"detect_language\", \"get_language\"]\n```",
+  "parsed_answer": [
+    "detect_language",
+    "get_language"
+  ],
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "sigil_symbols",
+      "input": {
+        "file": "src/parser/languages.rs",
+        "depth": 1,
+        "names_only": true
+      },
+      "result_len": 35,
+      "result_preview": "[\"get_language\",\"detect_language\"]\n"
+    }
+  ],
+  "timestamp": "2026-04-21T11:31:54.355417+00:00"
+}

@@ -1,0 +1,15 @@
+{
+  "task_id": "E2_002",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 7225,
+  "tokens_out": 202,
+  "final_text": "The file has been fully read. Now I can identify the top-level public functions (declared with `pub fn` or `pub async fn` at the file's top scope, not inside `impl`, nested `mod`, or test modules):\n\n1. **Line 16**: `pub fn parse_single_file(` \u2014 top-level \u2705\n2. **Line 93**: `pub fn build_index(` \u2014 top-level \u2705\n\nAll other `fn` declarations are either private (no `pub`) or inside the `#[cfg(test)] mod tests` block.\n\n[\"build_index\", \"parse_single_file\"]",
+  "parsed_answer": [
+    "build_index",
+    "parse_single_file"
+  ],
+  "timestamp": "2026-04-21T06:46:23.745252+00:00"
+}

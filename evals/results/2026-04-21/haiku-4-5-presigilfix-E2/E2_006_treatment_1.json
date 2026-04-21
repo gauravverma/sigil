@@ -1,0 +1,15 @@
+{
+  "task_id": "E2_006",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 3,
+  "tokens_in": 5958,
+  "tokens_out": 312,
+  "final_text": "[\"detect_language\", \"get_language\"]",
+  "parsed_answer": [
+    "detect_language",
+    "get_language"
+  ],
+  "timestamp": "2026-04-20T20:39:11.003017+00:00"
+}

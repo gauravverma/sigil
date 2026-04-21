@@ -1,0 +1,28 @@
+{
+  "task_id": "E2_005",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 7079,
+  "tokens_out": 403,
+  "final_text": "Now I have all the details. Let me filter to top-level functions (not inside `impl` blocks, not inside `mod tests`) with span \u2265 30 lines:\n\nTop-level functions (kind=`function`, outside `impl` and `mod tests`):\n\n| Name | line_start | line_end | span |\n|---|---|---|---|\n| `rank` | 101 | 103 | 3 \u274c |\n| `apply_blast_radius` | 109 | 116 | 8 \u274c |\n| `rank_with_config` | 145 | 168 | 24 \u274c |\n| `build_name_index` | 173 | 187 | 15 \u274c |\n| `build_file_edges` | 191 | 213 | 23 \u274c |\n| `pagerank` | 217 | 279 | 63 \u2705 |\n| `compute_blast` | 284 | 314 | 31 \u2705 |\n| `transitive_caller_count` | 319 | 352 | 34 \u2705 |\n\n(All functions from line 362 onward are inside `mod tests`.)\n\n```json\n[\"compute_blast\", \"pagerank\", \"transitive_caller_count\"]\n```",
+  "parsed_answer": [
+    "compute_blast",
+    "pagerank",
+    "transitive_caller_count"
+  ],
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "sigil_symbol_details",
+      "input": {
+        "file": "src/rank.rs",
+        "depth": 1
+      },
+      "result_len": 5620,
+      "result_preview": "[{\"file\":\"src/rank.rs\",\"name\":\"RankedIndex\",\"kind\":\"struct\",\"line_start\":47,\"line_end\":58,\"sig\":\"pub struct RankedIndex\",\"visibility\":\"public\"},{\"file\":\"src/rank.rs\",\"name\":\"EntityKey\",\"kind\":\"struct\",\"line_start\":62,\"line_end\":66,\"sig\":\"pub struct EntityKey\",\"visibility\":\"public\"},{\"file\":\"src/rank.rs\",\"name\":\"EntityKey\",\"kind\":\"impl\",\"line_start\":68,\"line_end\":76,\"sig\":\"impl EntityKey\"},{\"file\":"
+    }
+  ],
+  "timestamp": "2026-04-21T12:38:54.711315+00:00"
+}

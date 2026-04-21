@@ -14,7 +14,7 @@ pub struct Entity {
     pub parent: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sig: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "is_none_or_empty")]
     pub meta: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub body_hash: Option<String>,
@@ -26,12 +26,49 @@ pub struct Entity {
     // round-trips as None and newer writes add the fields only when populated.
     // Populated after a rank pass (src/rank.rs); None when the caller opted
     // out via `--no-rank` or when the parser didn't emit visibility info.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "is_none_or_private")]
     pub visibility: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rank: Option<f64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "is_none_or_zero_blast")]
     pub blast_radius: Option<BlastRadius>,
+}
+
+// Skip predicates used by `Entity`'s serde attributes to elide noise fields
+// during JSON emission. Keeps on-disk (.sigil/entities.jsonl) and CLI output
+// identical — both represent "default / absent" the same way: omitted.
+
+/// Skip when `None` OR when the meta vec is empty. The parser emits
+/// `Some(vec![])` for Rust items that have no attribute decorators at all
+/// (a common case); treating that as a field-not-present avoids two lines
+/// of noise per entity in typical output.
+fn is_none_or_empty(v: &Option<Vec<String>>) -> bool {
+    v.as_ref().map_or(true, |m| m.is_empty())
+}
+
+/// Skip when `None` OR when visibility is explicitly `"private"` — the
+/// default visibility for items in most of the languages sigil parses.
+/// Callers that care about "was visibility populated at all" can inspect
+/// the raw JSONL on disk where the field continues to be written verbatim
+/// because the writer bypasses these predicates (see src/writer.rs).
+fn is_none_or_private(v: &Option<String>) -> bool {
+    match v {
+        None => true,
+        Some(s) => s == "private",
+    }
+}
+
+/// Skip when `None` OR when every field of `BlastRadius` is zero. Imports
+/// and genuinely-unused entities populate a BlastRadius of all-zeros; that
+/// tells the consumer nothing and bulks every such entity with an extra
+/// nested object.
+fn is_none_or_zero_blast(b: &Option<BlastRadius>) -> bool {
+    match b {
+        None => true,
+        Some(br) => {
+            br.direct_callers == 0 && br.direct_files == 0 && br.transitive_callers == 0
+        }
+    }
 }
 
 /// Downstream impact summary for a single entity. Used by `sigil review`,
@@ -174,6 +211,11 @@ pub struct Reference {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub caller: Option<String>,
     pub name: String,
+    // Serialized as `kind` for schema parity with `Entity`. The Rust field
+    // name stays `ref_kind` to avoid keyword-adjacent shadowing in code
+    // that mixes both types. Deserialization accepts both `kind` (new) and
+    // `ref_kind` (old pre-0.4.0 .sigil/refs.jsonl).
+    #[serde(rename = "kind", alias = "ref_kind")]
     pub ref_kind: String,
     pub line: u32,
 }

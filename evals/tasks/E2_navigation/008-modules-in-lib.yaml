@@ -1,0 +1,45 @@
+id: E2_008
+kind: file_inspection
+pinned_ref: 81db5bd
+question: |
+  Which modules are declared (via `pub mod` or `mod`) at the top level of
+  `src/lib.rs`? Return ONLY a JSON array of module names (no `pub`, no
+  semicolon), sorted lexicographically.
+grader:
+  type: set_match
+  expected:
+    - benchmark
+    - blast
+    - cache
+    - change_detail
+    - classifier
+    - cochange
+    - community
+    - context
+    - diff
+    - diff_json
+    - duplicates
+    - entity
+    - formatter
+    - git
+    - grouping
+    - hasher
+    - index
+    - inline_diff
+    - install
+    - json_index
+    - map
+    - markdown_formatter
+    - markdown_index
+    - matcher
+    - meta
+    - output
+    - parser
+    - query
+    - rank
+    - review
+    - signature
+    - tokens
+    - toml_index
+    - writer
+    - yaml_index

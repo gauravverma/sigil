@@ -1,0 +1,15 @@
+{
+  "task_id": "E2_006",
+  "arm": "control",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 2,
+  "tokens_in": 3130,
+  "tokens_out": 184,
+  "final_text": "Based on my analysis of the file, there are exactly two top-level functions defined in `src/parser/languages.rs`:\n\n1. `get_language` (line 8)\n2. `detect_language` (line 53)\n\nBoth are public functions at the module level, and neither is inside an `impl` block, trait, or `#[cfg(test)]` module.\n\n```json\n[\"detect_language\", \"get_language\"]\n```",
+  "parsed_answer": [
+    "detect_language",
+    "get_language"
+  ],
+  "timestamp": "2026-04-21T06:38:04.387956+00:00"
+}

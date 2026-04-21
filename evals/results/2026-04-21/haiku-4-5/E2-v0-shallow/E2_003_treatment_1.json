@@ -1,0 +1,17 @@
+{
+  "task_id": "E2_003",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 3,
+  "tokens_in": 23298,
+  "tokens_out": 377,
+  "final_text": "[\"EntityKey\", \"RankConfig\", \"RankManifest\", \"RankedIndex\"]",
+  "parsed_answer": [
+    "EntityKey",
+    "RankConfig",
+    "RankManifest",
+    "RankedIndex"
+  ],
+  "timestamp": "2026-04-20T20:23:12.779483+00:00"
+}

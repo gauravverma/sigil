@@ -1,0 +1,16 @@
+{
+  "task_id": "E2_005",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 2,
+  "tokens_in": 12148,
+  "tokens_out": 503,
+  "final_text": "Now I need to identify all top-level functions (not inside impl blocks or test module) with a span of at least 30 lines.\n\nLet me analyze the functions:\n\n1. **`rank`** (lines 101-103): span = 3 lines \u274c\n2. **`apply_blast_radius`** (lines 109-116): span = 8 lines \u274c\n3. **`rank_with_config`** (lines 145-168): span = 24 lines \u274c\n4. **`build_name_index`** (lines 173-187): span = 15 lines \u274c\n5. **`build_file_edges`** (lines 191-213): span = 23 lines \u274c\n6. **`pagerank`** (lines 217-279): span = 63 lines \u2705\n7. **`compute_blast`** (lines 284-314): span = 31 lines \u2705\n8. **`transitive_caller_count`** (lines 319-352): span = 34 lines \u2705\n\nThe functions inside `#[cfg(test)] mod tests` (starting at line 354) should be excluded per the requirements.\n\nThe functions inside `impl` blocks (lines 68-76 for `EntityKey`, lines 88-97 for `RankConfig`, lines 131-143 for `RankManifest`) should be excluded.\n\nThe top-level functions with span \u2265 30 lines are:\n- `pagerank` (63 lines)\n- `compute_blast` (31 lines)\n- `transitive_caller_count` (34 lines)\n\nSorted lexicographically:\n\n[\"compute_blast\", \"pagerank\", \"transitive_caller_count\"]",
+  "parsed_answer": [
+    "compute_blast",
+    "pagerank",
+    "transitive_caller_count"
+  ],
+  "timestamp": "2026-04-20T20:39:26.259662+00:00"
+}

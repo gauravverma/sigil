@@ -30,26 +30,99 @@ pub const MARKER_BEGIN: &str = "<!-- sigil:begin -->";
 pub const MARKER_END: &str = "<!-- sigil:end -->";
 pub const JSON_MARKER: &str = "sigil";
 
-/// The capability block every installer embeds. Lists commands and the
-/// situations in which each one fits. No preference statements, no
-/// "prefer sigil" phrases.
+/// The capability block every installer embeds. Directive by design:
+/// a question→command table so the agent picks sigil on-pattern rather
+/// than improvising a grep chain. One worked example grounds the
+/// "sigil-first" flow.
+///
+/// This phrasing was validated on the E4 click eval — adding the
+/// flowchart + example dropped Sonnet treatment from 18,069 → 5,521
+/// tokens (2.22× vs control), with all 3 seeds producing byte-
+/// identical `sigil where ...` → answer paths in 2 turns.
 pub fn capability_block() -> String {
     "This repo has sigil installed — a deterministic structural code \
-intelligence tool. Available commands:
+intelligence tool (BLAKE3 + tree-sitter, no LLM inference). Sigil's \
+pre-computed index answers structural questions in one shot, without \
+multi-grep exploration.
 
-- `sigil map --tokens N`           ranked codebase digest (for orientation)
-- `sigil context <symbol>`         signature + callers + callees + related types
-- `sigil review A..B`              structural diff with rank + blast + co-change
-- `sigil blast <symbol>`           impact summary (callers, files, transitive)
-- `sigil duplicates`               clone report across the codebase
-- `sigil callers <symbol>`         exact caller list (unbounded; JSON-friendly)
-- `sigil callees <caller>`         what a symbol calls
-- `sigil symbols <file>`           all entities in a file
-- `sigil search <query>`           substring search over symbols + file paths
+## Structural questions — reach for sigil FIRST
 
-sigil uses BLAKE3 + tree-sitter — no LLM inference. A prebuilt map lives at \
-`.sigil/SIGIL_MAP.md` when `sigil index` has been run; file-level PageRank \
-lives at `.sigil/rank.json`."
+| Question shape                           | Command                                        |
+|------------------------------------------|------------------------------------------------|
+| \"where is X defined?\"                  | `sigil where <X>`                              |
+| \"how does X fit in the codebase?\"      | `sigil context <X>`                            |
+| \"who calls X?\"                         | `sigil callers <X>` (add `--group-by file`)    |
+| \"what does X call?\"                    | `sigil callees <X>` (add `--group-by name`)    |
+| \"list the Xs in file F (just names)\"   | `sigil symbols <F> --depth 1 --names-only`     |
+| \"full entities in file F\"              | `sigil symbols <F> --depth 1`                  |
+| \"structural tree under dir D\"          | `sigil outline --path <D>`                     |
+| \"find anything matching 'foo'\"         | `sigil search foo`                             |
+| \"impact of editing X?\"                 | `sigil blast <X>`                              |
+| \"entity-level diff of a commit range\"  | `sigil diff A..B --markdown`                   |
+| \"PR review (diff + blast + co-change)\" | `sigil review A..B --markdown`                 |
+| \"diff two files without git\"           | `sigil diff --files OLD NEW`                   |
+| \"clones / duplicated functions\"        | `sigil duplicates`                             |
+| cold-start orientation                   | `sigil map --tokens N`                         |
+
+All commands accept `--json` for machine-readable output. Script-facing \
+commands (`symbols`, `children`, `callers`, `callees`, `search`) default \
+to unbounded results, minified JSON. Pair with the pre-written \
+`.sigil/SIGIL_MAP.md` (when `sigil index` has run) and file-level \
+PageRank at `.sigil/rank.json`.
+
+## File-system / text questions — use grep / read_file / bash
+
+| Question shape                           | Tool                             |
+|------------------------------------------|----------------------------------|
+| \"which files exist under dir D?\"       | `ls` / `find` / `bash`           |
+| \"text content X inside known file F\"   | `grep` / `read_file`             |
+| \"lines matching a regex in the repo\"   | `grep`                           |
+| language-specific syntactic pattern      | `grep` (e.g. Rust `^pub mod`)    |
+| sigil returned empty AND no \"Did you    | `grep` — confirm the name        |
+| mean?\" suggestion on stderr             | really doesn't exist textually   |
+
+Two rules of thumb:
+
+- `sigil_symbols` with `--names-only` when the answer is a LIST OF NAMES. \
+  Typical drop: ~3 KB of full entity records → ~300 bytes.
+- `sigil_outline` surfaces CLASSES AND FUNCTIONS under a path, not a \
+  plain file listing. Use `ls` / `bash` for pure file enumeration.
+
+Empty sigil results are data, not failure. Sigil prints a \
+`Did you mean: X, Y, Z?` hint on stderr when the queried name is close \
+to something known — retry with a suggestion before falling back to grep.
+
+First-query note: sigil auto-runs `sigil index` if `.sigil/` is missing \
+and emits a one-line `sigil: no index at ...` to stderr. Not an error — \
+just zero-config onboarding. Set `SIGIL_NO_AUTO_INDEX=1` to disable.
+
+## Worked example — one-shot find-definition
+
+Q: *Find the method on class `Parameter` that resolves the default \
+value when a callable is passed.*
+
+**Bad path (grep-first, 4+ turns):**
+
+```
+grep -rn \"default\" src/**/*.py   # hundreds of hits
+grep \"class Parameter\"           # narrow file
+read_file src/click/core.py:1-200  # wrong range
+read_file src/click/core.py:2000-  # finally find it
+```
+
+**Good path (1 sigil call):**
+
+```
+sigil where get_default
+→ get_default
+  Parameter.get_default  src/click/core.py:2249-2251  (method, 3 overloads)
+    def get_default(self, ctx: Context, call: bool = True) -> Any
+  Option.get_default     src/click/core.py:2891-2905  (method)
+    def get_default(self, ctx: Context, call: bool = True) -> Any
+```
+
+Answer: `Parameter.get_default` at `src/click/core.py:2249`, with \
+`Option.get_default` as an override. Done in one command."
         .to_string()
 }
 

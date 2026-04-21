@@ -1,0 +1,16 @@
+{
+  "task_id": "E2_005",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 10275,
+  "tokens_out": 454,
+  "final_text": "Now I have all the data. Let me filter for top-level functions (kind=`function`, not inside `impl` blocks or test module) with span \u2265 30 lines.\n\nTop-level functions (kind = \"function\", not inside tests mod at lines 355\u2013660... but I need to exclude those in the test module):\n\nFrom the symbols, the test module is lines 355\u2013660. Functions inside it have their own entries. The non-test top-level functions are:\n\n- `rank`: lines 101\u2013103 \u2192 span = 3 \u274c\n- `apply_blast_radius`: lines 109\u2013116 \u2192 span = 8 \u274c\n- `rank_with_config`: lines 145\u2013168 \u2192 span = 24 \u274c\n- `build_name_index`: lines 173\u2013187 \u2192 span = 15 \u274c\n- `build_file_edges`: lines 191\u2013213 \u2192 span = 23 \u274c\n- `pagerank`: lines 217\u2013279 \u2192 span = 63 \u2705\n- `compute_blast`: lines 284\u2013314 \u2192 span = 31 \u2705\n- `transitive_caller_count`: lines 319\u2013352 \u2192 span = 34 \u2705\n\nThe functions `ent`, `refr`, and all test functions are inside the `mod tests` block (lines 355\u2013660), so they are excluded.\n\nFunctions with span \u2265 30: `compute_blast` (31), `pagerank` (63), `transitive_caller_count` (34).\n\nSorted lexicographically:\n\n[\"compute_blast\", \"pagerank\", \"transitive_caller_count\"]",
+  "parsed_answer": [
+    "compute_blast",
+    "pagerank",
+    "transitive_caller_count"
+  ],
+  "timestamp": "2026-04-20T21:04:31.110098+00:00"
+}

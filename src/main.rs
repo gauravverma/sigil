@@ -153,9 +153,12 @@ enum Cli {
         /// Max entries to show
         #[arg(long, default_value = "200")]
         max_entries: usize,
-        /// Output as JSON
+        /// Output as JSON (compact by default — see --pretty)
         #[arg(long)]
         json: bool,
+        /// Pretty-print JSON output (default: minified)
+        #[arg(long)]
+        pretty: bool,
     },
     /// Search across symbols, files, and texts
     Search {
@@ -164,8 +167,11 @@ enum Cli {
         /// Project root directory
         #[arg(short, long, default_value = ".")]
         root: PathBuf,
-        /// Filter by scope: symbol, file, text
-        #[arg(long)]
+        /// Filter by scope: symbol (default), file, all. Defaults to
+        /// `symbol` because agents almost always want symbol hits —
+        /// file-path matches add noise on keyword queries. Pass `--scope
+        /// all` or `--scope file` to widen.
+        #[arg(long, default_value = "symbol")]
         scope: Vec<String>,
         /// Filter by kind (e.g., function, class, method)
         #[arg(long)]
@@ -176,9 +182,12 @@ enum Cli {
         /// Max results
         #[arg(long, default_value = "20")]
         limit: u32,
-        /// Output as JSON
+        /// Output as JSON (compact by default — see --pretty)
         #[arg(long)]
         json: bool,
+        /// Pretty-print JSON output (default: minified)
+        #[arg(long)]
+        pretty: bool,
     },
     /// List all symbols in a file
     Symbols {
@@ -187,12 +196,32 @@ enum Cli {
         /// Project root directory
         #[arg(short, long, default_value = ".")]
         root: PathBuf,
-        /// Max results
-        #[arg(long, default_value = "100")]
+        /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
+        #[arg(long, default_value = "0")]
         limit: u32,
-        /// Output as JSON
+        /// Outline depth. `1` = top-level items only (classes, top-level
+        /// functions, structs, enums, traits, sections) — drops imports,
+        /// nested methods, variables, constants. `0` (default) = every
+        /// entity extracted for the file.
+        #[arg(long, default_value = "0")]
+        depth: u32,
+        /// Output as JSON (compact by default — see --pretty, --with-hashes)
         #[arg(long)]
         json: bool,
+        /// Pretty-print JSON output (default: minified)
+        #[arg(long)]
+        pretty: bool,
+        /// Emit just a flat array of tail-segment names — answers "list
+        /// the Xs in this file" in the minimum possible payload. Typical
+        /// drop: ~140 bytes/row of entity JSON → 10-20 bytes/name.
+        /// Compose with `--depth 1` for top-level names only.
+        #[arg(long)]
+        names_only: bool,
+        /// Include BLAKE3 hash columns (struct_hash, body_hash, sig_hash) in
+        /// the JSON output. Off by default — useful for scripts that need
+        /// the raw on-disk shape.
+        #[arg(long)]
+        with_hashes: bool,
     },
     /// Get children of a class or module
     Children {
@@ -203,12 +232,18 @@ enum Cli {
         /// Project root directory
         #[arg(short, long, default_value = ".")]
         root: PathBuf,
-        /// Max results
-        #[arg(long, default_value = "100")]
+        /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
+        #[arg(long, default_value = "0")]
         limit: u32,
-        /// Output as JSON
+        /// Output as JSON (compact by default — see --pretty, --with-hashes)
         #[arg(long)]
         json: bool,
+        /// Pretty-print JSON output (default: minified)
+        #[arg(long)]
+        pretty: bool,
+        /// Include BLAKE3 hash columns in the JSON output.
+        #[arg(long)]
+        with_hashes: bool,
     },
     /// Find all callers/references to a symbol
     Callers {
@@ -220,12 +255,20 @@ enum Cli {
         /// Filter by reference kind (call, import, type_annotation, instantiation)
         #[arg(long)]
         kind: Option<String>,
-        /// Max results
-        #[arg(long, default_value = "100")]
+        /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
+        #[arg(long, default_value = "0")]
         limit: u32,
-        /// Output as JSON
+        /// Collapse output to {file: count} aggregation. Useful when you
+        /// only need the file distribution, not per-call-site detail.
+        /// 128 refs → a few-entry map.
+        #[arg(long, value_name = "DIM")]
+        group_by: Option<String>,
+        /// Output as JSON (compact by default — see --pretty)
         #[arg(long)]
         json: bool,
+        /// Pretty-print JSON output (default: minified)
+        #[arg(long)]
+        pretty: bool,
     },
     /// Find all symbols that a function calls
     Callees {
@@ -237,12 +280,65 @@ enum Cli {
         /// Filter by reference kind
         #[arg(long)]
         kind: Option<String>,
-        /// Max results
-        #[arg(long, default_value = "100")]
+        /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
+        #[arg(long, default_value = "0")]
         limit: u32,
-        /// Output as JSON
+        /// Collapse output to {name: count} aggregation (what does <caller>
+        /// call most?).
+        #[arg(long, value_name = "DIM")]
+        group_by: Option<String>,
+        /// Output as JSON (compact by default — see --pretty)
         #[arg(long)]
         json: bool,
+        /// Pretty-print JSON output (default: minified)
+        #[arg(long)]
+        pretty: bool,
+    },
+    /// Hierarchical outline — every top-level class / function / struct /
+    /// enum / trait grouped by file. Complements `sigil map` (rank-
+    /// ordered, budget-aware) by giving a plain structural tree for
+    /// "what's in this directory" questions.
+    Outline {
+        /// Project root directory
+        #[arg(short, long, default_value = ".")]
+        root: PathBuf,
+        /// Restrict to files starting with this prefix (e.g. `src/click/`).
+        #[arg(long)]
+        path: Option<String>,
+        /// Output format: markdown (default) or json.
+        #[arg(long, default_value = "markdown")]
+        format: String,
+        /// Pretty-print when --format=json.
+        #[arg(long)]
+        pretty: bool,
+    },
+    /// Single-shot definition locator — where is `<symbol>` defined?
+    ///
+    /// Returns one record per definition (class / method / function /
+    /// struct / enum / trait / type alias), deduped across Python
+    /// @overload stubs, with signature preview + inheritance siblings.
+    /// Intended as the first-call "find the relevant code" primitive
+    /// for agents on unfamiliar codebases.
+    Where {
+        /// Symbol name to locate. Matches on the last `::` or `.`-
+        /// separated segment, so `get_default` matches both
+        /// `Parameter.get_default` and `Option.get_default` but NOT
+        /// `CliRunner.get_default_prog_name`.
+        symbol: String,
+        /// Project root directory
+        #[arg(short, long, default_value = ".")]
+        root: PathBuf,
+        /// Include definitions that live under typical test paths.
+        /// Off by default — test files dilute a "find the implementation"
+        /// answer.
+        #[arg(long)]
+        include_tests: bool,
+        /// Output format: markdown (default) or json.
+        #[arg(long, default_value = "markdown")]
+        format: String,
+        /// Pretty-print when --format=json.
+        #[arg(long)]
+        pretty: bool,
     },
     /// Impact summary for a symbol — blast counts + top callers by file rank.
     Blast {
@@ -641,14 +737,21 @@ fn main() {
             }
 
         }
-        Cli::Explore { root, path, max_entries, json } => {
+        Cli::Explore { root, path, max_entries, json, pretty } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             if json {
                 let files = backend.explore_files_capped(path.as_deref(), max_entries);
-                serde_json::to_writer_pretty(std::io::stdout(), &files.iter().map(|(dir, path, lang)| {
+                let values: Vec<serde_json::Value> = files.iter().map(|(dir, path, lang)| {
                     serde_json::json!({"directory": dir, "path": path, "language": lang})
-                }).collect::<Vec<_>>()).ok();
+                }).collect();
+                let stdout = std::io::stdout();
+                let mut lock = stdout.lock();
+                if pretty {
+                    serde_json::to_writer_pretty(&mut lock, &values).ok();
+                } else {
+                    serde_json::to_writer(&mut lock, &values).ok();
+                }
                 println!();
             } else {
                 let dirs = backend.explore_dir_overview(path.as_deref());
@@ -662,88 +765,259 @@ fn main() {
                 }
             }
         }
-        Cli::Search { query: q, root, scope, kind, path, limit, json } => {
+        Cli::Search { query: q, root, scope, kind, path, limit, json, pretty } => {
+            let original_q = q.clone();
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             // `scope` / `kind` are Vec<String> for CLI multi-arg compatibility;
             // first value wins for filtering (matches codeix's prior behavior).
+            // Default is "symbol" (see the CLI arg definition) — agents want
+            // symbol hits almost all the time.
             let scope_enum = scope
                 .first()
                 .map(|s| query::index::Scope::parse(s))
-                .unwrap_or(query::index::Scope::All);
+                .unwrap_or(query::index::Scope::Symbols);
             let kind_filter = kind.first().map(|s| s.as_str());
             let results = backend.search(&q, scope_enum, kind_filter, path.as_deref(), limit as usize);
             if json {
-                // Serialize as a flat list with a `type` discriminator so the
-                // shape is stable for scripts/agents consuming the output.
-                let json_hits: Vec<serde_json::Value> = results.iter().map(|h| match h {
-                    sigil::query::SearchHitOwned::Symbol(e) => serde_json::json!({
-                        "type": "symbol",
-                        "file": e.file,
-                        "name": e.name,
-                        "kind": e.kind,
-                        "line": [e.line_start, e.line_end],
-                        "parent": e.parent,
-                    }),
-                    sigil::query::SearchHitOwned::File(f) => serde_json::json!({
-                        "type": "file",
-                        "path": f.path,
-                        "lang": f.lang,
-                        "entity_count": f.entity_count,
-                    }),
-                }).collect();
-                serde_json::to_writer_pretty(std::io::stdout(), &json_hits).ok();
+                // Compact schema — one row per unique (file, name, kind).
+                // Repeated hits with the same key (Python @overload stubs,
+                // parent=None variables that duplicate a method entry) get
+                // collapsed into a single row with `overloads: N` so the
+                // agent sees "this method exists here" without skimming
+                // 3-5 near-identical rows.
+                //
+                // Elision rules, matching the rest of the 0.4.0 compact
+                // output:
+                //   - `type: "symbol"` dropped (implied by --scope symbol,
+                //     the new default). File hits keep `type: "file"` so
+                //     mixed-scope results stay discriminable.
+                //   - `line_end` elided when equal to `line`.
+                //   - `parent` elided when null.
+                //   - `overloads` elided when 1.
+                use std::collections::BTreeMap;
+                let mut order: Vec<(String, String, String)> = Vec::new();
+                // (line_start, line_end, parent, overloads, sig_preview)
+                let mut groups: BTreeMap<
+                    (String, String, String),
+                    (u32, u32, Option<String>, u32, Option<String>),
+                > = BTreeMap::new();
+                let mut file_rows: Vec<serde_json::Value> = Vec::new();
+                for h in &results {
+                    match h {
+                        sigil::query::SearchHitOwned::Symbol(e) => {
+                            let key = (e.file.clone(), e.name.clone(), e.kind.clone());
+                            groups
+                                .entry(key.clone())
+                                .and_modify(|(_, _, _, n, _)| *n += 1)
+                                .or_insert_with(|| {
+                                    order.push(key);
+                                    (e.line_start, e.line_end, e.parent.clone(), 1, e.sig.clone())
+                                });
+                        }
+                        sigil::query::SearchHitOwned::File(f) => {
+                            let mut row = serde_json::json!({
+                                "type": "file",
+                                "path": f.path,
+                                "lang": f.lang,
+                            });
+                            if f.entity_count > 0 {
+                                row["entity_count"] = serde_json::json!(f.entity_count);
+                            }
+                            file_rows.push(row);
+                        }
+                    }
+                }
+
+                let mut json_hits: Vec<serde_json::Value> = Vec::with_capacity(order.len() + file_rows.len());
+                for key in order {
+                    let (line_start, line_end, parent, overloads, sig) = groups[&key].clone();
+                    let (file, name, kind) = key;
+                    let mut row = serde_json::Map::new();
+                    row.insert("file".into(), serde_json::Value::from(file));
+                    row.insert("name".into(), serde_json::Value::from(name));
+                    row.insert("kind".into(), serde_json::Value::from(kind));
+                    row.insert("line".into(), serde_json::Value::from(line_start));
+                    if line_end != line_start {
+                        row.insert("line_end".into(), serde_json::Value::from(line_end));
+                    }
+                    if let Some(p) = parent {
+                        row.insert("parent".into(), serde_json::Value::from(p));
+                    }
+                    // Signature preview saves a follow-up read_file. ~50-120 extra
+                    // bytes per row, but typically eliminates a 2-5 KB file read.
+                    if let Some(s) = sig {
+                        if !s.is_empty() {
+                            row.insert("sig".into(), serde_json::Value::from(s));
+                        }
+                    }
+                    if overloads > 1 {
+                        row.insert("overloads".into(), serde_json::Value::from(overloads));
+                    }
+                    json_hits.push(serde_json::Value::Object(row));
+                }
+                json_hits.extend(file_rows);
+
+                let stdout = std::io::stdout();
+                let mut lock = stdout.lock();
+                if pretty {
+                    serde_json::to_writer_pretty(&mut lock, &json_hits).ok();
+                } else {
+                    serde_json::to_writer(&mut lock, &json_hits).ok();
+                }
                 println!();
             } else {
                 print!("{}", query::format_search_hits_owned(&results));
             }
+            if results.is_empty() {
+                let idx = query::load(&root).ok();
+                let sugg = idx
+                    .as_ref()
+                    .map(|i| query::suggest_similar(i, &original_q, 5))
+                    .unwrap_or_default();
+                if sugg.is_empty() {
+                    eprintln!(
+                        "sigil: 0 matches for `{original_q}`. Try a shorter substring (`sigil search {}`) or `sigil where <exact-name>` for a definition lookup.",
+                        first_few(&original_q, 4),
+                    );
+                } else {
+                    eprintln!(
+                        "sigil: 0 matches for `{original_q}`. Did you mean: {}?",
+                        sugg.join(", ")
+                    );
+                }
+            }
         }
-        Cli::Symbols { file, root, limit, json } => {
+        Cli::Symbols { file, root, limit, depth, json, pretty, names_only, with_hashes } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let symbols = backend.get_file_symbols(&file, None, limit as usize);
-            let refs: Vec<&sigil::entity::Entity> = symbols.iter().collect();
-            if json {
-                serde_json::to_writer_pretty(std::io::stdout(), &symbols).ok();
+            let was_empty_before_depth = symbols.is_empty();
+            let filtered: Vec<sigil::entity::Entity> = if depth == 1 {
+                symbols.into_iter().filter(query::is_top_level_outline).collect()
+            } else {
+                symbols
+            };
+            let refs: Vec<&sigil::entity::Entity> = filtered.iter().collect();
+            if names_only {
+                // Flat JSON array of tail-segment names — the minimum
+                // payload for "list the Xs in this file" questions.
+                let names: Vec<String> = refs
+                    .iter()
+                    .map(|e| query::tail_segment(&e.name).to_string())
+                    .collect();
+                let stdout = std::io::stdout();
+                let mut lock = stdout.lock();
+                if pretty {
+                    serde_json::to_writer_pretty(&mut lock, &names).ok();
+                } else {
+                    serde_json::to_writer(&mut lock, &names).ok();
+                }
                 println!();
+            } else if json {
+                query::emit_entities_json(std::io::stdout(), &refs, pretty, with_hashes).ok();
             } else {
                 print!("{}", query::format_entities(&refs));
             }
+            if refs.is_empty() {
+                if was_empty_before_depth {
+                    eprintln!(
+                        "sigil: no entities in `{file}`. File may not be indexed — try `sigil index` or check the path spelling."
+                    );
+                } else {
+                    eprintln!(
+                        "sigil: `{file}` has entries, but none qualify as `--depth 1` top-level items. Re-run without `--depth 1` to see nested / variable / import entries."
+                    );
+                }
+            }
         }
-        Cli::Children { file, parent, root, limit, json } => {
+        Cli::Children { file, parent, root, limit, json, pretty, with_hashes } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let children = backend.get_children(&file, &parent, None, limit as usize);
             let refs: Vec<&sigil::entity::Entity> = children.iter().collect();
             if json {
-                serde_json::to_writer_pretty(std::io::stdout(), &children).ok();
-                println!();
+                query::emit_entities_json(std::io::stdout(), &refs, pretty, with_hashes).ok();
             } else {
                 print!("{}", query::format_entities(&refs));
             }
         }
-        Cli::Callers { name, root, kind, limit, json } => {
+        Cli::Callers { name, root, kind, limit, group_by, json, pretty } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let refs = backend.get_callers(&name, kind.as_deref(), limit as usize);
             let borrowed: Vec<&sigil::entity::Reference> = refs.iter().collect();
-            if json {
-                serde_json::to_writer_pretty(std::io::stdout(), &refs).ok();
-                println!();
+            if let Some(dim) = group_by.as_deref() {
+                query::emit_refs_grouped(std::io::stdout(), &borrowed, dim, pretty).unwrap_or_else(|e| {
+                    eprintln!("error: {}", e);
+                    std::process::exit(1);
+                });
+            } else if json {
+                query::emit_references_json(std::io::stdout(), &borrowed, pretty).ok();
             } else {
                 print!("{}", query::format_refs(&borrowed));
             }
+            if borrowed.is_empty() {
+                emit_empty_hint(&root, &name, "callers");
+            }
         }
-        Cli::Callees { caller, root, kind, limit, json } => {
+        Cli::Callees { caller, root, kind, limit, group_by, json, pretty } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let refs = backend.get_callees(&caller, kind.as_deref(), limit as usize);
             let borrowed: Vec<&sigil::entity::Reference> = refs.iter().collect();
-            if json {
-                serde_json::to_writer_pretty(std::io::stdout(), &refs).ok();
-                println!();
+            if let Some(dim) = group_by.as_deref() {
+                query::emit_refs_grouped(std::io::stdout(), &borrowed, dim, pretty).unwrap_or_else(|e| {
+                    eprintln!("error: {}", e);
+                    std::process::exit(1);
+                });
+            } else if json {
+                query::emit_references_json(std::io::stdout(), &borrowed, pretty).ok();
             } else {
                 print!("{}", query::format_refs(&borrowed));
+            }
+            if borrowed.is_empty() {
+                emit_empty_hint(&root, &caller, "callees");
+            }
+        }
+        Cli::Outline { root, path, format, pretty } => {
+            let idx = query::load(&root)
+                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+            let report = sigil::outline::build_outline(&idx, path.as_deref());
+            match format.as_str() {
+                "markdown" => print!("{}", sigil::outline::render_markdown(&report)),
+                "json" => println!("{}", sigil::outline::render_json(&report, pretty)),
+                other => {
+                    eprintln!("error: unknown --format {}. expected: markdown | json", other);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Cli::Where { symbol, root, include_tests, format, pretty } => {
+            let idx = query::load(&root)
+                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+            let report = sigil::where_cmd::find_definitions(&idx, &symbol, include_tests);
+            match format.as_str() {
+                "markdown" => print!("{}", sigil::where_cmd::render_markdown(&report)),
+                "json" => println!("{}", sigil::where_cmd::render_json(&report, pretty)),
+                other => {
+                    eprintln!("error: unknown --format {}. expected: markdown | json", other);
+                    std::process::exit(1);
+                }
+            }
+            if report.definitions.is_empty() {
+                let sugg = query::suggest_similar(&idx, &symbol, 5);
+                if sugg.is_empty() {
+                    eprintln!(
+                        "sigil: no definition of `{symbol}` found. Try `sigil search {}` with a shorter substring.",
+                        first_few(&symbol, 4),
+                    );
+                } else {
+                    eprintln!(
+                        "sigil: no definition of `{symbol}` found. Did you mean: {}?",
+                        sugg.join(", ")
+                    );
+                }
             }
         }
         Cli::Blast { symbol, root, depth, format, pretty, exclude_tests } => {
@@ -1104,6 +1378,36 @@ fn main() {
                 }
             }
         }
+    }
+}
+
+/// Short prefix of a query string — used in didactic hints that
+/// suggest narrowing a miss to a shorter substring.
+fn first_few(s: &str, n: usize) -> String {
+    s.chars().take(n).collect()
+}
+
+/// Emit a didactic stderr hint when `sigil callers` / `sigil callees`
+/// returns empty. Loads the index (best effort) to suggest close
+/// matches via `query::suggest_similar`. The "did you mean?" line is
+/// the key recovery point — it keeps the agent inside sigil's loop
+/// after a bad-guess query, instead of falling back to grep.
+fn emit_empty_hint(root: &std::path::Path, name: &str, verb: &str) {
+    let idx = query::load(root).ok();
+    let sugg = idx
+        .as_ref()
+        .map(|i| query::suggest_similar(i, name, 5))
+        .unwrap_or_default();
+    if sugg.is_empty() {
+        eprintln!(
+            "sigil: no {verb} for `{name}`. Try `sigil where {name}` to confirm the name exists, or `sigil search {}` with a shorter substring.",
+            first_few(name, 4),
+        );
+    } else {
+        eprintln!(
+            "sigil: no {verb} for `{name}`. Did you mean: {}?",
+            sugg.join(", ")
+        );
     }
 }
 

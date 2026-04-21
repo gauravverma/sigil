@@ -1,0 +1,14 @@
+id: E2_002
+kind: symbols_in_file
+pinned_ref: 81db5bd
+question: |
+  List every top-level public function defined in `src/index.rs`. A
+  top-level public function is one declared with `pub fn` (or `pub async
+  fn`) at the file's top scope — NOT inside an `impl` block, NOT inside a
+  nested `mod`, NOT inside a test module. Return ONLY a JSON array of
+  function names, sorted lexicographically.
+grader:
+  type: set_match
+  expected:
+    - build_index
+    - parse_single_file

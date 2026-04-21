@@ -1,0 +1,15 @@
+{
+  "task_id": "E2_002",
+  "arm": "control",
+  "seed": 2,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 6951,
+  "tokens_out": 135,
+  "final_text": "The file has exactly two top-level `pub fn` declarations (neither is inside an `impl` block, a nested `mod`, or a test module):\n\n1. `parse_single_file` (line 16)\n2. `build_index` (line 93)\n\n[\"build_index\", \"parse_single_file\"]",
+  "parsed_answer": [
+    "build_index",
+    "parse_single_file"
+  ],
+  "timestamp": "2026-04-20T21:02:10.414061+00:00"
+}

@@ -1,0 +1,16 @@
+{
+  "task_id": "E2_003",
+  "arm": "control",
+  "seed": 1,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 2092,
+  "tokens_out": 99,
+  "final_text": "[\"BlastRadius\", \"Entity\", \"Reference\"]",
+  "parsed_answer": [
+    "BlastRadius",
+    "Entity",
+    "Reference"
+  ],
+  "timestamp": "2026-04-21T06:39:49.581674+00:00"
+}

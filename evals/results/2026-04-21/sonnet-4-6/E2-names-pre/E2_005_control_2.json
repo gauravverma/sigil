@@ -1,0 +1,28 @@
+{
+  "task_id": "E2_005",
+  "arm": "control",
+  "seed": 2,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 11971,
+  "tokens_out": 393,
+  "final_text": "Now I can analyze the top-level functions (excluding `impl` blocks and the `#[cfg(test)] mod tests` block):\n\n1. **`rank`** \u2014 lines 101\u2013103 \u2192 span = 3 (exclude)\n2. **`apply_blast_radius`** \u2014 lines 109\u2013116 \u2192 span = 8 (exclude)\n3. **`rank_with_config`** \u2014 lines 145\u2013168 \u2192 span = 24 (exclude)\n4. **`build_name_index`** \u2014 lines 173\u2013187 \u2192 span = 15 (exclude)\n5. **`build_file_edges`** \u2014 lines 191\u2013213 \u2192 span = 23 (exclude)\n6. **`pagerank`** \u2014 lines 217\u2013279 \u2192 span = 63 \u2705 (\u226530)\n7. **`compute_blast`** \u2014 lines 284\u2013314 \u2192 span = 31 \u2705 (\u226530)\n8. **`transitive_caller_count`** \u2014 lines 319\u2013352 \u2192 span = 34 \u2705 (\u226530)\n\nFunctions with span \u2265 30: `compute_blast`, `pagerank`, `transitive_caller_count`.\n\n```json\n[\"compute_blast\", \"pagerank\", \"transitive_caller_count\"]\n```",
+  "parsed_answer": [
+    "compute_blast",
+    "pagerank",
+    "transitive_caller_count"
+  ],
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "read_file",
+      "input": {
+        "path": "src/rank.rs",
+        "limit": 5000
+      },
+      "result_len": 29030,
+      "result_preview": "     1\t//! Phase 1 ranking: file-level PageRank + per-entity blast radius.\n     2\t//!\n     3\t//! Everything here is a pure function over `(Vec<Entity>, Vec<Reference>)` so\n     4\t//! it unit-tests without touching disk or git. Callers decide whether to\n     5\t//! persist the output into the Entity slots (`rank`, `blast_radius`).\n     6\t//!\n     7\t//! ## Graph\n     8\t//!\n     9\t//! Sigil doesn't st"
+    }
+  ],
+  "timestamp": "2026-04-21T09:57:55.904956+00:00"
+}

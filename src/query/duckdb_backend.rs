@@ -141,6 +141,35 @@ impl DuckDbBackend {
             expected.save(&stamp_path)?;
         }
 
+        // Safety: a matching stamp doesn't guarantee populated tables —
+        // a previous `populate()` could have been interrupted mid-run,
+        // leaving an empty DB + a valid stamp. (Root cause of the silent
+        // E2 regression where sigil_callers returned 100 bytes on every
+        // treatment call.) When JSONL has content but both tables are
+        // empty, force one rebuild. Cheap — a no-op on healthy indexes.
+        let tables_empty = count_tables(&conn)
+            .map(|(e, r)| e == 0 && r == 0)
+            .unwrap_or(true);
+        let jsonl_has_content = std::fs::metadata(sigil_dir.join("entities.jsonl"))
+            .map(|m| m.len() > 0)
+            .unwrap_or(false);
+        if tables_empty && jsonl_has_content {
+            eprintln!(
+                "sigil: .sigil/index.duckdb has empty tables but JSONL is populated — rebuilding."
+            );
+            drop(conn);
+            std::fs::remove_file(&db_path).ok();
+            let conn = Connection::open(&db_path)
+                .with_context(|| format!("reopen DuckDB at {}", db_path.display()))?;
+            populate(&conn, &sigil_dir)
+                .context("recovery rebuild of DuckDB index")?;
+            fingerprint(&sigil_dir).save(&stamp_path)?;
+            return Ok(Self {
+                conn,
+                root: root.to_path_buf(),
+            });
+        }
+
         Ok(Self {
             conn,
             root: root.to_path_buf(),
@@ -159,20 +188,28 @@ impl DuckDbBackend {
     }
 
     /// Callers of `name`, in (file, line) order for stable output.
-    /// `limit == 0` → unlimited.
+    /// `limit == 0` → unlimited. A bare `name` also matches refs whose
+    /// stored name is a `::`-qualified path ending in `::name` (parity
+    /// with `Index::build`'s qualified-tail indexing).
     pub fn get_callers(
         &self,
         name: &str,
         kind_filter: Option<&str>,
         limit: usize,
     ) -> Result<Vec<Reference>> {
+        let want_qualified = !name.contains("::");
+        let like_pattern = format!("%::{}", name);
         let mut sql = String::from(
-            "SELECT file, caller, name, ref_kind, line \
+            "SELECT file, caller, name, kind, line \
              FROM refs \
-             WHERE name = ?",
+             WHERE (name = ?",
         );
+        if want_qualified {
+            sql.push_str(" OR name LIKE ?");
+        }
+        sql.push(')');
         if kind_filter.is_some() {
-            sql.push_str(" AND ref_kind = ?");
+            sql.push_str(" AND kind = ?");
         }
         sql.push_str(" ORDER BY file, line");
         if limit > 0 {
@@ -180,12 +217,19 @@ impl DuckDbBackend {
         }
 
         let mut stmt = self.conn.prepare(&sql)?;
-        let rows = if let Some(k) = kind_filter {
-            stmt.query_map(params![name, k], row_to_reference)?
-                .collect::<std::result::Result<Vec<_>, _>>()?
-        } else {
-            stmt.query_map(params![name], row_to_reference)?
-                .collect::<std::result::Result<Vec<_>, _>>()?
+        let rows = match (want_qualified, kind_filter) {
+            (true, Some(k)) => stmt
+                .query_map(params![name, like_pattern, k], row_to_reference)?
+                .collect::<std::result::Result<Vec<_>, _>>()?,
+            (true, None) => stmt
+                .query_map(params![name, like_pattern], row_to_reference)?
+                .collect::<std::result::Result<Vec<_>, _>>()?,
+            (false, Some(k)) => stmt
+                .query_map(params![name, k], row_to_reference)?
+                .collect::<std::result::Result<Vec<_>, _>>()?,
+            (false, None) => stmt
+                .query_map(params![name], row_to_reference)?
+                .collect::<std::result::Result<Vec<_>, _>>()?,
         };
         Ok(rows)
     }
@@ -200,12 +244,12 @@ impl DuckDbBackend {
         limit: usize,
     ) -> Result<Vec<Reference>> {
         let mut sql = String::from(
-            "SELECT file, caller, name, ref_kind, line \
+            "SELECT file, caller, name, kind, line \
              FROM refs \
              WHERE caller = ?",
         );
         if kind_filter.is_some() {
-            sql.push_str(" AND ref_kind = ?");
+            sql.push_str(" AND kind = ?");
         }
         sql.push_str(" ORDER BY file, line");
         if limit > 0 {
@@ -719,7 +763,7 @@ fn empty_entities_table_sql() -> &'static str {
 fn empty_refs_table_sql() -> &'static str {
     "CREATE TABLE refs (
         file VARCHAR, caller VARCHAR, name VARCHAR,
-        ref_kind VARCHAR, line BIGINT
+        kind VARCHAR, line BIGINT
     );"
 }
 
@@ -755,7 +799,7 @@ const REFS_COLUMNS_SPEC: &str = "{ \
     file: 'VARCHAR', \
     caller: 'VARCHAR', \
     name: 'VARCHAR', \
-    ref_kind: 'VARCHAR', \
+    kind: 'VARCHAR', \
     line: 'BIGINT' \
 }";
 
@@ -862,6 +906,19 @@ impl Stamp {
         let text = serde_json::to_string(self)?;
         std::fs::write(path, text).map_err(Into::into)
     }
+}
+
+/// Count rows in the entities and refs tables. Used by `open()`'s
+/// empty-tables-but-valid-stamp recovery path. Returns None if either
+/// table is absent (fresh DB where populate hasn't run yet).
+fn count_tables(conn: &Connection) -> Option<(i64, i64)> {
+    let ents: i64 = conn
+        .query_row("SELECT COUNT(*) FROM entities", [], |r| r.get(0))
+        .ok()?;
+    let refs: i64 = conn
+        .query_row("SELECT COUNT(*) FROM refs", [], |r| r.get(0))
+        .ok()?;
+    Some((ents, refs))
 }
 
 fn fingerprint(sigil_dir: &Path) -> Stamp {
@@ -1064,6 +1121,38 @@ mod tests {
         from_db.sort_by(|a, b| a.file.cmp(&b.file).then_with(|| a.line.cmp(&b.line)));
         from_idx.sort_by(|a, b| a.file.cmp(&b.file).then_with(|| a.line.cmp(&b.line)));
         assert_eq!(from_db, from_idx);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn get_callers_matches_qualified_tail() {
+        // Parity with `Index::build`: a bare-name search (`foo`) must also
+        // surface refs whose stored name is a `::`-qualified path ending in
+        // `::foo`. Prevents the src/index.rs-calls-crate::parser::tree
+        // sitter::parse_file regression from coming back under DuckDB.
+        let root = tmpdir("qualified_callers");
+        seed(
+            &root,
+            vec![ent("a.rs", "foo", "function")],
+            vec![
+                refr("b.rs", Some("main"), "foo", "call", 1),
+                refr("c.rs", Some("caller"), "crate::a::b::foo", "call", 2),
+                refr("d.rs", Some("caller"), "Foo::foo", "call", 3),
+                refr("e.rs", Some("caller"), "bar", "call", 4),     // no match
+                refr("f.rs", Some("caller"), "foobar", "call", 5), // no match (no `::` boundary)
+            ],
+        );
+        let db = DuckDbBackend::open(&root).unwrap();
+
+        let bare = db.get_callers("foo", None, 0).unwrap();
+        assert_eq!(bare.len(), 3, "bare `foo` matches plain + both qualified refs");
+
+        let qualified = db.get_callers("crate::a::b::foo", None, 0).unwrap();
+        assert_eq!(qualified.len(), 1);
+
+        let miss = db.get_callers("baz", None, 0).unwrap();
+        assert!(miss.is_empty());
+
         std::fs::remove_dir_all(&root).ok();
     }
 

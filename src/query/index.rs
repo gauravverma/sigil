@@ -87,6 +87,18 @@ fn lang_for(file: &str) -> Option<&'static str> {
     }
 }
 
+/// The tail segment of a `::`-qualified name, or `None` if the name has
+/// no `::` (i.e., is already bare). Used so qualified ref names are
+/// looked up under both the full path and the unqualified tail.
+fn qualified_tail(name: &str) -> Option<&str> {
+    let tail = name.rsplit("::").next().unwrap_or(name);
+    if tail.len() == name.len() {
+        None
+    } else {
+        Some(tail)
+    }
+}
+
 /// In-memory index over sigil's entities and references.
 ///
 /// Lookup complexity: O(1) for exact-name/exact-file lookups via the maps;
@@ -123,6 +135,13 @@ impl Index {
         let mut refs_by_file: HashMap<String, Vec<usize>> = HashMap::new();
         for (i, r) in references.iter().enumerate() {
             refs_by_name.entry(r.name.clone()).or_default().push(i);
+            // Also index qualified names under their trailing segment so that
+            // `callers parse_file` matches refs whose stored name is
+            // `crate::parser::treesitter::parse_file` (the form the Rust
+            // extractor emits for a fully-qualified call site).
+            if let Some(tail) = qualified_tail(&r.name) {
+                refs_by_name.entry(tail.to_string()).or_default().push(i);
+            }
             if let Some(caller) = &r.caller {
                 refs_by_caller.entry(caller.clone()).or_default().push(i);
             }
@@ -544,6 +563,32 @@ mod tests {
         assert_eq!(callers.len(), 2);
         let callers_other: Vec<_> = idx.refs_to("other").collect();
         assert_eq!(callers_other.len(), 1);
+    }
+
+    #[test]
+    fn refs_to_matches_qualified_tail() {
+        // Refs stored under `crate::a::b::foo` must surface when the caller
+        // searches for the bare name `foo`. Regression for the sigil-self
+        // finding where `parse_file(...)` called as `crate::parser::
+        // treesitter::parse_file(...)` from src/index.rs was missed.
+        let idx = Index::build(
+            vec![ent("a.rs", "foo", "function")],
+            vec![
+                refr("b.rs", Some("main"), "foo", "call"),
+                refr("c.rs", Some("caller"), "crate::a::b::foo", "call"),
+                refr("d.rs", Some("caller"), "Foo::foo", "call"),
+                refr("e.rs", Some("caller"), "bar", "call"),    // must not match
+                refr("f.rs", Some("caller"), "foobar", "call"), // must not match (no `::` boundary)
+            ],
+        );
+        let bare: Vec<_> = idx.refs_to("foo").collect();
+        assert_eq!(bare.len(), 3, "bare `foo` matches plain + both qualified refs");
+        // Full qualified lookup still works as exact match.
+        let qualified: Vec<_> = idx.refs_to("crate::a::b::foo").collect();
+        assert_eq!(qualified.len(), 1);
+        // Bare-name miss stays miss.
+        let miss: Vec<_> = idx.refs_to("baz").collect();
+        assert!(miss.is_empty());
     }
 
     #[test]

@@ -1,0 +1,12 @@
+id: E2_001
+kind: definition_lookup
+pinned_ref: 81db5bd    # v0.3.3
+question: |
+  Which file in this repository contains the definition of a top-level
+  function named `detect_language` (declared as `fn detect_language` or
+  `pub fn detect_language`, not a call site, not inside an `impl` block)?
+  Return ONLY a JSON array with the single repo-relative file path.
+grader:
+  type: set_match
+  expected:
+    - src/parser/languages.rs

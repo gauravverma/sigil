@@ -1,0 +1,13 @@
+id: E2_006
+kind: symbols_in_file
+pinned_ref: 81db5bd
+question: |
+  List every top-level function defined in `src/parser/languages.rs`.
+  Exclude: `impl`-block methods, trait methods, nested helpers, items
+  inside a `#[cfg(test)] mod tests` block. Return ONLY a JSON array of
+  function names, sorted lexicographically.
+grader:
+  type: set_match
+  expected:
+    - detect_language
+    - get_language

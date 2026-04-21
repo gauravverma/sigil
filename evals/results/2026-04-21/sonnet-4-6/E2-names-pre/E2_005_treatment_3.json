@@ -1,0 +1,27 @@
+{
+  "task_id": "E2_005",
+  "arm": "treatment",
+  "seed": 3,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 8166,
+  "tokens_out": 293,
+  "final_text": "Now I can compute spans for top-level functions (excluding impl methods and test module functions):\n\nTop-level functions (not inside impl or test mod):\n- `rank`: 101\u2013103 \u2192 span = 3 \u274c\n- `apply_blast_radius`: 109\u2013116 \u2192 span = 8 \u274c\n- `rank_with_config`: 145\u2013168 \u2192 span = 24 \u274c\n- `build_name_index`: 173\u2013187 \u2192 span = 15 \u274c\n- `build_file_edges`: 191\u2013213 \u2192 span = 23 \u274c\n- `pagerank`: 217\u2013279 \u2192 span = 63 \u2705\n- `compute_blast`: 284\u2013314 \u2192 span = 31 \u2705\n- `transitive_caller_count`: 319\u2013352 \u2192 span = 34 \u2705\n\n```json\n[\"compute_blast\", \"pagerank\", \"transitive_caller_count\"]\n```",
+  "parsed_answer": [
+    "compute_blast",
+    "pagerank",
+    "transitive_caller_count"
+  ],
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "sigil_symbols",
+      "input": {
+        "file": "src/rank.rs"
+      },
+      "result_len": 8866,
+      "result_preview": "[{\"file\":\"src/rank.rs\",\"name\":\"std::collections::{HashMap, HashSet, VecDeque}\",\"kind\":\"import\",\"line_start\":39,\"line_end\":39,\"blast_radius\":{\"direct_callers\":1,\"direct_files\":1,\"transitive_callers\":0}},{\"file\":\"src/rank.rs\",\"name\":\"serde::{Deserialize, Serialize}\",\"kind\":\"import\",\"line_start\":41,\"line_end\":41,\"blast_radius\":{\"direct_callers\":4,\"direct_files\":4,\"transitive_callers\":0}},{\"file\":\"src"
+    }
+  ],
+  "timestamp": "2026-04-21T09:47:03.710134+00:00"
+}

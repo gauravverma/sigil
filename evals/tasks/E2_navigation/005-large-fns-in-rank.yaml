@@ -1,0 +1,16 @@
+id: E2_005
+kind: span_analysis
+pinned_ref: 81db5bd
+question: |
+  List every top-level function defined in `src/rank.rs` whose span is at
+  least 30 lines. "Span" means `end_line - start_line`, inclusive (the
+  line on which the `fn` keyword appears through the line of its closing
+  `}`). Exclude: functions inside `impl` blocks, functions inside the
+  `#[cfg(test)] mod tests` block, nested helpers. Return ONLY a JSON
+  array of function names, sorted lexicographically.
+grader:
+  type: set_match
+  expected:
+    - compute_blast
+    - pagerank
+    - transitive_caller_count

@@ -1,0 +1,12 @@
+{
+  "task_id": "E2_010",
+  "arm": "control",
+  "seed": 2,
+  "model": "claude-sonnet-4-6",
+  "turns": 20,
+  "tokens_in": 352828,
+  "tokens_out": 15160,
+  "final_text": "The test functions are inside `#[cfg(test)]` `mod` blocks, so they should be excluded. My parser seems to be counting some of them. Let me check more carefully why the c_lang.rs and python.rs counts include test functions:",
+  "parsed_answer": null,
+  "timestamp": "2026-04-20T21:31:53.888613+00:00"
+}

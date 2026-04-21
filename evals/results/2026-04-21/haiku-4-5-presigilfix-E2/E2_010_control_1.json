@@ -1,0 +1,18 @@
+{
+  "task_id": "E2_010",
+  "arm": "control",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 14,
+  "tokens_in": 118631,
+  "tokens_out": 4956,
+  "final_text": "Perfect! The answer is confirmed.\n\n```json\n[\"./src/parser/cpp.rs\", \"./src/parser/csharp.rs\", \"./src/parser/typescript.rs\", \"./src/parser/java.rs\", \"./src/parser/metadata.rs\"]\n```",
+  "parsed_answer": [
+    "./src/parser/cpp.rs",
+    "./src/parser/csharp.rs",
+    "./src/parser/typescript.rs",
+    "./src/parser/java.rs",
+    "./src/parser/metadata.rs"
+  ],
+  "timestamp": "2026-04-20T20:38:09.558050+00:00"
+}

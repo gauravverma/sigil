@@ -4,6 +4,179 @@ All notable changes to sigil are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-04-21
+
+### Added — gap-widening primitives
+
+Based on E4 SWE-bench-like trace analysis, five improvements aimed at
+reducing the per-turn tool-result cost that dominates agent token usage:
+
+- **`sigil where <symbol>`** — single-shot definition locator. Returns
+  one row per defining (file, parent, kind) with signature preview,
+  overload count, and test-file flag. Tail-segment matching
+  (`get_default` matches `Parameter.get_default` and `Option.get_default`
+  but not `CliRunner.get_default_prog_name`). Replaces the common
+  `sigil search` + `read_file` + `grep` chain with one call.
+- **`sigil outline [--path DIR]`** — hierarchical top-level tree of
+  classes / functions / structs / enums / traits grouped by file.
+  Complements `sigil map` (rank-ordered, budget-aware) with a plain
+  structural view — no token budget, every eligible entity listed once.
+  `src/click/` on pallets/click yields 17 files / 210 symbols in ~30 KB.
+- **`sigil context` now surfaces inheritance delta.** When the chosen
+  symbol is a method with a parent class, other classes in the codebase
+  that define a method with the same tail segment appear in an
+  `overrides: []` block (capped at 5, with `skipped_overrides` for the
+  truncation count). Agents no longer need a second `sigil where`
+  call to spot polymorphism — the override list is in the same bundle.
+- **`sigil symbols --depth 1`** — outline mode. Filters a file's
+  entity list down to top-level items (classes, top-level functions,
+  structs, enums, traits, sections) — drops imports, variables,
+  constants, and nested methods. Measured 95% byte reduction on
+  `src/click/core.py` (87 KB -> 3.9 KB).
+- **`sigil callers <name> --group-by file`** (also on `callees`) —
+  collapse per-call-site output to a `{file: count}` map. Turns a
+  128-ref flat list into a dozen-entry summary when the agent only
+  needs distribution.
+
+### Added — other
+
+- **`sigil search` carries a signature preview.** Each row now
+  includes `sig` when the entity has one, eliminating a follow-up
+  `read_file` for common "look at the signature" flows. ~30-50 bytes
+  per row overhead; typically saves a 2-5 KB file read.
+- **Auto-index on first query.** Running `sigil where`, `sigil
+  context`, `sigil outline`, `sigil symbols`, etc. in a directory
+  without `.sigil/` now transparently runs `sigil index` (including
+  a full rank + blast pass) with a one-line stderr heads-up. Zero-
+  config onboarding for fresh clones. Opt out with
+  `SIGIL_NO_AUTO_INDEX=1`.
+
+### Changed — JSON output schema (breaking)
+
+Script-facing commands with `--json` now emit a **compact** schema designed
+for machine consumers. Agents re-ingest the returned JSON on every turn;
+cutting the payload directly cuts downstream token cost.
+
+- **Minified by default.** `sigil symbols / children / callers / callees /
+  search / explore --json` emit one-line JSON. Add `--pretty` for indented
+  output if a human is reading.
+- **Hash columns dropped by default.** `struct_hash`, `body_hash`, and
+  `sig_hash` are no longer included in `--json` output of `symbols` /
+  `children`. Pass `--with-hashes` for the legacy shape. The on-disk
+  `.sigil/entities.jsonl` still carries hashes — they're sigil's internal
+  content-identity columns.
+- **Default/absent fields elided.** `visibility: "private"` (the language
+  default for most items), `blast_radius` of all-zeros, and empty `meta: []`
+  arrays are now omitted from both JSON output and `.sigil/entities.jsonl`.
+  Consumers should use `.get("field", default)` patterns rather than
+  expecting every field.
+- **`Reference.ref_kind` is serialized as `kind`.** Schema parity with
+  `Entity.kind` — the two types now use the same field name for their
+  "kind-of-thing" discriminator. Old `.sigil/refs.jsonl` with `ref_kind`
+  still deserializes via a serde alias; fresh writes use `kind`. The
+  DuckDB materialized table column also renamed.
+- **`sigil search` JSON output is tighter and deduped.** Same-symbol
+  overloads (Python `@overload` stubs, repeated variable declarations
+  across method bodies) now collapse into one row per `(file, name,
+  kind)` with `overloads: N` when there's more than one. The `type:
+  "symbol"` field is elided (implied by the now-default `--scope
+  symbol`); file hits keep `type: "file"`. `line: [a, b]` flattens to
+  `line: N` with an optional `line_end: M` when they differ. `parent:
+  null` and `overloads: 1` are elided. Example: `search get_default`
+  on pallets/click drops from 17 rows / ~2.7KB to 11 rows / 1.68KB
+  (~38% smaller, overload noise removed).
+- **`sigil search --scope` now defaults to `symbol`**, not `all`. Agents
+  almost always want symbol hits on a keyword query; including file-
+  path matches inflated the response. Pass `--scope all` or `--scope
+  file` to widen.
+
+Size impact on sigil-self:
+- `sigil symbols src/rank.rs --json`: 19,102 → **8,866 bytes (54% smaller)**
+- `sigil callers parse_file --kind call --json`: 19,352 → **14,191 bytes
+  (27% smaller)**
+
+### Eval validation — deterministic agent uptake
+
+After adding didactic stderr + fuzzy suggestions on empty sigil results,
+and exposing sigil primitives as first-class Anthropic tools in the
+treatment arm (alongside a directive flowchart blurb + one worked
+example), Sonnet N=3 on the E4 click task converged to:
+
+| Arm | Median tokens_in | Turns | Pass |
+|---|---:|---:|---:|
+| control | 12,269 | 6 | 3/3 |
+| **treatment** | **5,521** | **2** | 3/3 |
+
+Ratio: **2.22× (sigil wins)**. All 3 treatment seeds produced
+byte-identical runs — `sigil_where(symbol="get_default")` as turn 1,
+answer emitted as turn 2. Haiku N=1 ratio: 2.64×. No single-seed
+variance of any kind; sigil tools as tool_use entries produce
+deterministic agent paths.
+
+Cumulative journey on the same task since pre-0.4.0: 0.49× (sigil
+losing 2×) → 2.22× (sigil winning 2.2×). 4.5× total swing, driven by
+three stacked changes — compact JSON, new primitives (`sigil where`,
+`sigil outline`, signature preview, group-by aggregates), and agent-
+uptake fixes (native tool_use exposure + directive blurb + worked
+example).
+
+### Eval validation — sigil now wins on the external-repo task
+
+E4 "find-the-method" task against pallets/click (2.3k LOC, cloned at
+04ef3a6) — a SWE-bench-Lite-style phase-1 exploration of an unfamiliar
+codebase, where the agent must locate the method that resolves option
+default values.
+
+| Model | Arm | Median tokens_in | Pass |
+|---|---|---:|---:|
+| Sonnet 4.6 (N=3) | control | 23,270 | 3/3 |
+| Sonnet 4.6 (N=3) | **treatment** | **16,698** | 3/3 |
+| Haiku 4.5 (N=1) | control | 71,190 | 1/1 |
+| Haiku 4.5 (N=1) | **treatment** | **43,330** | 1/1 |
+
+Sonnet ratio: **1.39× (sigil wins)**. Haiku ratio: **1.64× (sigil wins)**.
+Pre-0.4.0 numbers on the same task had Sonnet at 0.49× (sigil losing
+2×) — a net 2.8× swing from the combined effect of compact entity/
+reference JSON, sharper treatment-blurb hints, `--scope symbol` as the
+search default, and the search overload-dedup + line-flatten.
+
+Also notable: Sonnet treatment seeds 1/2/3 landed at 16,908 / 16,698 /
+16,698 tokens — near-identical paths. Sigil appears to produce more
+deterministic agent behavior than pure grep on the same question.
+
+Full per-arm traces and archived pre-fix baselines under
+`evals/results/2026-04-21/{haiku-4-5,sonnet-4-6}/E4{,-preblurbfix,-prescope}/`.
+
+Upgrade note: pre-0.4.0 `.sigil/refs.jsonl` loads fine via the Rust alias,
+but the DuckDB backend's materialized table definition has a renamed
+column. Re-run `sigil index` once after the upgrade to rebuild the
+derived DuckDB artifact.
+
+### Fixed
+
+- Script-facing commands (`symbols`, `children`, `callers`, `callees`) now
+  default to unbounded results (`--limit 0`) as documented in the plan's
+  agent-facing-vs-script-facing taxonomy. Previously defaulted to `100`,
+  which silently truncated large result sets — `sigil callers parse_file
+  --kind call` returned 100 refs across 8 files when the true answer was
+  128 refs across 11 files. Users who want the previous behavior can pass
+  `--limit 100` explicitly.
+- `sigil callers <name>` now also surfaces refs whose stored name is a
+  `::`-qualified path ending in `::<name>`. Previously the Rust extractor
+  emitted a call site like `crate::parser::treesitter::parse_file(...)`
+  under its full qualified name, so `sigil callers parse_file` missed it.
+  Both the in-memory backend (`Index::build`) and the DuckDB backend
+  (`get_callers` SQL) index/query under the trailing segment. Searches
+  for an already-qualified name keep their exact-match semantics.
+  Combined with the `--limit` fix above, `sigil callers parse_file
+  --kind call` now returns 129 refs across 12 files (grep parity).
+
+### Added
+
+- Eval harness (`evals/runner/`) and `E2_navigation` task set. First
+  end-to-end eval with a model in the loop; N=3 Sonnet numbers published
+  against sigil-self. See `evals/runner/README.md` for methodology.
+
 ## [0.3.3] — 2026-04-21
 
 ### Changed

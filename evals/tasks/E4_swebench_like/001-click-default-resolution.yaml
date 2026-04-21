@@ -1,0 +1,27 @@
+id: E4_001
+kind: code_location
+repo: evals/_workbench/click
+pinned_ref: 04ef3a6f473deb2499721a8d11f92a7d2c0912f2
+question: |
+  You are looking at the pallets/click codebase (a Python CLI framework).
+  Someone reported this behavior: when they pass `default=some_callable`
+  to `click.option(...)`, the callable is invoked each time the option's
+  default value is resolved during command execution, rather than once at
+  decoration time.
+
+  To confirm how defaults are resolved, find the method on the base
+  `Parameter` class that is responsible for resolving the default value
+  at command-execution time. (Subclasses like `Option` override it.)
+
+  Return ONLY a JSON object with three keys:
+    - "method": the method name (e.g. "foo_bar")
+    - "file":   the repo-relative file path defining the method
+    - "class":  the class that primarily owns this method on the base
+
+  Example format: {"method":"foo","file":"src/a.py","class":"Bar"}
+grader:
+  type: fact_match
+  expected:
+    method: get_default
+    file: src/click/core.py
+    class: Parameter

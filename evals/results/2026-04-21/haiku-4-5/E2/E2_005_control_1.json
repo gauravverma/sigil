@@ -1,0 +1,28 @@
+{
+  "task_id": "E2_005",
+  "arm": "control",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 2,
+  "tokens_in": 12003,
+  "tokens_out": 541,
+  "final_text": "Now I'll analyze the file to identify top-level functions with spans of at least 30 lines, excluding:\n- Functions inside `impl` blocks\n- Functions inside `#[cfg(test)] mod tests` block\n- Nested helpers\n\nLet me identify the functions:\n\n1. **`rank`** (lines 101-103): span = 3 lines \u274c\n2. **`apply_blast_radius`** (lines 109-116): span = 8 lines \u274c\n3. **`rank_with_config`** (lines 145-168): span = 24 lines \u274c\n4. **`build_name_index`** (lines 173-187): span = 15 lines \u274c\n5. **`build_file_edges`** (lines 191-213): span = 23 lines \u274c\n6. **`pagerank`** (lines 217-279): span = 63 lines \u2705\n7. **`compute_blast`** (lines 284-314): span = 31 lines \u2705\n8. **`transitive_caller_count`** (lines 319-352): span = 34 lines \u2705\n\nFunctions inside `impl` blocks (excluded):\n- `EntityKey::from_entity` (lines 69-75)\n- `RankConfig::default` (lines 88-97)\n- `RankManifest::from_ranked` (lines 132-142)\n\nAll test functions are inside `#[cfg(test)] mod tests` (lines 354-660), so they're excluded.\n\nThe functions that meet the criteria are:\n- `pagerank` (63 lines)\n- `compute_blast` (31 lines)\n- `transitive_caller_count` (34 lines)\n\n```json\n[\"compute_blast\", \"pagerank\", \"transitive_caller_count\"]\n```",
+  "parsed_answer": [
+    "compute_blast",
+    "pagerank",
+    "transitive_caller_count"
+  ],
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "read_file",
+      "input": {
+        "path": "src/rank.rs",
+        "limit": 5000
+      },
+      "result_len": 29030,
+      "result_preview": "     1\t//! Phase 1 ranking: file-level PageRank + per-entity blast radius.\n     2\t//!\n     3\t//! Everything here is a pure function over `(Vec<Entity>, Vec<Reference>)` so\n     4\t//! it unit-tests without touching disk or git. Callers decide whether to\n     5\t//! persist the output into the Entity slots (`rank`, `blast_radius`).\n     6\t//!\n     7\t//! ## Graph\n     8\t//!\n     9\t//! Sigil doesn't st"
+    }
+  ],
+  "timestamp": "2026-04-21T12:38:01.368564+00:00"
+}

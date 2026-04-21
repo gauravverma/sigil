@@ -1,0 +1,15 @@
+{
+  "task_id": "E2_002",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 2,
+  "tokens_in": 7242,
+  "tokens_out": 414,
+  "final_text": "Now I'll analyze the file to identify all top-level public functions (declared with `pub fn` or `pub async fn` at the file's top scope, not inside impl blocks, nested mods, or test modules):\n\nLooking at the file:\n- Line 16: `pub fn parse_single_file` - \u2713 Top-level public function\n- Line 93: `pub fn build_index` - \u2713 Top-level public function\n- Line 225: `fn is_import_kind` - \u2717 Not public (no `pub`)\n- Line 230: `fn find_decorator_start` - \u2717 Not public (no `pub`)\n- Line 251: `fn normalize_kind` - \u2717 Not public (no `pub`)\n- Line 260: `fn discover_source_files` - \u2717 Not public (no `pub`)\n- Line 282: `fn load_previous_entities` - \u2717 Not public (no `pub`)\n- Line 293: `fn load_previous_refs` - \u2717 Not public (no `pub`)\n- Lines 304-363: Test module `#[cfg(test)] mod tests` - \u2717 Inside test module (excluded)\n\nThe top-level public functions are:\n1. `parse_single_file`\n2. `build_index`\n\nSorted lexicographically:\n\n[\"build_index\", \"parse_single_file\"]",
+  "parsed_answer": [
+    "build_index",
+    "parse_single_file"
+  ],
+  "timestamp": "2026-04-20T20:39:20.516494+00:00"
+}

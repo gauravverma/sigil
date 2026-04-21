@@ -1,0 +1,14 @@
+{
+  "task_id": "E2_002",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 5,
+  "tokens_in": 11257,
+  "tokens_out": 368,
+  "final_text": "Perfect! I found the definition of `pub struct Entity` in `src/entity.rs` at line 7. This is the core data-model struct, not a test fixture or helper.\n\n```json\n[\"src/entity.rs\"]\n```",
+  "parsed_answer": [
+    "src/entity.rs"
+  ],
+  "timestamp": "2026-04-20T20:22:31.542411+00:00"
+}

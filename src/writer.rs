@@ -124,7 +124,8 @@ mod tests {
         let output = String::from_utf8(buf).unwrap();
         assert_eq!(output.lines().count(), 1);
         let parsed: serde_json::Value = serde_json::from_str(output.lines().next().unwrap()).unwrap();
-        assert_eq!(parsed["ref_kind"], "instantiation");
+        assert_eq!(parsed["kind"], "instantiation");
+        assert!(parsed.get("ref_kind").is_none(), "0.4.0 serializes as `kind`");
     }
 
     #[test]

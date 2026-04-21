@@ -1,0 +1,29 @@
+{
+  "task_id": "E2_005",
+  "arm": "treatment",
+  "seed": 2,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 7250,
+  "tokens_out": 399,
+  "final_text": "Now I have all the data. Let me filter to top-level functions (not inside `impl` blocks, not inside `mod tests`) with span \u2265 30 lines:\n\nTop-level functions (kind=`function`, not inside impl/tests):\n- `rank`: lines 101\u2013103 \u2192 span = 3 \u274c\n- `apply_blast_radius`: lines 109\u2013116 \u2192 span = 8 \u274c\n- `rank_with_config`: lines 145\u2013168 \u2192 span = 24 \u274c\n- `build_name_index`: lines 173\u2013187 \u2192 span = 15 \u274c\n- `build_file_edges`: lines 191\u2013213 \u2192 span = 23 \u274c\n- `pagerank`: lines 217\u2013279 \u2192 span = 63 \u2705\n- `compute_blast`: lines 284\u2013314 \u2192 span = 31 \u2705\n- `transitive_caller_count`: lines 319\u2013352 \u2192 span = 34 \u2705\n\nAll functions from line 355+ are inside `mod tests` \u2014 excluded.\n\nSorted lexicographically: `compute_blast`, `pagerank`, `transitive_caller_count`.\n\n[\"compute_blast\", \"pagerank\", \"transitive_caller_count\"]",
+  "parsed_answer": [
+    "compute_blast",
+    "pagerank",
+    "transitive_caller_count"
+  ],
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "sigil_symbols",
+      "input": {
+        "file": "src/rank.rs",
+        "depth": 1,
+        "names_only": false
+      },
+      "result_len": 5620,
+      "result_preview": "[{\"file\":\"src/rank.rs\",\"name\":\"RankedIndex\",\"kind\":\"struct\",\"line_start\":47,\"line_end\":58,\"sig\":\"pub struct RankedIndex\",\"visibility\":\"public\"},{\"file\":\"src/rank.rs\",\"name\":\"EntityKey\",\"kind\":\"struct\",\"line_start\":62,\"line_end\":66,\"sig\":\"pub struct EntityKey\",\"visibility\":\"public\"},{\"file\":\"src/rank.rs\",\"name\":\"EntityKey\",\"kind\":\"impl\",\"line_start\":68,\"line_end\":76,\"sig\":\"impl EntityKey\"},{\"file\":"
+    }
+  ],
+  "timestamp": "2026-04-21T11:33:10.929201+00:00"
+}
