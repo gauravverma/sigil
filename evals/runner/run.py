@@ -54,19 +54,30 @@ def task_repo_root(task: dict) -> Path:
 SIGIL_BLURB = """\
 You also have `sigil` available on PATH — a deterministic structural code
 intelligence CLI. Capabilities:
-  sigil search <name>           symbols by name substring — returns file + line +
-                                kind + parent class. Empty result means "no such
-                                symbol," not "retry with more keywords."
-  sigil symbols <FILE>          every entity in ONE file with its parent class.
-                                Prefer this once you've narrowed to a file.
-  sigil callers <name>          who calls <name>: returns file + caller + line.
+  sigil where <symbol>          single-shot locator: file + line + class +
+                                overrides + overload count. Use this for "find
+                                the definition of X" questions.
+  sigil context <symbol>        full bundle: signature + callers + callees +
+                                related types + inheritance. Prefer this over
+                                multiple search+read_file pairs.
+  sigil search <name>           symbols by name substring — returns file + line
+                                + kind + parent + signature. Empty result means
+                                "no such symbol," not "retry with more keywords."
+  sigil symbols <FILE>          entities in ONE file (pass --depth 1 for a
+                                top-level outline — classes/fns only, no nested
+                                variables). Prefer this once you've narrowed.
+  sigil callers <name>          who calls <name> (pass --group-by file for a
+                                file-count summary when you don't need line-
+                                level detail).
   sigil callees <caller>        what <caller> calls.
+  sigil outline [--path DIR]    hierarchical top-level tree of classes + fns.
   sigil map --tokens N          ranked codebase digest (orientation).
-  sigil context <symbol>        signature + callers + callees + related types.
 
 All commands support `--json` for machine-readable output. Prefer short,
 specific substrings ("default", not "get_default_from_env") and narrow to
-a file with `sigil symbols FILE` as soon as you know which file matters.
+a file with `sigil symbols FILE --depth 1` as soon as you know which file
+matters. Reach for `sigil context`/`sigil where` before chaining three
+generic searches.
 """
 
 SYSTEM_PROMPT_BASE = """\
@@ -83,13 +94,13 @@ object, or another JSON value. Match the exact shape requested.
 TOOLS = [
     {
         "name": "read_file",
-        "description": "Read a file from the repository. Returns up to 2000 lines.",
+        "description": "Read a file from the repository. Returns up to 200 lines by default; pass `limit` up to 5000 for longer spans. Prefer narrow reads — whole-file reads become context bloat on subsequent turns.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "Repo-relative path"},
                 "offset": {"type": "integer", "description": "Optional 1-based line offset", "default": 1},
-                "limit": {"type": "integer", "description": "Max lines to return", "default": 2000},
+                "limit": {"type": "integer", "description": "Max lines to return", "default": 200},
             },
             "required": ["path"],
         },
@@ -150,7 +161,11 @@ def arm_env(arm: str) -> dict[str, str]:
 def tool_read_file(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
     path = cwd / inp["path"]
     offset = max(1, int(inp.get("offset", 1)))
-    limit = max(1, min(int(inp.get("limit", 2000)), 5000))
+    # Default capped at 200 lines. Prior default of 2000 let a single read
+    # on a 3k-line source file dump 90 KB into context, which then got
+    # re-sent on every subsequent turn — Haiku's 453k-token E4 blowup was
+    # exactly this. Explicit --limit N overrides up to 5000.
+    limit = max(1, min(int(inp.get("limit", 200)), 5000))
     if not path.exists():
         return f"ERROR: {path} not found"
     lines = path.read_text(errors="replace").splitlines()
