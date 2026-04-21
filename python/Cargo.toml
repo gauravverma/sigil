@@ -9,6 +9,16 @@ name = "sigil"
 crate-type = ["cdylib"]
 
 [dependencies]
-sigil_core = { path = "..", package = "sigil" }
+# Python bindings only use the parse + diff paths (diff_json, diff_files,
+# diff_refs, index_json). The DuckDB query backend and the BPE tokenizer
+# don't show up in the Python API surface, so opt out of them here to
+# avoid a ~20 MB binary inflation and the Windows rstrtmgr.lib link issue
+# that duckdb-rs hits when the wheel inherits the Rust crate's default
+# features.
+sigil_core = { path = "..", package = "sigil", default-features = false, features = [
+    "lang-python", "lang-rust", "lang-javascript", "lang-typescript",
+    "lang-go", "lang-java", "lang-c", "lang-cpp", "lang-ruby",
+    "lang-csharp", "lang-markdown",
+] }
 pyo3 = { version = "0.28", features = ["extension-module", "abi3-py39"] }
 serde_json = { version = "1", features = ["preserve_order"] }
