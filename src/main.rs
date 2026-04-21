@@ -167,8 +167,11 @@ enum Cli {
         /// Project root directory
         #[arg(short, long, default_value = ".")]
         root: PathBuf,
-        /// Filter by scope: symbol, file, text
-        #[arg(long)]
+        /// Filter by scope: symbol (default), file, all. Defaults to
+        /// `symbol` because agents almost always want symbol hits —
+        /// file-path matches add noise on keyword queries. Pass `--scope
+        /// all` or `--scope file` to widen.
+        #[arg(long, default_value = "symbol")]
         scope: Vec<String>,
         /// Filter by kind (e.g., function, class, method)
         #[arg(long)]
@@ -700,10 +703,12 @@ fn main() {
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             // `scope` / `kind` are Vec<String> for CLI multi-arg compatibility;
             // first value wins for filtering (matches codeix's prior behavior).
+            // Default is "symbol" (see the CLI arg definition) — agents want
+            // symbol hits almost all the time.
             let scope_enum = scope
                 .first()
                 .map(|s| query::index::Scope::parse(s))
-                .unwrap_or(query::index::Scope::All);
+                .unwrap_or(query::index::Scope::Symbols);
             let kind_filter = kind.first().map(|s| s.as_str());
             let results = backend.search(&q, scope_enum, kind_filter, path.as_deref(), limit as usize);
             if json {
