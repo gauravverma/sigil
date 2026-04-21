@@ -70,6 +70,7 @@ impl Backend {
         let root = root
             .canonicalize()
             .with_context(|| format!("cannot resolve path: {}", root.display()))?;
+        ensure_indexed(&root)?;
         let forced = std::env::var("SIGIL_BACKEND").ok();
         match forced.as_deref() {
             Some("memory") => load_in_memory(&root),
@@ -318,12 +319,61 @@ fn auto_engage_threshold_bytes() -> u64 {
     duckdb_backend::DEFAULT_AUTO_UPGRADE_THRESHOLD_BYTES
 }
 
+/// Auto-index on first query: if `.sigil/entities.jsonl` is missing (or
+/// the directory doesn't exist at all), run `build_index` once to bring
+/// the repo to a queryable state. Prints a one-line heads-up to stderr
+/// so the agent (or user) knows there's a first-run cost.
+///
+/// Respects an opt-out via `SIGIL_NO_AUTO_INDEX=1` for users who want
+/// the old "empty index -> no-op" behavior (e.g. during bulk scripting
+/// where indexing cost matters).
+pub fn ensure_indexed(root: &Path) -> Result<()> {
+    if std::env::var("SIGIL_NO_AUTO_INDEX").ok().as_deref() == Some("1") {
+        return Ok(());
+    }
+    let entities_path = root.join(".sigil").join("entities.jsonl");
+    if entities_path.exists() {
+        return Ok(());
+    }
+    eprintln!(
+        "sigil: no index at {}/.sigil — running `sigil index` once (set SIGIL_NO_AUTO_INDEX=1 to skip)",
+        root.display()
+    );
+    let result = crate::index::build_index(
+        root,
+        /* files */ None,
+        /* full */ true,
+        /* include_refs */ true,
+        /* verbose */ false,
+    );
+    // Populate file-level PageRank and per-entity blast radius so
+    // downstream commands (`map`, `blast`, `review`) see a ranked
+    // index on the very first run. Mirrors `sigil index` (without
+    // `--no-rank`) and costs a single extra pass.
+    let mut entities = result.entities;
+    let refs = result.refs;
+    let cfg = crate::rank::RankConfig::default();
+    let ranked = crate::rank::rank(&entities, &refs);
+    crate::rank::apply_blast_radius(&mut entities, &ranked);
+    // Best-effort writes — failures don't abort the query (we have the
+    // data in memory; the next build fills the cache).
+    let _ = crate::writer::write_to_files(&entities, &refs, root, /* pretty */ false);
+    let manifest = crate::rank::RankManifest::from_ranked(&ranked, &cfg);
+    let _ = crate::writer::write_rank_json(&manifest, root, /* pretty */ false);
+    Ok(())
+}
+
 /// Load the sigil index from `.sigil/` under `root`. Thin wrapper over
 /// `Index::load` for call-site symmetry with the old `load_index`.
+///
+/// Auto-indexes on first run (see `ensure_indexed`) so that `sigil
+/// where` / `sigil context` / `sigil outline` on a fresh repo Just
+/// Works rather than failing with "no index found."
 pub fn load(root: &Path) -> Result<Index> {
     let root = root
         .canonicalize()
         .with_context(|| format!("cannot resolve path: {}", root.display()))?;
+    ensure_indexed(&root)?;
     let idx = Index::load(&root).context("failed to load .sigil/ index")?;
     if idx.is_empty() {
         anyhow::bail!(
@@ -558,6 +608,70 @@ pub fn emit_references_json<W: std::io::Write>(
         serde_json::to_writer(&mut w, refs)?;
     }
     writeln!(w)
+}
+
+/// Predicate used by `sigil symbols --depth 1` to keep only the file's
+/// top-level "outline" items — classes, top-level functions, structs,
+/// enums, traits, and markdown sections. Drops imports, variables,
+/// constants, and anything nested inside a parent (methods, inner
+/// helpers). The intended consumer is an agent that wants a file's
+/// rough shape without the full entity dump (~95% byte reduction on
+/// mid-sized source files).
+pub fn is_top_level_outline(e: &Entity) -> bool {
+    if e.parent.is_some() {
+        return false;
+    }
+    matches!(
+        e.kind.as_str(),
+        "class"
+            | "struct"
+            | "enum"
+            | "trait"
+            | "interface"
+            | "function"
+            | "fn"
+            | "module"
+            | "section"
+            | "type_alias"
+            | "impl"
+    )
+}
+
+/// Emit a reference slice as a grouped count map — `{key: count}` — on
+/// `w`. Supported dimensions: `file`, `caller`, `name`, `kind`. Used by
+/// `sigil callers --group-by file` to collapse 128 rows of per-call-site
+/// detail into a handful of `{file: count}` entries when the agent only
+/// needs distribution, not line-level detail.
+pub fn emit_refs_grouped<W: std::io::Write>(
+    mut w: W,
+    refs: &[&Reference],
+    dim: &str,
+    pretty: bool,
+) -> anyhow::Result<()> {
+    use std::collections::BTreeMap;
+    let mut counts: BTreeMap<String, u32> = BTreeMap::new();
+    for r in refs {
+        let key = match dim {
+            "file" => r.file.clone(),
+            "caller" => r.caller.clone().unwrap_or_else(|| "<top-level>".into()),
+            "name" => r.name.clone(),
+            "kind" => r.ref_kind.clone(),
+            other => {
+                anyhow::bail!(
+                    "unknown --group-by {other}. expected: file | caller | name | kind"
+                );
+            }
+        };
+        *counts.entry(key).or_insert(0) += 1;
+    }
+    let value = serde_json::to_value(&counts)?;
+    if pretty {
+        serde_json::to_writer_pretty(&mut w, &value)?;
+    } else {
+        serde_json::to_writer(&mut w, &value)?;
+    }
+    writeln!(w)?;
+    Ok(())
 }
 
 fn strip_hashes_in_place(values: &mut [serde_json::Value]) {

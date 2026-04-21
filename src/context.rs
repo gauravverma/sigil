@@ -128,10 +128,23 @@ pub struct Context {
     pub callers: Vec<Edge>,
     pub callees: Vec<Edge>,
     pub related_types: Vec<Edge>,
+    /// When `chosen` is a method (has a parent class), other classes in
+    /// the codebase that define a method with the same tail segment —
+    /// the inheritance / polymorphism delta. Empty for non-method
+    /// symbols. Capped at 5 to avoid blowing the budget; the count in
+    /// `skipped_overrides` tracks truncation.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub overrides: Vec<SymbolRef>,
     pub skipped_callers: usize,
     pub skipped_callees: usize,
     pub skipped_types: usize,
+    #[serde(default, skip_serializing_if = "is_zero_usize")]
+    pub skipped_overrides: usize,
     pub estimated_tokens: usize,
+}
+
+fn is_zero_usize(n: &usize) -> bool {
+    *n == 0
 }
 
 /// Parse a query string into (optional file filter, optional parent filter, name).
@@ -265,6 +278,11 @@ pub fn build_context(idx: &Index, query: &str, opts: &ContextOptions) -> Option<
         .collect();
     let skipped_types = type_refs.len().saturating_sub(related_types.len());
 
+    // Inheritance delta: when the chosen symbol is a method (has a
+    // parent class), find other classes that define a method with the
+    // same tail segment. Cap at 5 so we don't blow the budget.
+    let (overrides, skipped_overrides) = find_overrides(idx, chosen_entity, opts);
+
     let mut ctx = Context {
         query: query.to_string(),
         chosen,
@@ -272,9 +290,11 @@ pub fn build_context(idx: &Index, query: &str, opts: &ContextOptions) -> Option<
         callers,
         callees,
         related_types,
+        overrides,
         skipped_callers,
         skipped_callees,
         skipped_types,
+        skipped_overrides,
         estimated_tokens: 0,
     };
 
@@ -282,6 +302,71 @@ pub fn build_context(idx: &Index, query: &str, opts: &ContextOptions) -> Option<
     enforce_budget(&mut ctx, opts);
 
     Some(ctx)
+}
+
+/// Tail segment of a qualified name — last `::`- or `.`-separated piece.
+fn tail_segment(name: &str) -> &str {
+    name.rsplit(|c| c == ':' || c == '.').next().unwrap_or(name)
+}
+
+/// Find other classes in the index that define a method with the same
+/// tail segment as `chosen`. Returns (selected, skipped_count).
+///
+/// A "method with the same tail" is an entity whose:
+///   * tail segment equals `chosen`'s tail segment
+///   * parent is `Some(...)` AND differs from `chosen`'s parent
+///   * kind is `method` / `function` / `fn`
+///
+/// This lets `sigil context Parameter.get_default` automatically
+/// surface `Option.get_default` as an override, so the agent doesn't
+/// need a second `sigil where` call to spot inheritance.
+fn find_overrides(
+    idx: &Index,
+    chosen: &Entity,
+    opts: &ContextOptions,
+) -> (Vec<SymbolRef>, usize) {
+    let Some(chosen_parent) = chosen.parent.as_deref() else {
+        return (Vec::new(), 0);
+    };
+    if !matches!(chosen.kind.as_str(), "method" | "function" | "fn") {
+        return (Vec::new(), 0);
+    }
+    let target_tail = tail_segment(&chosen.name);
+
+    let candidates: Vec<&Entity> = idx
+        .entities
+        .iter()
+        .filter(|e| tail_segment(&e.name) == target_tail)
+        .filter(|e| matches!(e.kind.as_str(), "method" | "function" | "fn"))
+        .filter(|e| {
+            e.parent
+                .as_deref()
+                .map(|p| p != chosen_parent)
+                .unwrap_or(false)
+        })
+        .filter(|e| !opts.exclude_tests || !crate::entity::is_test_path(&e.file))
+        .collect();
+
+    // Dedupe by (file, parent) so Python @overload stubs don't surface
+    // multiple times.
+    use std::collections::HashSet;
+    let mut seen: HashSet<(String, Option<String>)> = HashSet::new();
+    let mut unique: Vec<&Entity> = Vec::new();
+    for e in candidates {
+        if seen.insert((e.file.clone(), e.parent.clone())) {
+            unique.push(e);
+        }
+    }
+
+    const MAX_OVERRIDES: usize = 5;
+    let total = unique.len();
+    let selected: Vec<SymbolRef> = unique
+        .into_iter()
+        .take(MAX_OVERRIDES)
+        .map(SymbolRef::from_entity)
+        .collect();
+    let skipped = total.saturating_sub(selected.len());
+    (selected, skipped)
 }
 
 fn caller_edge(r: &Reference) -> Edge {
@@ -383,6 +468,27 @@ pub fn render_markdown(ctx: &Context) -> String {
         out.push_str("```\n");
         out.push_str(sig.trim());
         out.push_str("\n```\n\n");
+    }
+
+    if !ctx.overrides.is_empty() {
+        out.push_str(&format!(
+            "## Overrides ({}{})\n\n",
+            ctx.overrides.len(),
+            if ctx.skipped_overrides > 0 {
+                format!(", +{} more", ctx.skipped_overrides)
+            } else {
+                String::new()
+            },
+        ));
+        for o in &ctx.overrides {
+            let parent = o.parent.as_deref().unwrap_or("<top-level>");
+            let name_tail = o.name.rsplit(|ch| ch == ':' || ch == '.').next().unwrap_or(&o.name);
+            out.push_str(&format!(
+                "- `{parent}.{name_tail}` in `{}`:{}-{}\n",
+                o.file, o.line_start, o.line_end
+            ));
+        }
+        out.push_str("\n");
     }
 
     render_edge_section(

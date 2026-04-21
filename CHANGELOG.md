@@ -6,6 +6,51 @@ All notable changes to sigil are documented here. Format follows
 
 ## [0.4.0] — 2026-04-21
 
+### Added — gap-widening primitives
+
+Based on E4 SWE-bench-like trace analysis, five improvements aimed at
+reducing the per-turn tool-result cost that dominates agent token usage:
+
+- **`sigil where <symbol>`** — single-shot definition locator. Returns
+  one row per defining (file, parent, kind) with signature preview,
+  overload count, and test-file flag. Tail-segment matching
+  (`get_default` matches `Parameter.get_default` and `Option.get_default`
+  but not `CliRunner.get_default_prog_name`). Replaces the common
+  `sigil search` + `read_file` + `grep` chain with one call.
+- **`sigil outline [--path DIR]`** — hierarchical top-level tree of
+  classes / functions / structs / enums / traits grouped by file.
+  Complements `sigil map` (rank-ordered, budget-aware) with a plain
+  structural view — no token budget, every eligible entity listed once.
+  `src/click/` on pallets/click yields 17 files / 210 symbols in ~30 KB.
+- **`sigil context` now surfaces inheritance delta.** When the chosen
+  symbol is a method with a parent class, other classes in the codebase
+  that define a method with the same tail segment appear in an
+  `overrides: []` block (capped at 5, with `skipped_overrides` for the
+  truncation count). Agents no longer need a second `sigil where`
+  call to spot polymorphism — the override list is in the same bundle.
+- **`sigil symbols --depth 1`** — outline mode. Filters a file's
+  entity list down to top-level items (classes, top-level functions,
+  structs, enums, traits, sections) — drops imports, variables,
+  constants, and nested methods. Measured 95% byte reduction on
+  `src/click/core.py` (87 KB -> 3.9 KB).
+- **`sigil callers <name> --group-by file`** (also on `callees`) —
+  collapse per-call-site output to a `{file: count}` map. Turns a
+  128-ref flat list into a dozen-entry summary when the agent only
+  needs distribution.
+
+### Added — other
+
+- **`sigil search` carries a signature preview.** Each row now
+  includes `sig` when the entity has one, eliminating a follow-up
+  `read_file` for common "look at the signature" flows. ~30-50 bytes
+  per row overhead; typically saves a 2-5 KB file read.
+- **Auto-index on first query.** Running `sigil where`, `sigil
+  context`, `sigil outline`, `sigil symbols`, etc. in a directory
+  without `.sigil/` now transparently runs `sigil index` (including
+  a full rank + blast pass) with a one-line stderr heads-up. Zero-
+  config onboarding for fresh clones. Opt out with
+  `SIGIL_NO_AUTO_INDEX=1`.
+
 ### Changed — JSON output schema (breaking)
 
 Script-facing commands with `--json` now emit a **compact** schema designed

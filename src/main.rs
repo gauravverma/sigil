@@ -199,6 +199,12 @@ enum Cli {
         /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
         #[arg(long, default_value = "0")]
         limit: u32,
+        /// Outline depth. `1` = top-level items only (classes, top-level
+        /// functions, structs, enums, traits, sections) — drops imports,
+        /// nested methods, variables, constants. `0` (default) = every
+        /// entity extracted for the file.
+        #[arg(long, default_value = "0")]
+        depth: u32,
         /// Output as JSON (compact by default — see --pretty, --with-hashes)
         #[arg(long)]
         json: bool,
@@ -246,6 +252,11 @@ enum Cli {
         /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
         #[arg(long, default_value = "0")]
         limit: u32,
+        /// Collapse output to {file: count} aggregation. Useful when you
+        /// only need the file distribution, not per-call-site detail.
+        /// 128 refs → a few-entry map.
+        #[arg(long, value_name = "DIM")]
+        group_by: Option<String>,
         /// Output as JSON (compact by default — see --pretty)
         #[arg(long)]
         json: bool,
@@ -266,10 +277,60 @@ enum Cli {
         /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
         #[arg(long, default_value = "0")]
         limit: u32,
+        /// Collapse output to {name: count} aggregation (what does <caller>
+        /// call most?).
+        #[arg(long, value_name = "DIM")]
+        group_by: Option<String>,
         /// Output as JSON (compact by default — see --pretty)
         #[arg(long)]
         json: bool,
         /// Pretty-print JSON output (default: minified)
+        #[arg(long)]
+        pretty: bool,
+    },
+    /// Hierarchical outline — every top-level class / function / struct /
+    /// enum / trait grouped by file. Complements `sigil map` (rank-
+    /// ordered, budget-aware) by giving a plain structural tree for
+    /// "what's in this directory" questions.
+    Outline {
+        /// Project root directory
+        #[arg(short, long, default_value = ".")]
+        root: PathBuf,
+        /// Restrict to files starting with this prefix (e.g. `src/click/`).
+        #[arg(long)]
+        path: Option<String>,
+        /// Output format: markdown (default) or json.
+        #[arg(long, default_value = "markdown")]
+        format: String,
+        /// Pretty-print when --format=json.
+        #[arg(long)]
+        pretty: bool,
+    },
+    /// Single-shot definition locator — where is `<symbol>` defined?
+    ///
+    /// Returns one record per definition (class / method / function /
+    /// struct / enum / trait / type alias), deduped across Python
+    /// @overload stubs, with signature preview + inheritance siblings.
+    /// Intended as the first-call "find the relevant code" primitive
+    /// for agents on unfamiliar codebases.
+    Where {
+        /// Symbol name to locate. Matches on the last `::` or `.`-
+        /// separated segment, so `get_default` matches both
+        /// `Parameter.get_default` and `Option.get_default` but NOT
+        /// `CliRunner.get_default_prog_name`.
+        symbol: String,
+        /// Project root directory
+        #[arg(short, long, default_value = ".")]
+        root: PathBuf,
+        /// Include definitions that live under typical test paths.
+        /// Off by default — test files dilute a "find the implementation"
+        /// answer.
+        #[arg(long)]
+        include_tests: bool,
+        /// Output format: markdown (default) or json.
+        #[arg(long, default_value = "markdown")]
+        format: String,
+        /// Pretty-print when --format=json.
         #[arg(long)]
         pretty: bool,
     },
@@ -729,8 +790,11 @@ fn main() {
                 //   - `overloads` elided when 1.
                 use std::collections::BTreeMap;
                 let mut order: Vec<(String, String, String)> = Vec::new();
-                let mut groups: BTreeMap<(String, String, String), (u32, u32, Option<String>, u32)> =
-                    BTreeMap::new();
+                // (line_start, line_end, parent, overloads, sig_preview)
+                let mut groups: BTreeMap<
+                    (String, String, String),
+                    (u32, u32, Option<String>, u32, Option<String>),
+                > = BTreeMap::new();
                 let mut file_rows: Vec<serde_json::Value> = Vec::new();
                 for h in &results {
                     match h {
@@ -738,10 +802,10 @@ fn main() {
                             let key = (e.file.clone(), e.name.clone(), e.kind.clone());
                             groups
                                 .entry(key.clone())
-                                .and_modify(|(_, _, _, n)| *n += 1)
+                                .and_modify(|(_, _, _, n, _)| *n += 1)
                                 .or_insert_with(|| {
                                     order.push(key);
-                                    (e.line_start, e.line_end, e.parent.clone(), 1)
+                                    (e.line_start, e.line_end, e.parent.clone(), 1, e.sig.clone())
                                 });
                         }
                         sigil::query::SearchHitOwned::File(f) => {
@@ -760,7 +824,7 @@ fn main() {
 
                 let mut json_hits: Vec<serde_json::Value> = Vec::with_capacity(order.len() + file_rows.len());
                 for key in order {
-                    let (line_start, line_end, parent, overloads) = groups[&key].clone();
+                    let (line_start, line_end, parent, overloads, sig) = groups[&key].clone();
                     let (file, name, kind) = key;
                     let mut row = serde_json::Map::new();
                     row.insert("file".into(), serde_json::Value::from(file));
@@ -772,6 +836,13 @@ fn main() {
                     }
                     if let Some(p) = parent {
                         row.insert("parent".into(), serde_json::Value::from(p));
+                    }
+                    // Signature preview saves a follow-up read_file. ~50-120 extra
+                    // bytes per row, but typically eliminates a 2-5 KB file read.
+                    if let Some(s) = sig {
+                        if !s.is_empty() {
+                            row.insert("sig".into(), serde_json::Value::from(s));
+                        }
                     }
                     if overloads > 1 {
                         row.insert("overloads".into(), serde_json::Value::from(overloads));
@@ -792,11 +863,16 @@ fn main() {
                 print!("{}", query::format_search_hits_owned(&results));
             }
         }
-        Cli::Symbols { file, root, limit, json, pretty, with_hashes } => {
+        Cli::Symbols { file, root, limit, depth, json, pretty, with_hashes } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let symbols = backend.get_file_symbols(&file, None, limit as usize);
-            let refs: Vec<&sigil::entity::Entity> = symbols.iter().collect();
+            let filtered: Vec<sigil::entity::Entity> = if depth == 1 {
+                symbols.into_iter().filter(query::is_top_level_outline).collect()
+            } else {
+                symbols
+            };
+            let refs: Vec<&sigil::entity::Entity> = filtered.iter().collect();
             if json {
                 query::emit_entities_json(std::io::stdout(), &refs, pretty, with_hashes).ok();
             } else {
@@ -814,26 +890,62 @@ fn main() {
                 print!("{}", query::format_entities(&refs));
             }
         }
-        Cli::Callers { name, root, kind, limit, json, pretty } => {
+        Cli::Callers { name, root, kind, limit, group_by, json, pretty } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let refs = backend.get_callers(&name, kind.as_deref(), limit as usize);
             let borrowed: Vec<&sigil::entity::Reference> = refs.iter().collect();
-            if json {
+            if let Some(dim) = group_by.as_deref() {
+                query::emit_refs_grouped(std::io::stdout(), &borrowed, dim, pretty).unwrap_or_else(|e| {
+                    eprintln!("error: {}", e);
+                    std::process::exit(1);
+                });
+            } else if json {
                 query::emit_references_json(std::io::stdout(), &borrowed, pretty).ok();
             } else {
                 print!("{}", query::format_refs(&borrowed));
             }
         }
-        Cli::Callees { caller, root, kind, limit, json, pretty } => {
+        Cli::Callees { caller, root, kind, limit, group_by, json, pretty } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let refs = backend.get_callees(&caller, kind.as_deref(), limit as usize);
             let borrowed: Vec<&sigil::entity::Reference> = refs.iter().collect();
-            if json {
+            if let Some(dim) = group_by.as_deref() {
+                query::emit_refs_grouped(std::io::stdout(), &borrowed, dim, pretty).unwrap_or_else(|e| {
+                    eprintln!("error: {}", e);
+                    std::process::exit(1);
+                });
+            } else if json {
                 query::emit_references_json(std::io::stdout(), &borrowed, pretty).ok();
             } else {
                 print!("{}", query::format_refs(&borrowed));
+            }
+        }
+        Cli::Outline { root, path, format, pretty } => {
+            let idx = query::load(&root)
+                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+            let report = sigil::outline::build_outline(&idx, path.as_deref());
+            match format.as_str() {
+                "markdown" => print!("{}", sigil::outline::render_markdown(&report)),
+                "json" => println!("{}", sigil::outline::render_json(&report, pretty)),
+                other => {
+                    eprintln!("error: unknown --format {}. expected: markdown | json", other);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Cli::Where { symbol, root, include_tests, format, pretty } => {
+            let idx = query::load(&root)
+                .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
+            let report = sigil::where_cmd::find_definitions(&idx, &symbol, include_tests);
+            match format.as_str() {
+                "markdown" => print!("{}", sigil::where_cmd::render_markdown(&report)),
+                "json" => println!("{}", sigil::where_cmd::render_json(&report, pretty)),
+                other => {
+                    eprintln!("error: unknown --format {}. expected: markdown | json", other);
+                    std::process::exit(1);
+                }
             }
         }
         Cli::Blast { symbol, root, depth, format, pretty, exclude_tests } => {
