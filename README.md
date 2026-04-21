@@ -30,13 +30,19 @@ Measured with the GPT-4o/o3 BPE tokenizer. Reproduce with `sigil benchmark` on y
 - `sigil symbols <file>` / `sigil children <file> <parent>` / `sigil search <q>` — precise AST lookups, not regex guesses.
 - `sigil duplicates` — clone report (free — sigil already hashes entity bodies).
 
-**For AI agents — budget-aware bundles that fit a context window:**
+**For AI agents — one-shot primitives that fit a context window:**
+- `sigil where <symbol>` — single-shot definition locator. Returns file + line + class + signature + overloads in one call. Replaces the grep-narrow-read_file chain.
+- `sigil context <symbol>` — signature + callers + callees + related types + inheritance overrides, in ~500 tokens.
 - `sigil map` — ranked codebase digest. Cold-start orientation in one tool call.
-- `sigil context <symbol>` — signature + callers + callees + related types, in ~500 tokens.
+- `sigil outline [--path DIR]` — hierarchical top-level tree of classes + fns grouped by file.
 - `sigil review A..B` — PR review: `diff` + blast radius + co-change misses. Replaces `git diff` for review.
 
+On empty results sigil emits a `Did you mean: X, Y, Z?` hint on stderr so agents don't abandon the tool on the first wrong guess. First query on a fresh clone auto-runs `sigil index` — zero-config onboarding.
+
 **For scripts & CI:**
-- `sigil diff --json` / `sigil query "SELECT ..."` (DuckDB, baked into the shipped binary) / every command supports `--json`.
+- Every command supports `--json`; output is minified by default (pass `--pretty` for indented).
+- `sigil query "SELECT ..."` for ad-hoc SQL against the materialized index.
+- `sigil callers X --group-by file` collapses per-call-site output to a `{file: count}` map when you only need distribution.
 
 ### `git sigil` — the git-native alias
 
@@ -107,17 +113,16 @@ sudo mv sigil-aarch64-apple-darwin/sigil /usr/local/bin/
 
 Available archives: `sigil-aarch64-apple-darwin.tar.gz`, `sigil-x86_64-apple-darwin.tar.gz`, `sigil-aarch64-unknown-linux-gnu.tar.gz`, `sigil-x86_64-unknown-linux-gnu.tar.gz`, `sigil-x86_64-pc-windows-msvc.zip`.
 
-Single binary, ~20 MB. Every command ships in it: `index` / `diff` / `map` / `context` / `review` / `blast` / `query`, plus the DuckDB backend for monorepo scale and the BPE-accurate tokenizer for `sigil benchmark`.
+Single binary, ~20 MB. Every command ships in it: `index` / `diff` / `map` / `context` / `where` / `outline` / `review` / `blast` / `query` — plus the DuckDB backend for monorepo scale and a BPE-accurate tokenizer for `sigil benchmark`. No opt-in features, no partial builds.
 
 ### Building from source (optional)
 
 ```bash
 git clone https://github.com/gauravverma/sigil && cd sigil
-cargo build --release --features db,tokenizer  # match the shipped release
-cargo build --release                          # lean (no DuckDB, no BPE)
+cargo build --release
 ```
 
-Building with `db` requires a C++17 toolchain (Xcode CLT on macOS, `build-essential` on Debian/Ubuntu, MSVC on Windows) — DuckDB is bundled from source. The compiled binary lands at `target/release/sigil`.
+The default build produces the full binary (all 11 languages + DuckDB + tokenizer). Requires a C++17 toolchain for DuckDB (Xcode CLT on macOS, `build-essential` on Debian/Ubuntu, MSVC on Windows) — DuckDB sources are bundled. The compiled binary lands at `target/release/sigil`.
 
 ### Python bindings
 
@@ -250,12 +255,18 @@ The agent-shaped wrapper around `diff`: structural changes ranked by blast radiu
 ### 6. Navigation queries
 
 ```bash
-sigil callers Entity             # exact reference sites
-sigil callees build_index        # what a function depends on
-sigil symbols src/entity.rs      # what's in a file
-sigil search parse --scope symbol
-sigil blast Entity --depth 5     # impact summary
+sigil where get_default                # single-shot: file + line + class + signature
+sigil callers Entity                   # exact reference sites
+sigil callers Entity --group-by file   # {file: count} summary
+sigil callees build_index              # what a function depends on
+sigil symbols src/entity.rs            # all entities in a file
+sigil symbols src/entity.rs --depth 1  # top-level outline only (95% smaller)
+sigil outline --path src/parser/       # hierarchical view of a subtree
+sigil search parse                     # substring symbol search
+sigil blast Entity --depth 5           # impact summary
 ```
+
+Wrong-name guesses are recoverable: `sigil where resolve_default` → stderr prints `Did you mean: get_default, lookup_default, resolve_color_default?` so the agent retries with the suggested name instead of falling back to grep.
 
 ### 7. Run the benchmark on your repo
 
@@ -271,7 +282,7 @@ Prints a per-query table: bytes grep would produce vs bytes sigil produces, plus
 
 ## Install into your AI agent
 
-Each installer writes a capability-describing block (what sigil does, when each command fits) — never a preference statement ("use sigil instead of grep"). Agents discover the tool on the same terms they'd discover any built-in command.
+Each installer writes a directive block into the host agent's system context — a question→command flowchart ("where is X defined?" → `sigil where X`) plus a worked one-shot example. The phrasing is the same prompt shape that produced deterministic sigil-first paths in our evals (Sonnet treatment on the click-library find-method task: 2 turns, 5.5k tokens, byte-identical across N=3 seeds, 2.22× cheaper than grep-only control).
 
 ```bash
 sigil claude install     # CLAUDE.md + .claude/settings.json PreToolUse hook
@@ -290,7 +301,7 @@ Each has a matching `uninstall`. Every installer is idempotent (rerunning with s
 
 ## Benchmarks
 
-### Multi-language test (DuckDB backend auto-engaged at 5 MB threshold)
+### Multi-language test (DuckDB backend auto-engaged at the 5 MB threshold)
 
 One OSS repo per language, 3 query shapes each, 3-run median wall-clock. Sigil vs `git grep`. Full writeup in [evals/results/multilang-with-db-2026-04-20.md](evals/results/multilang-with-db-2026-04-20.md).
 
@@ -342,11 +353,11 @@ Median: **35×**. BPE-accurate counts via `o200k_base`. Raw JSON at [evals/resul
    ┌─────────────────┼─────────────────────────────┐
    ▼                 ▼                             ▼
  in-memory        DuckDB-backed               sigil diff
- HashMap Index    (feature = "db")            (structural match + classify)
- (small repos)    (≥5 MB JSONL)
+ HashMap Index    (auto-engages ≥5 MB)        (structural match + classify)
+ (small repos)    (monorepo scale)
 ```
 
-1. **tree-sitter parser** extracts entities (functions, structs, classes, types, imports) with line ranges. 11 languages ship; each grammar is feature-gated so source builds can drop unused languages.
+1. **tree-sitter parser** extracts entities (functions, structs, classes, types, imports) with line ranges. 11 languages ship by default; language grammars can be opted out of at build time for a slimmer binary.
 2. **BLAKE3 hashes** per entity — `struct_hash` (raw), `body_hash` (normalized, ignores whitespace), `sig_hash` (signature only). Powers classify: formatting-only vs logic-change vs API-change.
 3. **Reference table** — call / import / type_annotation / instantiation / definition rows, linking caller → target.
 4. **PageRank** over the file import graph ranks which files are load-bearing. **Blast radius** per entity = BFS over the reverse-reference graph, capped at depth 3.
@@ -416,21 +427,25 @@ Exit code is always 0 on success; non-zero only on fatal errors. Rename / move d
 
 | Command | What it does |
 |---|---|
+| `sigil where <symbol> [--include-tests] [--format markdown\|json] [--pretty]` | Single-shot definition locator. Returns one row per defining `(file, parent, kind)` with signature preview + overload count. Test files excluded by default. |
+| `sigil outline [--path DIR] [--format markdown\|json]` | Hierarchical top-level tree of classes + functions grouped by file. Complements `sigil map` (rank-ordered) with a plain structural view. |
 | `sigil map [--tokens N] [--focus PATH] [--exclude-tests] [--write]` | Ranked codebase digest. Pack N tokens of highest-impact orientation into one markdown artifact. `--write` tees to `.sigil/SIGIL_MAP.md`. |
-| `sigil context <symbol> [--budget N] [--format agent\|markdown\|json]` | Focused bundle for one symbol: signature + callers + callees + related types. |
+| `sigil context <symbol> [--budget N] [--format agent\|markdown\|json]` | Focused bundle for one symbol: signature + callers + callees + related types + inheritance overrides. |
 | `sigil review <refspec> [--markdown\|--json]` | PR review: structural diff + blast radius + co-change misses. |
 | `sigil blast <symbol> [--depth N]` | Impact summary: direct callers, files, transitive reach. |
 | `sigil benchmark [--refspec R] [--symbol S] [--tokenizer o200k_base\|cl100k_base\|p50k_base\|proxy] [--format markdown\|json]` | Publishes a median token-reduction number for your repo. |
 
 ### Script-facing (raw, unbounded, JSON-friendly)
 
+Script-facing commands default to unbounded results and minified `--json` output. Pass `--pretty` for indented JSON.
+
 | Command | What it does |
 |---|---|
-| `sigil search <q> [--scope symbol\|file\|text]` | Search over symbols, file paths, or text bodies. Omit `--scope` to search all three. |
-| `sigil symbols <file>` | All entities in a file. |
+| `sigil search <q> [--scope symbol\|file\|all] [--kind K]` | Substring search over symbol names. Defaults to symbol-scope (pass `--scope all` to widen). Rows include file, line, kind, parent, and signature preview. Overload dedupe collapses repeated `(file, name, kind)` hits into one row with `overloads: N`. |
+| `sigil symbols <file> [--depth N] [--with-hashes]` | All entities in a file. `--depth 1` keeps only top-level items (classes, top-level fns) — ~95% smaller payload for outline-style orientation. |
 | `sigil children <file> <parent>` | Entities under a class / module. |
-| `sigil callers <symbol> [--kind call\|import\|type_annotation\|instantiation]` | All references targeting a symbol. |
-| `sigil callees <caller>` | What a symbol calls. |
+| `sigil callers <symbol> [--kind K] [--group-by file\|caller\|name\|kind]` | All references targeting a symbol. `--group-by` collapses to a `{key: count}` map when you only need aggregate distribution. |
+| `sigil callees <caller> [--kind K] [--group-by file\|name\|kind]` | What a symbol calls. Same `--group-by` support. |
 | `sigil explore [--path PATH]` | Directory overview with file counts by language. |
 | `sigil duplicates [--min-lines N]` | Clone report across the codebase (groups by `body_hash`). |
 | `sigil cochange [--commits N]` | Mine git history for file-pair co-change weights (`.sigil/cochange.json`). |
@@ -439,7 +454,7 @@ Exit code is always 0 on success; non-zero only on fatal errors. Rename / move d
 
 | Command | What it does |
 |---|---|
-| `sigil index [--full] [--no-rank]` | Build / refresh the `.sigil/` index. Incremental by default. `--full` forces re-parse; `--no-rank` skips PageRank + blast radius. |
+| `sigil index [--full] [--no-rank]` | Build / refresh the `.sigil/` index. Incremental by default. `--full` forces re-parse; `--no-rank` skips PageRank + blast radius. Runs automatically on the first query in an un-indexed repo (disable with `SIGIL_NO_AUTO_INDEX=1`). |
 | `sigil query "SQL"` | Ad-hoc SQL against the materialized DuckDB index. Tables: `entities`, `refs`, plus `rank` / `blast` views. |
 | `sigil update` | Self-update via axoupdater (release-binary installs). |
 
@@ -462,10 +477,10 @@ Every integration has `sigil <name> uninstall`. All are idempotent and content-p
 
 ## Backend selection
 
-Shipped release binaries include the DuckDB backend; the router picks per query:
+The router picks per query:
 
 1. `SIGIL_BACKEND=memory` → force in-memory.
-2. `SIGIL_BACKEND=db` → force DuckDB (fails loudly if the `db` feature wasn't compiled, which only happens on bare `cargo build --release` source builds).
+2. `SIGIL_BACKEND=db` → force DuckDB.
 3. Otherwise, auto-engage DuckDB when total `.sigil/*.jsonl` size ≥ `SIGIL_AUTO_ENGAGE_THRESHOLD_MB` (default 5 MB).
 4. Fall back to in-memory.
 
