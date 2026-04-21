@@ -55,60 +55,40 @@ def task_repo_root(task: dict) -> Path:
 # native sigil_* tools in the manifest, the agent picks from a
 # labeled decision tree rather than improvising.
 SIGIL_BLURB = """\
-The sigil_* tools (sigil_where, sigil_context, sigil_callers,
-sigil_callees, sigil_symbols, sigil_outline, sigil_search) give you
-pre-computed structural code intelligence.
+sigil_* tools give pre-computed structural code intelligence.
+Use them BEFORE grep for structural questions:
 
-Pick the right tool by question shape:
+  "where is X defined?"       → sigil_where(X)
+  "list the Xs in file F"     → sigil_symbols(F, depth=1, names_only=true)
+  "who calls X?"              → sigil_callers(X)
+  "what does X call?"         → sigil_callees(X)
+  "how does X fit?"           → sigil_context(X)
+  "tree under directory D"    → sigil_outline(D)
+  "find matching 'foo'"       → sigil_search("foo")
 
-  Structural question                    Tool to use FIRST
-  ─────────────────────────────────────  ────────────────────────────────
-  "where is X defined?"                  sigil_where(X)
-  "who calls X?"                         sigil_callers(X)
-  "what does X call?"                    sigil_callees(X)
-  "list the Xs in file F"                sigil_symbols(F, depth=1,
-  (just names, e.g. classes/fns)           names_only=true)
-  "full entities in file F"              sigil_symbols(F, depth=1)
-  "structural tree under directory D"    sigil_outline(D)
-  "how does X fit in the codebase?"      sigil_context(X)
-  "find anything matching 'foo'"         sigil_search("foo")
+Use grep / read_file / bash for:
+  - text / regex patterns inside a known file
+  - files that exist under a directory (NOT classes+fns — that is
+    sigil_outline)
+  - language syntactic patterns grep nails in one line (e.g. Rust
+    `^pub mod`)
 
-File-system / text questions — use bash / grep / read_file (not sigil):
+ALWAYS pass names_only=true to sigil_symbols when the answer is a
+list of names (structs, fns, classes in a file). The default returns
+verbose entity records; use that ONLY when you need signatures or
+line ranges. Typical drop: ~3 KB → ~300 bytes.
 
-  "which files exist under dir D?"       bash (`ls`, `find`)
-  "text content X inside known file F"   grep / read_file
-  "lines matching regex in repo"         grep
-  "language-specific syntactic pattern"  grep (e.g. `^pub mod` in Rust)
-  sigil returned empty AND no "Did you
-  mean?" suggestion on stderr            grep (confirm the name doesn't
-                                         exist textually)
-
-Two rules of thumb:
-  - `sigil_symbols` with `names_only=true` when the answer is a LIST OF
-    NAMES — skip the per-entity metadata.
-  - `sigil_outline` is for CLASSES AND FUNCTIONS under a path, NOT for
-    a plain file listing. Use `ls`/`bash` for pure file enumeration.
-
-Empty sigil results are data, not failure. sigil prints a "Did you
-mean: X, Y, Z?" hint to stderr when the name is close to known
-entities — retry with a suggestion before falling back to grep.
+Empty sigil results print `Did you mean: X, Y, Z?` on stderr — retry
+with a suggested name before falling back to grep.
 
 WORKED EXAMPLE
 
   Q: "Find the method on class Parameter that resolves the default
       value when a callable is passed to click.option(default=...)."
-
-  BAD path (4+ turns, grep-first):
-    grep -rn "default" src/**/*.py   → hundreds of hits
-    grep "class Parameter" ...        → narrow to file
-    read_file src/click/core.py:1-200 → wrong range
-    read_file src/click/core.py:2000-2300 → eventually find it
-
-  GOOD path (1 turn):
-    sigil_where(symbol="get_default")
+  GOOD (1 turn): sigil_where(symbol="get_default")
     → {"definitions":[{"parent":"Parameter","file":"src/click/core.py",
-        "line":2249,"sig":"def get_default(self, ctx, call=True)"}]}
-    Done.
+        "line":2249,"sig":"def get_default(...)"}]}
+  BAD (4+ turns): grep-rn → narrow-grep → read_file → read_file
 """
 
 SYSTEM_PROMPT_BASE = """\
@@ -224,13 +204,13 @@ SIGIL_TOOLS = [
     },
     {
         "name": "sigil_symbols",
-        "description": "Every entity in ONE file with parent class. Pass `depth: 1` for a top-level outline. Pass `names_only: true` to get a flat JSON array of just the names — answers 'list the Xs in this file' in the minimum payload (~90% smaller than full entity records).",
+        "description": "Entities in ONE file with parent class. CRITICAL: if the question asks 'list the structs / functions / classes in file F' (i.e. the answer is a LIST OF NAMES), ALWAYS pass names_only=true — returns a flat array of names, ~90% smaller (3 KB → 300 bytes). The default (names_only=false) returns verbose per-entity records with signatures + line ranges; use that ONLY when the task specifically asks for signatures, line ranges, or other metadata. Combine with depth=1 to restrict to top-level items (classes, top-level fns, structs, enums, traits).",
         "input_schema": {
             "type": "object",
             "properties": {
                 "file": {"type": "string", "description": "Repo-relative file path"},
-                "depth": {"type": "integer", "description": "1 = top-level outline; omit for full dump", "default": 0},
-                "names_only": {"type": "boolean", "description": "Emit just a flat array of tail-segment names. Typical drop: 3 KB → 300 bytes on a mid-sized file.", "default": False},
+                "depth": {"type": "integer", "description": "1 = top-level items only (skip nested methods, imports, variables); omit for the full entity dump", "default": 0},
+                "names_only": {"type": "boolean", "description": "REQUIRED for 'list the Xs' questions. Returns just a flat JSON array of tail-segment names. Omit or set false only when the answer needs signatures or line ranges per entity.", "default": False},
             },
             "required": ["file"],
         },
