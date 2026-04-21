@@ -92,27 +92,66 @@ def fact_match(actual, expected) -> str:
 
 
 def main():
-    if len(sys.argv) != 2:
-        print("usage: grade.py <results_dir>", file=sys.stderr)
+    if len(sys.argv) < 2:
+        print("usage: grade.py <results_dir> [--baseline <dir>]", file=sys.stderr)
         sys.exit(1)
     results_dir = Path(sys.argv[1])
+    baseline_dir: Path | None = None
+    if len(sys.argv) >= 4 and sys.argv[2] == "--baseline":
+        baseline_dir = Path(sys.argv[3])
     expected_by_task = load_expected()
 
+    # Auto-detect baseline: if the caller didn't pass one but
+    # evals/results/baselines/<model>/<task-set>/ exists, use that.
+    # Convention: the baseline dir mirrors the results dir shape,
+    # e.g. evals/results/baselines/sonnet-4-6/E2/.
+    if baseline_dir is None:
+        parts = results_dir.parts
+        if "results" in parts:
+            auto = (
+                REPO_ROOT
+                / "evals"
+                / "results"
+                / "baselines"
+                / "/".join(parts[parts.index("results") + 2:])
+            )
+            if auto.exists() and auto != results_dir:
+                baseline_dir = auto
+
     rows: list[dict] = []
+    seen_keys: set[tuple] = set()
     for f in sorted(results_dir.glob("*.json")):
         if f.name == "summary.md":
             continue
         r = json.loads(f.read_text())
-        # Re-parse from final_text so parser fixes rescue old results.
+        seen_keys.add((r["task_id"], r["arm"], r["seed"]))
         answer = parse_answer(r.get("final_text"))
         spec = expected_by_task.get(r["task_id"], {})
         gtype = spec.get("type", "set_match")
         exp = spec.get("expected")
-        if gtype == "fact_match":
-            verdict = fact_match(answer, exp)
-        else:
-            verdict = set_match(answer, exp)
-        rows.append({**r, "parsed_answer": answer, "verdict": verdict})
+        verdict = fact_match(answer, exp) if gtype == "fact_match" else set_match(answer, exp)
+        rows.append({**r, "parsed_answer": answer, "verdict": verdict, "source": "run"})
+
+    # Fallback: pull rows from baseline_dir for keys not in the current run.
+    # Lets `--arm treatment` sweeps compare against a frozen control without
+    # paying to re-run it.
+    if baseline_dir:
+        for f in sorted(baseline_dir.glob("*.json")):
+            if f.name == "summary.md":
+                continue
+            r = json.loads(f.read_text())
+            key = (r["task_id"], r["arm"], r["seed"])
+            if key in seen_keys:
+                continue
+            answer = parse_answer(r.get("final_text"))
+            spec = expected_by_task.get(r["task_id"], {})
+            gtype = spec.get("type", "set_match")
+            exp = spec.get("expected")
+            verdict = fact_match(answer, exp) if gtype == "fact_match" else set_match(answer, exp)
+            rows.append({**r, "parsed_answer": answer, "verdict": verdict, "source": "baseline"})
+        n_baseline = sum(1 for r in rows if r["source"] == "baseline")
+        if n_baseline:
+            print(f"(pulled {n_baseline} rows from baseline: {baseline_dir})", file=sys.stderr)
 
     by_arm: dict[str, list[dict]] = defaultdict(list)
     for r in rows:

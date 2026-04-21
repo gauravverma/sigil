@@ -27,7 +27,7 @@ echo "1/3: Haiku smoke (2 runs, ~\$0.20)"
 echo "==================================="
 python3 evals/runner/run.py \
   --task-set E4_swebench_like --sweep --seeds 1 \
-  --model claude-haiku-4-5-20251001 --max-turns 20
+  --model claude-haiku-4-5-20251001 --max-turns 20 --workers 8
 
 echo
 echo "==================================="
@@ -35,7 +35,7 @@ echo "2/3: Sonnet N=3 (6 runs, ~\$1-2)"
 echo "==================================="
 python3 evals/runner/run.py \
   --task-set E4_swebench_like --sweep --seeds 3 \
-  --model claude-sonnet-4-6 --max-turns 30
+  --model claude-sonnet-4-6 --max-turns 30 --workers 8
 
 echo
 echo "==================================="

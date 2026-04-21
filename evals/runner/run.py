@@ -606,6 +606,12 @@ def main():
     ap.add_argument("--model", default="claude-sonnet-4-6")
     ap.add_argument("--max-turns", type=int, default=20)
     ap.add_argument("--dry-run", action="store_true", help="Print plan, don't call API")
+    ap.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="Parallel task workers (ThreadPoolExecutor). Default 1 = sequential. Try 8 for Sonnet sweeps.",
+    )
     args = ap.parse_args()
 
     if args.sweep:
@@ -632,17 +638,22 @@ def main():
     random.seed(0)
     random.shuffle(plan)
 
+    # Skip runs whose result file already exists — keeps sweeps resumable
+    # and lets the thread pool treat the remaining work as pure API fan-out.
+    to_run: list[tuple] = []
     for t, a, s in plan:
         task = load_task(t)
         rp = result_path(date, task["id"], a, s, args.model, args.task_set)
         if rp.exists():
             print(f"skip (exists): {rp}")
             continue
-        print(f"run: {task['id']}  arm={a}  seed={s}", flush=True)
+        to_run.append((t, task, a, s, rp))
+
+    def execute(item):
+        t, task, a, s, rp = item
         try:
             result = run_one(client, task, a, s, args.model, args.max_turns)
         except Exception as e:
-            print(f"  ! ERROR: {type(e).__name__}: {e}")
             result = {
                 "task_id": task["id"],
                 "arm": a,
@@ -657,7 +668,42 @@ def main():
                 "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
             }
         rp.write_text(json.dumps(result, indent=2))
-        print(f"  → tokens_in={result['tokens_in']}  tokens_out={result['tokens_out']}  turns={result['turns']}")
+        return (task["id"], a, s, result)
+
+    if args.workers <= 1 or len(to_run) <= 1:
+        for item in to_run:
+            tid, a, s, _ = item[1]["id"], item[2], item[3], None  # readable unpack
+            print(f"run: {tid}  arm={a}  seed={s}", flush=True)
+            tid, arm, seed, result = execute(item)
+            if "error" in result:
+                print(f"  ! ERROR: {result['error']}")
+            print(
+                f"  → tokens_in={result['tokens_in']}  tokens_out={result['tokens_out']}  turns={result['turns']}"
+            )
+    else:
+        # Parallel fan-out. Anthropic's Python client is thread-safe; each
+        # worker makes independent message.create() calls. Per-task result
+        # JSONs have unique paths so there's no write contention.
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        import time as _time
+
+        n_workers = min(args.workers, len(to_run))
+        print(f"parallel: running {len(to_run)} tasks with {n_workers} workers", flush=True)
+        start = _time.time()
+        done = 0
+        with ThreadPoolExecutor(max_workers=n_workers) as pool:
+            futures = {pool.submit(execute, item): item for item in to_run}
+            for fut in as_completed(futures):
+                tid, arm, seed, result = fut.result()
+                done += 1
+                tag = "ERROR " if "error" in result else ""
+                print(
+                    f"[{done}/{len(to_run)}] {tag}{tid:<8} arm={arm:<9} seed={seed}  "
+                    f"tokens_in={result['tokens_in']:>7}  tokens_out={result['tokens_out']:>5}  "
+                    f"turns={result['turns']}",
+                    flush=True,
+                )
+        print(f"parallel: done in {_time.time() - start:.1f}s")
 
 
 if __name__ == "__main__":
