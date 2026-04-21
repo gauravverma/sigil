@@ -57,29 +57,41 @@ def task_repo_root(task: dict) -> Path:
 SIGIL_BLURB = """\
 The sigil_* tools (sigil_where, sigil_context, sigil_callers,
 sigil_callees, sigil_symbols, sigil_outline, sigil_search) give you
-pre-computed structural code intelligence. Use them BEFORE grep/
-read_file for these questions:
+pre-computed structural code intelligence.
 
-  Question type                          Tool to use FIRST
-  ─────────────────────────────────────  ─────────────────────────────
+Pick the right tool by question shape:
+
+  Structural question                    Tool to use FIRST
+  ─────────────────────────────────────  ────────────────────────────────
   "where is X defined?"                  sigil_where(X)
   "who calls X?"                         sigil_callers(X)
   "what does X call?"                    sigil_callees(X)
-  "what's in file F?"                    sigil_symbols(F, depth=1)
-  "what's in directory D?"               sigil_outline(D)
+  "list the Xs in file F"                sigil_symbols(F, depth=1,
+  (just names, e.g. classes/fns)           names_only=true)
+  "full entities in file F"              sigil_symbols(F, depth=1)
+  "structural tree under directory D"    sigil_outline(D)
   "how does X fit in the codebase?"      sigil_context(X)
   "find anything matching 'foo'"         sigil_search("foo")
 
-Use grep/read_file when:
-  - the question is about text content inside a specific file
-  - sigil returned empty AND its stderr didn't suggest a close match
-  - the answer needs line-level verification after sigil located the
-    region
+File-system / text questions — use bash / grep / read_file (not sigil):
+
+  "which files exist under dir D?"       bash (`ls`, `find`)
+  "text content X inside known file F"   grep / read_file
+  "lines matching regex in repo"         grep
+  "language-specific syntactic pattern"  grep (e.g. `^pub mod` in Rust)
+  sigil returned empty AND no "Did you
+  mean?" suggestion on stderr            grep (confirm the name doesn't
+                                         exist textually)
+
+Two rules of thumb:
+  - `sigil_symbols` with `names_only=true` when the answer is a LIST OF
+    NAMES — skip the per-entity metadata.
+  - `sigil_outline` is for CLASSES AND FUNCTIONS under a path, NOT for
+    a plain file listing. Use `ls`/`bash` for pure file enumeration.
 
 Empty sigil results are data, not failure. sigil prints a "Did you
 mean: X, Y, Z?" hint to stderr when the name is close to known
-entities — retry with one of the suggestions before falling back to
-grep.
+entities — retry with a suggestion before falling back to grep.
 
 WORKED EXAMPLE
 
@@ -212,12 +224,13 @@ SIGIL_TOOLS = [
     },
     {
         "name": "sigil_symbols",
-        "description": "Every entity in ONE file with parent class. Pass `depth: 1` for a top-level outline (classes, top-level fns only — skips imports, variables, nested methods). Prefer once you've narrowed to a file.",
+        "description": "Every entity in ONE file with parent class. Pass `depth: 1` for a top-level outline. Pass `names_only: true` to get a flat JSON array of just the names — answers 'list the Xs in this file' in the minimum payload (~90% smaller than full entity records).",
         "input_schema": {
             "type": "object",
             "properties": {
                 "file": {"type": "string", "description": "Repo-relative file path"},
                 "depth": {"type": "integer", "description": "1 = top-level outline; omit for full dump", "default": 0},
+                "names_only": {"type": "boolean", "description": "Emit just a flat array of tail-segment names. Typical drop: 3 KB → 300 bytes on a mid-sized file.", "default": False},
             },
             "required": ["file"],
         },
@@ -368,6 +381,8 @@ def tool_sigil_symbols(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> s
     args = ["symbols", inp["file"], "--json"]
     if int(inp.get("depth", 0)) == 1:
         args += ["--depth", "1"]
+    if inp.get("names_only"):
+        args.append("--names-only")
     return _sigil_cmd(env, cwd, args)
 
 

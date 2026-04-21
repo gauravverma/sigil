@@ -211,6 +211,12 @@ enum Cli {
         /// Pretty-print JSON output (default: minified)
         #[arg(long)]
         pretty: bool,
+        /// Emit just a flat array of tail-segment names — answers "list
+        /// the Xs in this file" in the minimum possible payload. Typical
+        /// drop: ~140 bytes/row of entity JSON → 10-20 bytes/name.
+        /// Compose with `--depth 1` for top-level names only.
+        #[arg(long)]
+        names_only: bool,
         /// Include BLAKE3 hash columns (struct_hash, body_hash, sig_hash) in
         /// the JSON output. Off by default — useful for scripts that need
         /// the raw on-disk shape.
@@ -882,7 +888,7 @@ fn main() {
                 }
             }
         }
-        Cli::Symbols { file, root, limit, depth, json, pretty, with_hashes } => {
+        Cli::Symbols { file, root, limit, depth, json, pretty, names_only, with_hashes } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let symbols = backend.get_file_symbols(&file, None, limit as usize);
@@ -893,7 +899,22 @@ fn main() {
                 symbols
             };
             let refs: Vec<&sigil::entity::Entity> = filtered.iter().collect();
-            if json {
+            if names_only {
+                // Flat JSON array of tail-segment names — the minimum
+                // payload for "list the Xs in this file" questions.
+                let names: Vec<String> = refs
+                    .iter()
+                    .map(|e| query::tail_segment(&e.name).to_string())
+                    .collect();
+                let stdout = std::io::stdout();
+                let mut lock = stdout.lock();
+                if pretty {
+                    serde_json::to_writer_pretty(&mut lock, &names).ok();
+                } else {
+                    serde_json::to_writer(&mut lock, &names).ok();
+                }
+                println!();
+            } else if json {
                 query::emit_entities_json(std::io::stdout(), &refs, pretty, with_hashes).ok();
             } else {
                 print!("{}", query::format_entities(&refs));
