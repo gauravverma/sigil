@@ -30,6 +30,20 @@ cutting the payload directly cuts downstream token cost.
   "kind-of-thing" discriminator. Old `.sigil/refs.jsonl` with `ref_kind`
   still deserializes via a serde alias; fresh writes use `kind`. The
   DuckDB materialized table column also renamed.
+- **`sigil search` JSON output is tighter and deduped.** Same-symbol
+  overloads (Python `@overload` stubs, repeated variable declarations
+  across method bodies) now collapse into one row per `(file, name,
+  kind)` with `overloads: N` when there's more than one. The `type:
+  "symbol"` field is elided (implied by the now-default `--scope
+  symbol`); file hits keep `type: "file"`. `line: [a, b]` flattens to
+  `line: N` with an optional `line_end: M` when they differ. `parent:
+  null` and `overloads: 1` are elided. Example: `search get_default`
+  on pallets/click drops from 17 rows / ~2.7KB to 11 rows / 1.68KB
+  (~38% smaller, overload noise removed).
+- **`sigil search --scope` now defaults to `symbol`**, not `all`. Agents
+  almost always want symbol hits on a keyword query; including file-
+  path matches inflated the response. Pass `--scope all` or `--scope
+  file` to widen.
 
 Size impact on sigil-self:
 - `sigil symbols src/rank.rs --json`: 19,102 → **8,866 bytes (54% smaller)**

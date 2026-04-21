@@ -712,24 +712,74 @@ fn main() {
             let kind_filter = kind.first().map(|s| s.as_str());
             let results = backend.search(&q, scope_enum, kind_filter, path.as_deref(), limit as usize);
             if json {
-                // Serialize as a flat list with a `type` discriminator so the
-                // shape is stable for scripts/agents consuming the output.
-                let json_hits: Vec<serde_json::Value> = results.iter().map(|h| match h {
-                    sigil::query::SearchHitOwned::Symbol(e) => serde_json::json!({
-                        "type": "symbol",
-                        "file": e.file,
-                        "name": e.name,
-                        "kind": e.kind,
-                        "line": [e.line_start, e.line_end],
-                        "parent": e.parent,
-                    }),
-                    sigil::query::SearchHitOwned::File(f) => serde_json::json!({
-                        "type": "file",
-                        "path": f.path,
-                        "lang": f.lang,
-                        "entity_count": f.entity_count,
-                    }),
-                }).collect();
+                // Compact schema — one row per unique (file, name, kind).
+                // Repeated hits with the same key (Python @overload stubs,
+                // parent=None variables that duplicate a method entry) get
+                // collapsed into a single row with `overloads: N` so the
+                // agent sees "this method exists here" without skimming
+                // 3-5 near-identical rows.
+                //
+                // Elision rules, matching the rest of the 0.4.0 compact
+                // output:
+                //   - `type: "symbol"` dropped (implied by --scope symbol,
+                //     the new default). File hits keep `type: "file"` so
+                //     mixed-scope results stay discriminable.
+                //   - `line_end` elided when equal to `line`.
+                //   - `parent` elided when null.
+                //   - `overloads` elided when 1.
+                use std::collections::BTreeMap;
+                let mut order: Vec<(String, String, String)> = Vec::new();
+                let mut groups: BTreeMap<(String, String, String), (u32, u32, Option<String>, u32)> =
+                    BTreeMap::new();
+                let mut file_rows: Vec<serde_json::Value> = Vec::new();
+                for h in &results {
+                    match h {
+                        sigil::query::SearchHitOwned::Symbol(e) => {
+                            let key = (e.file.clone(), e.name.clone(), e.kind.clone());
+                            groups
+                                .entry(key.clone())
+                                .and_modify(|(_, _, _, n)| *n += 1)
+                                .or_insert_with(|| {
+                                    order.push(key);
+                                    (e.line_start, e.line_end, e.parent.clone(), 1)
+                                });
+                        }
+                        sigil::query::SearchHitOwned::File(f) => {
+                            let mut row = serde_json::json!({
+                                "type": "file",
+                                "path": f.path,
+                                "lang": f.lang,
+                            });
+                            if f.entity_count > 0 {
+                                row["entity_count"] = serde_json::json!(f.entity_count);
+                            }
+                            file_rows.push(row);
+                        }
+                    }
+                }
+
+                let mut json_hits: Vec<serde_json::Value> = Vec::with_capacity(order.len() + file_rows.len());
+                for key in order {
+                    let (line_start, line_end, parent, overloads) = groups[&key].clone();
+                    let (file, name, kind) = key;
+                    let mut row = serde_json::Map::new();
+                    row.insert("file".into(), serde_json::Value::from(file));
+                    row.insert("name".into(), serde_json::Value::from(name));
+                    row.insert("kind".into(), serde_json::Value::from(kind));
+                    row.insert("line".into(), serde_json::Value::from(line_start));
+                    if line_end != line_start {
+                        row.insert("line_end".into(), serde_json::Value::from(line_end));
+                    }
+                    if let Some(p) = parent {
+                        row.insert("parent".into(), serde_json::Value::from(p));
+                    }
+                    if overloads > 1 {
+                        row.insert("overloads".into(), serde_json::Value::from(overloads));
+                    }
+                    json_hits.push(serde_json::Value::Object(row));
+                }
+                json_hits.extend(file_rows);
+
                 let stdout = std::io::stdout();
                 let mut lock = stdout.lock();
                 if pretty {
