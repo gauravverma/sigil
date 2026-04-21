@@ -3,12 +3,23 @@
   "arm": "treatment",
   "seed": 2,
   "model": "claude-sonnet-4-6",
-  "turns": 3,
-  "tokens_in": 3702,
-  "tokens_out": 150,
-  "final_text": "`[\"src/parser/languages.rs\"]`",
+  "turns": 2,
+  "tokens_in": 5210,
+  "tokens_out": 69,
+  "final_text": "[\"src/parser/languages.rs\"]",
   "parsed_answer": [
     "src/parser/languages.rs"
   ],
-  "timestamp": "2026-04-21T06:40:59.227457+00:00"
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "sigil_where",
+      "input": {
+        "symbol": "detect_language"
+      },
+      "result_len": 219,
+      "result_preview": "{\"symbol\":\"detect_language\",\"definitions\":[{\"name\":\"detect_language\",\"file\":\"src/parser/languages.rs\",\"line\":53,\"line_end\":73,\"kind\":\"function\",\"sig\":\"pub fn detect_language(extension: &str) -> Option<&'static str>\"}]}\n"
+    }
+  ],
+  "timestamp": "2026-04-21T12:38:41.919183+00:00"
 }

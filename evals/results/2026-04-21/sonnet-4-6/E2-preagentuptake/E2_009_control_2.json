@@ -1,0 +1,25 @@
+{
+  "task_id": "E2_009",
+  "arm": "control",
+  "seed": 2,
+  "model": "claude-sonnet-4-6",
+  "turns": 9,
+  "tokens_in": 49550,
+  "tokens_out": 1418,
+  "final_text": "Both `src/query/index.rs` and `src/query/duckdb_backend.rs` only have `parse_file` in comments \u2014 no call sites. Now let me verify `src/parser/treesitter.rs` has a call (not just definition):\n\nThe grep already showed `src/parser/treesitter.rs:271` has `match parse_file(...)` \u2014 that's a call site (recursive call). And line 13 is the definition `pub fn parse_file(`. So treesitter.rs contains a call.\n\nNow let me collect the final list of files with actual call sites (excluding definition-only and comment-only occurrences):\n\n- `src/index.rs` \u2705 (call at line 34)\n- `src/parser/c_lang.rs` \u2705 (calls in tests)\n- `src/parser/cpp.rs` \u2705\n- `src/parser/csharp.rs` \u2705\n- `src/parser/go.rs` \u2705\n- `src/parser/java.rs` \u2705\n- `src/parser/javascript.rs` \u2705\n- `src/parser/python.rs` \u2705\n- `src/parser/ruby.rs` \u2705\n- `src/parser/rust_lang.rs` \u2705\n- `src/parser/treesitter.rs` \u2705 (call at line 271)\n- `src/parser/typescript.rs` \u2705\n- `src/query/duckdb_backend.rs` \u274c (comment only)\n- `src/query/index.rs` \u274c (comment only)\n\n[\n  \"src/index.rs\",\n  \"src/parser/c_lang.rs\",\n  \"src/parser/cpp.rs\",\n  \"src/parser/csharp.rs\",\n  \"src/parser/go.rs\",\n  \"src/parser/java.rs\",\n  \"src/parser/javascript.rs\",\n  \"src/parser/python.rs\",\n  \"src/parser/ruby.rs\",\n  \"src/parser/rust_lang.rs\",\n  \"src/parser/treesitter.rs\",\n  \"src/parser/typescript.rs\"\n]",
+  "parsed_answer": [
+    "src/index.rs",
+    "src/parser/c_lang.rs",
+    "src/parser/cpp.rs",
+    "src/parser/csharp.rs",
+    "src/parser/go.rs",
+    "src/parser/java.rs",
+    "src/parser/javascript.rs",
+    "src/parser/python.rs",
+    "src/parser/ruby.rs",
+    "src/parser/rust_lang.rs",
+    "src/parser/treesitter.rs",
+    "src/parser/typescript.rs"
+  ],
+  "timestamp": "2026-04-21T06:47:27.614988+00:00"
+}

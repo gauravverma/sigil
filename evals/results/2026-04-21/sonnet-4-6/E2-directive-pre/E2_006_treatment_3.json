@@ -1,0 +1,28 @@
+{
+  "task_id": "E2_006",
+  "arm": "treatment",
+  "seed": 3,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 5837,
+  "tokens_out": 110,
+  "final_text": "[\"detect_language\", \"get_language\"]",
+  "parsed_answer": [
+    "detect_language",
+    "get_language"
+  ],
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "sigil_symbols",
+      "input": {
+        "file": "src/parser/languages.rs",
+        "depth": 1,
+        "names_only": false
+      },
+      "result_len": 468,
+      "result_preview": "[{\"file\":\"src/parser/languages.rs\",\"name\":\"get_language\",\"kind\":\"function\",\"line_start\":8,\"line_end\":50,\"sig\":\"pub fn get_language(name: &str) -> Result<Language>\",\"visibility\":\"public\",\"blast_radius\":{\"direct_callers\":2,\"direct_files\":2,\"transitive_callers\":131}},{\"file\":\"src/parser/languages.rs\",\"name\":\"detect_language\",\"kind\":\"function\",\"line_start\":53,\"line_end\":73,\"sig\":\"pub fn detect_languag"
+    }
+  ],
+  "timestamp": "2026-04-21T10:19:18.124852+00:00"
+}

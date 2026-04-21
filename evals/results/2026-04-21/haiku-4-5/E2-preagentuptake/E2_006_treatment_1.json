@@ -1,0 +1,15 @@
+{
+  "task_id": "E2_006",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 3,
+  "tokens_in": 5877,
+  "tokens_out": 275,
+  "final_text": "Based on my reading of the file, here are the top-level functions in `src/parser/languages.rs`:\n\n[\"detect_language\", \"get_language\"]",
+  "parsed_answer": [
+    "detect_language",
+    "get_language"
+  ],
+  "timestamp": "2026-04-21T06:36:40.249183+00:00"
+}

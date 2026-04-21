@@ -1,0 +1,26 @@
+{
+  "task_id": "E2_002",
+  "arm": "treatment",
+  "seed": 3,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 5366,
+  "tokens_out": 85,
+  "final_text": "[\"build_index\", \"parse_single_file\"]",
+  "parsed_answer": [
+    "build_index",
+    "parse_single_file"
+  ],
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "bash",
+      "input": {
+        "command": "grep -n \"^pub \\(async \\)\\?fn \" src/index.rs"
+      },
+      "result_len": 52,
+      "result_preview": "16:pub fn parse_single_file(\n93:pub fn build_index(\n"
+    }
+  ],
+  "timestamp": "2026-04-21T11:33:01.969126+00:00"
+}

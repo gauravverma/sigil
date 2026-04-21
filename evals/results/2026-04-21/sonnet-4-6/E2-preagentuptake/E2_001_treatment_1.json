@@ -1,0 +1,14 @@
+{
+  "task_id": "E2_001",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-sonnet-4-6",
+  "turns": 3,
+  "tokens_in": 3704,
+  "tokens_out": 175,
+  "final_text": "`src/parser/languages.rs` contains the top-level `pub fn detect_language` definition.\n\n```json\n[\"src/parser/languages.rs\"]\n```",
+  "parsed_answer": [
+    "src/parser/languages.rs"
+  ],
+  "timestamp": "2026-04-21T06:43:07.471920+00:00"
+}

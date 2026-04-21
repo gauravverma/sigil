@@ -1,0 +1,15 @@
+{
+  "task_id": "E2_002",
+  "arm": "control",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 2,
+  "tokens_in": 6976,
+  "tokens_out": 374,
+  "final_text": "Now I'll analyze the file to identify all top-level public functions declared with `pub fn` (or `pub async fn`) at the file's top scope:\n\nLooking at the file:\n1. Line 16: `pub fn parse_single_file(...)` - This is a top-level public function \u2713\n2. Line 93: `pub fn build_index(...)` - This is a top-level public function \u2713\n\nThe other functions like:\n- `is_import_kind` (line 225) - private (fn, not pub fn)\n- `find_decorator_start` (line 230) - private (fn, not pub fn)\n- `normalize_kind` (line 251) - private (fn, not pub fn)\n- `discover_source_files` (line 260) - private (fn, not pub fn)\n- `load_previous_entities` (line 282) - private (fn, not pub fn)\n- `load_previous_refs` (line 293) - private (fn, not pub fn)\n\nAnd the functions inside the `#[cfg(test)] mod tests` block are not included as they're inside a test module.\n\n```json\n[\"build_index\", \"parse_single_file\"]\n```",
+  "parsed_answer": [
+    "build_index",
+    "parse_single_file"
+  ],
+  "timestamp": "2026-04-21T06:37:57.815649+00:00"
+}

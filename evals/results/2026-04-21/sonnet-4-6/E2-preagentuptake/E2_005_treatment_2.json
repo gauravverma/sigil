@@ -1,0 +1,16 @@
+{
+  "task_id": "E2_005",
+  "arm": "treatment",
+  "seed": 2,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 5344,
+  "tokens_out": 340,
+  "final_text": "Now I have all the symbols. Let me filter for top-level functions (kind: \"function\", no parent) that are NOT inside the `tests` module (line_start < 355), and compute their spans:\n\n- `rank`: lines 101\u2013103 \u2192 span = 3 \u274c\n- `apply_blast_radius`: lines 109\u2013116 \u2192 span = 8 \u274c\n- `rank_with_config`: lines 145\u2013168 \u2192 span = 24 \u274c\n- `build_name_index`: lines 173\u2013187 \u2192 span = 15 \u274c\n- `build_file_edges`: lines 191\u2013213 \u2192 span = 23 \u274c\n- `pagerank`: lines 217\u2013279 \u2192 span = 63 \u2705\n- `compute_blast`: lines 284\u2013314 \u2192 span = 31 \u2705\n- `transitive_caller_count`: lines 319\u2013352 \u2192 span = 34 \u2705\n\nThe three qualifying functions sorted lexicographically: `compute_blast`, `pagerank`, `transitive_caller_count`.\n\n[\"compute_blast\", \"pagerank\", \"transitive_caller_count\"]",
+  "parsed_answer": [
+    "compute_blast",
+    "pagerank",
+    "transitive_caller_count"
+  ],
+  "timestamp": "2026-04-21T06:44:22.787219+00:00"
+}

@@ -3,10 +3,10 @@
   "arm": "control",
   "seed": 1,
   "model": "claude-haiku-4-5-20251001",
-  "turns": 3,
-  "tokens_in": 3440,
-  "tokens_out": 214,
-  "final_text": "[\"aider\", \"claude\", \"codex\", \"copilot\", \"cursor\", \"gemini\", \"githook\", \"opencode\"]",
+  "turns": 2,
+  "tokens_in": 2242,
+  "tokens_out": 95,
+  "final_text": "```json\n[\"aider\", \"claude\", \"codex\", \"copilot\", \"cursor\", \"gemini\", \"githook\", \"opencode\"]\n```",
   "parsed_answer": [
     "aider",
     "claude",
@@ -17,5 +17,16 @@
     "githook",
     "opencode"
   ],
-  "timestamp": "2026-04-21T06:39:30.328107+00:00"
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "glob",
+      "input": {
+        "pattern": "src/install/*.rs"
+      },
+      "result_len": 196,
+      "result_preview": "src/install/aider.rs\nsrc/install/claude.rs\nsrc/install/codex.rs\nsrc/install/copilot.rs\nsrc/install/cursor.rs\nsrc/install/gemini.rs\nsrc/install/githook.rs\nsrc/install/mod.rs\nsrc/install/opencode.rs"
+    }
+  ],
+  "timestamp": "2026-04-21T12:38:00.236404+00:00"
 }

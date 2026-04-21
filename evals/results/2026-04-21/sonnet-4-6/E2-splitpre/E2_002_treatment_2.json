@@ -1,0 +1,28 @@
+{
+  "task_id": "E2_002",
+  "arm": "treatment",
+  "seed": 2,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 6274,
+  "tokens_out": 156,
+  "final_text": "The only top-level public functions (visibility `public`, kind `function`, not inside a `mod`/`impl`) are `build_index` and `parse_single_file`.\n\n```json\n[\"build_index\", \"parse_single_file\"]\n```",
+  "parsed_answer": [
+    "build_index",
+    "parse_single_file"
+  ],
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "sigil_symbols",
+      "input": {
+        "file": "src/index.rs",
+        "depth": 1,
+        "names_only": false
+      },
+      "result_len": 2813,
+      "result_preview": "[{\"file\":\"src/index.rs\",\"name\":\"IndexResult\",\"kind\":\"struct\",\"line_start\":9,\"line_end\":12,\"sig\":\"pub struct IndexResult\",\"visibility\":\"public\"},{\"file\":\"src/index.rs\",\"name\":\"parse_single_file\",\"kind\":\"function\",\"line_start\":16,\"line_end\":91,\"sig\":\"pub fn parse_single_file(source: &str, file_path: &str, language: &str) -> Result<(Vec<Entity>, Vec<Reference>), String>\",\"visibility\":\"public\"},{\"file"
+    }
+  ],
+  "timestamp": "2026-04-21T11:33:05.956481+00:00"
+}

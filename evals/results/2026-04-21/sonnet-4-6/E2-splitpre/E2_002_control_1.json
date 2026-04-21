@@ -1,0 +1,27 @@
+{
+  "task_id": "E2_002",
+  "arm": "control",
+  "seed": 1,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 7075,
+  "tokens_out": 207,
+  "final_text": "The file has two top-level public functions (`pub fn`):\n- `parse_single_file` (line 16)\n- `build_index` (line 93)\n\nAll other functions (`is_import_kind`, `find_decorator_start`, `normalize_kind`, `discover_source_files`, `load_previous_entities`, `load_previous_refs`) are private (no `pub`). The functions inside the `#[cfg(test)] mod tests` block are excluded.\n\n```json\n[\"build_index\", \"parse_single_file\"]\n```",
+  "parsed_answer": [
+    "build_index",
+    "parse_single_file"
+  ],
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "read_file",
+      "input": {
+        "path": "src/index.rs",
+        "limit": 5000
+      },
+      "result_len": 14759,
+      "result_preview": "     1\tuse std::path::{Path, PathBuf};\n     2\t\n     3\tuse crate::cache::{self, Cache};\n     4\tuse crate::entity::{Entity, Reference};\n     5\tuse crate::hasher;\n     6\tuse crate::meta;\n     7\tuse crate::signature;\n     8\t\n     9\tpub struct IndexResult {\n    10\t    pub entities: Vec<Entity>,\n    11\t    pub refs: Vec<Reference>,\n    12\t}\n    13\t\n    14\t/// Parse a single file's source code and return"
+    }
+  ],
+  "timestamp": "2026-04-21T11:33:21.212016+00:00"
+}

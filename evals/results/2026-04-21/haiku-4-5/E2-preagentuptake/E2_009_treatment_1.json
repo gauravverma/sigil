@@ -1,0 +1,25 @@
+{
+  "task_id": "E2_009",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 12,
+  "tokens_in": 80607,
+  "tokens_out": 1935,
+  "final_text": "```json\n[\"src/index.rs\", \"src/parser/c_lang.rs\", \"src/parser/cpp.rs\", \"src/parser/csharp.rs\", \"src/parser/go.rs\", \"src/parser/java.rs\", \"src/parser/javascript.rs\", \"src/parser/python.rs\", \"src/parser/ruby.rs\", \"src/parser/rust_lang.rs\", \"src/parser/treesitter.rs\", \"src/parser/typescript.rs\"]\n```",
+  "parsed_answer": [
+    "src/index.rs",
+    "src/parser/c_lang.rs",
+    "src/parser/cpp.rs",
+    "src/parser/csharp.rs",
+    "src/parser/go.rs",
+    "src/parser/java.rs",
+    "src/parser/javascript.rs",
+    "src/parser/python.rs",
+    "src/parser/ruby.rs",
+    "src/parser/rust_lang.rs",
+    "src/parser/treesitter.rs",
+    "src/parser/typescript.rs"
+  ],
+  "timestamp": "2026-04-21T06:38:41.699913+00:00"
+}

@@ -1,0 +1,16 @@
+{
+  "task_id": "E2_005",
+  "arm": "control",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 7,
+  "tokens_in": 76138,
+  "tokens_out": 1139,
+  "final_text": "[\"compute_blast\", \"pagerank\", \"transitive_caller_count\"]",
+  "parsed_answer": [
+    "compute_blast",
+    "pagerank",
+    "transitive_caller_count"
+  ],
+  "timestamp": "2026-04-21T06:39:13.739705+00:00"
+}

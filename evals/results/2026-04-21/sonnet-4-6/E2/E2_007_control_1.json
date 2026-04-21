@@ -4,7 +4,7 @@
   "seed": 1,
   "model": "claude-sonnet-4-6",
   "turns": 2,
-  "tokens_in": 2130,
+  "tokens_in": 2236,
   "tokens_out": 90,
   "final_text": "[\"aider\", \"claude\", \"codex\", \"copilot\", \"cursor\", \"gemini\", \"githook\", \"opencode\"]",
   "parsed_answer": [
@@ -17,5 +17,16 @@
     "githook",
     "opencode"
   ],
-  "timestamp": "2026-04-21T06:46:04.145603+00:00"
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "glob",
+      "input": {
+        "pattern": "src/install/*.rs"
+      },
+      "result_len": 196,
+      "result_preview": "src/install/aider.rs\nsrc/install/claude.rs\nsrc/install/codex.rs\nsrc/install/copilot.rs\nsrc/install/cursor.rs\nsrc/install/gemini.rs\nsrc/install/githook.rs\nsrc/install/mod.rs\nsrc/install/opencode.rs"
+    }
+  ],
+  "timestamp": "2026-04-21T12:38:51.333234+00:00"
 }

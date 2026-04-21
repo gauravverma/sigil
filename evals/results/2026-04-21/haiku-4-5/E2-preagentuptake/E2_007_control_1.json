@@ -1,0 +1,21 @@
+{
+  "task_id": "E2_007",
+  "arm": "control",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 3,
+  "tokens_in": 3440,
+  "tokens_out": 214,
+  "final_text": "[\"aider\", \"claude\", \"codex\", \"copilot\", \"cursor\", \"gemini\", \"githook\", \"opencode\"]",
+  "parsed_answer": [
+    "aider",
+    "claude",
+    "codex",
+    "copilot",
+    "cursor",
+    "gemini",
+    "githook",
+    "opencode"
+  ],
+  "timestamp": "2026-04-21T06:39:30.328107+00:00"
+}

@@ -1,0 +1,32 @@
+{
+  "task_id": "E2_007",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-haiku-4-5-20251001",
+  "turns": 2,
+  "tokens_in": 5785,
+  "tokens_out": 149,
+  "final_text": "```json\n[\"aider\", \"claude\", \"codex\", \"copilot\", \"cursor\", \"gemini\", \"githook\", \"opencode\"]\n```",
+  "parsed_answer": [
+    "aider",
+    "claude",
+    "codex",
+    "copilot",
+    "cursor",
+    "gemini",
+    "githook",
+    "opencode"
+  ],
+  "trace": [
+    {
+      "turn": 1,
+      "tool": "bash",
+      "input": {
+        "command": "find src/install -name \"*.rs\" -type f ! -name \"mod.rs\" | sed 's|^src/install/||' | sed 's|\\.rs$||' | sort"
+      },
+      "result_len": 58,
+      "result_preview": "aider\nclaude\ncodex\ncopilot\ncursor\ngemini\ngithook\nopencode\n"
+    }
+  ],
+  "timestamp": "2026-04-21T10:18:14.513409+00:00"
+}
