@@ -95,6 +95,31 @@ Size impact on sigil-self:
 - `sigil callers parse_file --kind call --json`: 19,352 → **14,191 bytes
   (27% smaller)**
 
+### Eval validation — deterministic agent uptake
+
+After adding didactic stderr + fuzzy suggestions on empty sigil results,
+and exposing sigil primitives as first-class Anthropic tools in the
+treatment arm (alongside a directive flowchart blurb + one worked
+example), Sonnet N=3 on the E4 click task converged to:
+
+| Arm | Median tokens_in | Turns | Pass |
+|---|---:|---:|---:|
+| control | 12,269 | 6 | 3/3 |
+| **treatment** | **5,521** | **2** | 3/3 |
+
+Ratio: **2.22× (sigil wins)**. All 3 treatment seeds produced
+byte-identical runs — `sigil_where(symbol="get_default")` as turn 1,
+answer emitted as turn 2. Haiku N=1 ratio: 2.64×. No single-seed
+variance of any kind; sigil tools as tool_use entries produce
+deterministic agent paths.
+
+Cumulative journey on the same task since pre-0.4.0: 0.49× (sigil
+losing 2×) → 2.22× (sigil winning 2.2×). 4.5× total swing, driven by
+three stacked changes — compact JSON, new primitives (`sigil where`,
+`sigil outline`, signature preview, group-by aggregates), and agent-
+uptake fixes (native tool_use exposure + directive blurb + worked
+example).
+
 ### Eval validation — sigil now wins on the external-repo task
 
 E4 "find-the-method" task against pallets/click (2.3k LOC, cloned at
