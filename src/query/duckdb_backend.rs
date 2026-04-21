@@ -141,6 +141,35 @@ impl DuckDbBackend {
             expected.save(&stamp_path)?;
         }
 
+        // Safety: a matching stamp doesn't guarantee populated tables —
+        // a previous `populate()` could have been interrupted mid-run,
+        // leaving an empty DB + a valid stamp. (Root cause of the silent
+        // E2 regression where sigil_callers returned 100 bytes on every
+        // treatment call.) When JSONL has content but both tables are
+        // empty, force one rebuild. Cheap — a no-op on healthy indexes.
+        let tables_empty = count_tables(&conn)
+            .map(|(e, r)| e == 0 && r == 0)
+            .unwrap_or(true);
+        let jsonl_has_content = std::fs::metadata(sigil_dir.join("entities.jsonl"))
+            .map(|m| m.len() > 0)
+            .unwrap_or(false);
+        if tables_empty && jsonl_has_content {
+            eprintln!(
+                "sigil: .sigil/index.duckdb has empty tables but JSONL is populated — rebuilding."
+            );
+            drop(conn);
+            std::fs::remove_file(&db_path).ok();
+            let conn = Connection::open(&db_path)
+                .with_context(|| format!("reopen DuckDB at {}", db_path.display()))?;
+            populate(&conn, &sigil_dir)
+                .context("recovery rebuild of DuckDB index")?;
+            fingerprint(&sigil_dir).save(&stamp_path)?;
+            return Ok(Self {
+                conn,
+                root: root.to_path_buf(),
+            });
+        }
+
         Ok(Self {
             conn,
             root: root.to_path_buf(),
@@ -877,6 +906,19 @@ impl Stamp {
         let text = serde_json::to_string(self)?;
         std::fs::write(path, text).map_err(Into::into)
     }
+}
+
+/// Count rows in the entities and refs tables. Used by `open()`'s
+/// empty-tables-but-valid-stamp recovery path. Returns None if either
+/// table is absent (fresh DB where populate hasn't run yet).
+fn count_tables(conn: &Connection) -> Option<(i64, i64)> {
+    let ents: i64 = conn
+        .query_row("SELECT COUNT(*) FROM entities", [], |r| r.get(0))
+        .ok()?;
+    let refs: i64 = conn
+        .query_row("SELECT COUNT(*) FROM refs", [], |r| r.get(0))
+        .ok()?;
+    Some((ents, refs))
 }
 
 fn fingerprint(sigil_dir: &Path) -> Stamp {
