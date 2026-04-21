@@ -1,147 +1,198 @@
 ---
 name: sigil
-description: "Use sigil for structural code diffs, codebase orientation, symbol context, PR review, and impact analysis. ALWAYS use this skill when: reviewing PRs or commits (use `sigil review` or `sigil diff`, not `git diff`), orienting yourself in an unfamiliar codebase (`sigil map`), understanding a single symbol (`sigil context <name>` — one call replaces reading 6 files), assessing change impact before refactoring (`sigil blast <name>`), finding duplicated code (`sigil duplicates`), searching for symbols/functions/classes, finding callers or callees, or running ad-hoc SQL over the index (`sigil query`). Also use when the user says things like 'what does this PR do', 'help me understand this codebase', 'what does X do', 'what calls X', 'what would break if I change X', 'where is X used', 'show me the diff', 'review this', 'find duplicates', 'what changed', 'how does X fit in', or when exploring an unfamiliar repo. Prefer sigil over Grep/Glob for any question about relationships (who calls X, what does X call, where is X used, impact radius). Do NOT use for simple file reads or text edits — only for structural code intelligence."
+description: "Use sigil for structural code intelligence — find where a symbol is defined, who calls it, what it calls, list the names in a file, diff a PR structurally, see what breaks if you rename it. ALWAYS use this skill when: the user asks 'where is X defined' or 'who calls X' or 'what does X call' or 'what's in file F' or 'how does X fit in the codebase' or 'what would break if I change X' or 'show me the diff' or 'review this PR' or 'find duplicates' or 'what does this codebase look like', when exploring an unfamiliar repo, when you're about to chain `grep` + `read_file` to answer a structural question, or when a task matches the SWE-bench-Lite phase-1 shape of 'find the method that does X'. Prefer sigil over grep/read_file for any question about relationships (callers, callees, inheritance, rank, blast) or cross-file structural lookups. Do NOT use for pure file enumeration (use `ls`), language-specific syntactic patterns (`grep` for Rust `^pub mod`), or raw text inside a known file."
 ---
 
 # sigil — Structural Code Intelligence for Agents
 
-sigil gives you entity-level understanding of code: what exists, how it relates, what changed. It replaces `git diff` with structural diffs that classify changes, replaces `grep` with semantic search, and gives you purpose-built commands for orientation (`map`), symbol focus (`context`), PR review (`review`), and impact (`blast`).
+sigil gives you entity-level understanding of code: what exists, how it relates, what changed. It replaces multi-step grep+read_file chains with a **single call** that returns a structured answer — file, line, class, signature, overrides, callers — ready to use.
 
-## Core Principle
+## One-shot command cheat-sheet
 
-**Reach for the highest-level command first.** sigil ships an agent-facing layer and a primitive layer. The agent layer composes the primitives with ranking, budgeting, and caller/callee graphs already baked in — one call replaces what would otherwise be four or five grep/read loops.
+Questions that sigil answers in **one call**, ordered by frequency of use. Each row is a complete flow: the question, the command, the shape of the response.
 
-| If the question is… | Use | Not |
+| Question (what the user asks) | One-shot command | Why one-shot |
 |---|---|---|
-| "What does this codebase look like?" | `sigil map` | ls + read each file |
-| "What does X do / how does it fit in?" | `sigil context X` | callers + callees + read separately |
-| "Review this PR / what changed on this branch?" | `sigil review <ref>` | `git diff` + guessing impact |
-| "What would break if I change X?" | `sigil blast X` | scanning callers by hand |
-| "Where is X called?" | `sigil callers X` | grep (misses type-only refs, overcounts strings) |
-| "What does X call?" | `sigil callees X` | reading the function body and chasing names |
+| "where is `X` defined?" | `sigil where X` | Returns file + line + class + signature + override siblings in one row. Tail-segment match: `get_default` finds both `Parameter.get_default` and `Option.get_default`. |
+| "who calls `X`?" | `sigil callers X --json` | Structured caller list with file + caller-fn + line, filtered by kind. Add `--group-by file` when you want `{file: count}` distribution only. |
+| "what does `X` call?" | `sigil callees X --json` | Same shape in reverse. `--group-by name` for a target-count summary. |
+| "list the classes/functions/structs in `F`" | `sigil symbols F --depth 1 --names-only` | Flat JSON array of top-level names, ~300 bytes. Drops imports, nested methods, variables. |
+| "full entities in `F` (with sigs + line ranges)" | `sigil symbols F --depth 1 --json` | One call returns sig + kind + line + parent for every top-level item. |
+| "how does `X` fit into the codebase?" | `sigil context X --format agent` | Bundle: signature + callers + callees + related types + inheritance overrides. Budget-capped. |
+| "what's in this directory structurally?" | `sigil outline --path DIR` | Hierarchical tree of classes + top-level fns grouped by file. |
+| "what would break if I rename `X`?" | `sigil blast X --format agent` | Direct callers + files + transitive reach (depth 3). |
+| "structural diff of this change" | `sigil diff A..B --markdown` | Entity-level change list classified as breaking / logic / formatting. |
+| "review this PR" | `sigil review A..B --markdown` | `diff` + blast radius + co-change misses, rank-ordered. |
+| "diff two files without git" | `sigil diff --files OLD NEW` | Any two paths, no index required for the compare itself. |
+| "find duplicated function bodies" | `sigil duplicates` | Groups by BLAKE3 body hash; nothing else matches this. |
+| "cold-start orientation" | `sigil map --tokens 2000` | Ranked digest in your token budget. Run this **first** in a new repo. |
+| "any symbol matching 'foo'" | `sigil search foo --json` | Substring over names, sig-preview included per row, overloads collapsed. |
 
-**Always use `--json` (or `--format agent`) when you're the one consuming the output.** JSON gives you structured fields (line ranges, token changes, rank, blast counts) that are unambiguous to parse. Use `--markdown` or plain text only when the *user* needs to read it in their terminal. Default for yourself: `sigil <cmd> --json` or `--format agent` where offered.
+### Validated one-shot examples (measured)
 
-## The Agent Loop
+These aren't hypothetical — they're the command/payload shapes we benchmarked against control arms using only grep + read_file. The token numbers are actual Sonnet medians on real codebases.
 
-Four commands cover 80% of agent-side workflows. Learn these first.
-
-### 1. `sigil map` — cold-start orientation
-
-Drop this in context the first time you touch an unfamiliar repo. It's a ranked, budget-aware digest: top files by PageRank, top entities per file, and auto-detected subsystems via label propagation.
-
-```bash
-sigil map --tokens 2000                 # budget-aware markdown digest (default)
-sigil map --tokens 4000 --format json   # JSON for structured consumption
-sigil map --focus src/auth              # boost entities under a subtree
-sigil map --exclude-tests               # drop test-file entities
-sigil map --write                       # also writes .sigil/SIGIL_MAP.md
-```
-
-Prefer this over "list all files then read the top ten" — it's one command and it ranks by actual import-graph centrality, not by filename.
-
-### 2. `sigil context <symbol>` — focused symbol bundle
-
-When the user asks about a single function/class/type, this is the right hammer. Returns signature + callers + callees + related types in a token-budgeted bundle.
+**Example 1 — "find the method on class `Parameter` that resolves default values when a callable is passed"** (pallets/click, E4 SWE-bench-Lite-style task)
 
 ```bash
-sigil context parse_file                        # default markdown, 1500-token budget
-sigil context parse_file --format agent         # compact JSON for LLM ingestion
-sigil context parse_file --budget 3000          # bigger budget
-sigil context 'entity.rs::Entity'               # qualified form for disambiguation
-sigil context handle_login --depth 15           # more callers/callees per section
+sigil where get_default
 ```
 
-This replaces the "grep for definition, then grep for callers, then read 6 files" loop. One call, rank-ordered.
+Response (384 bytes):
+```
+get_default
+  Parameter.get_default  src/click/core.py:2249-2251  (method, 3 overloads)
+    def get_default(self, ctx: Context, call: bool = True) -> Any
+  Option.get_default     src/click/core.py:2891-2905  (method)
+    def get_default(self, ctx: Context, call: bool = True) -> Any
+```
 
-### 3. `sigil review <refspec>` — PR review artifact
+Measured: one tool call, 2 turns total including the final answer. **Control arm (grep-only): 6 turns, 12,269 tokens.** sigil: 2 turns, 5,521 tokens. **2.22× cheaper**, deterministic across seeds.
 
-Bundles structural diff + rank-ordered blast radius + co-change misses. Use this instead of `git diff` or plain `sigil diff` when the user asks to review a PR or commit range.
+**Example 2 — "who calls `parse_file` in the sigil codebase?"**
 
 ```bash
-sigil review HEAD~1                     # last commit
-sigil review main..HEAD                 # current branch
-sigil review main..HEAD --format json   # structured (your default)
-sigil review main..HEAD --markdown      # paste-ready for a PR comment
-sigil review HEAD~3..HEAD --top-k 10    # more impact entries
-sigil review HEAD~1 --no-cochange       # skip co-change pass (faster)
+sigil callers parse_file --kind call --json
 ```
 
-The co-change section surfaces files that *usually* change together with the files touched in the diff but *didn't* this time — often flags missed edits.
+Returns 128 call-site references across 12 files — including qualified forms like `crate::parser::treesitter::parse_file`. Measured on sigil itself: **control burned 80k tokens across 16 grep-narrow turns; sigil: 10k tokens, 2 turns. 14.8× cheaper for Haiku**, 3.23× cheaper for Sonnet.
 
-### 4. `sigil blast <symbol>` — impact summary
-
-Before refactoring or renaming a widely-used entity, run this. Reports direct caller count, files reached, transitive reach (depth 3 by default), and the top callers by file rank.
+**Example 3 — "list every top-level struct in `src/entity.rs`"**
 
 ```bash
-sigil blast process_event                       # markdown
-sigil blast process_event --format agent        # compact JSON
-sigil blast process_event --depth 20            # show more top callers
-sigil blast process_event --exclude-tests       # production callers only
+sigil symbols src/entity.rs --depth 1 --names-only
+# → ["Entity","BlastRadius","Reference"]
 ```
 
-## Structural Diff
+50 bytes instead of 900 bytes of full entity records. If you need signatures / line ranges, drop `--names-only`.
 
-`sigil diff` is the lower-level primitive behind `sigil review`. Use `diff` directly when you need raw entity-level changes without the rank/blast/cochange enrichment.
+**Example 4 — "what would break if I rename `process_event`?"**
+
+```bash
+sigil blast process_event --format agent
+```
+
+One call returns direct caller count, files, transitive reach up to depth 3, and top callers by file rank. Replaces "grep for name; read every caller; recursively chase each caller's callers" — a loop that usually costs 10+ turns.
+
+## When NOT to use sigil
+
+sigil is structural. For these question shapes, simpler tools win:
+
+| Question shape | Use instead | Why |
+|---|---|---|
+| "which files exist under dir D?" | `ls` / `find` / `bash` | Pure file enumeration; sigil's `outline` returns classes+fns, not raw file lists. |
+| "text content X inside known file F" | `read_file` / `grep` | sigil indexes symbols, not string contents. |
+| "lines matching regex in the repo" | `grep` | Same — text search beats AST search on raw text. |
+| language-specific syntactic pattern | `grep` | e.g. Rust `^pub mod` — simpler to regex. |
+| sigil returned empty AND no "Did you mean?" suggestion | `grep` | Confirm the name really doesn't exist textually before giving up. |
+
+**Empty sigil results are data, not failure.** On an empty response sigil prints `Did you mean: X, Y, Z?` to stderr when the queried name is close to known entities. Retry with a suggestion *before* falling back to grep — that stderr line is the recovery path.
+
+## Consuming sigil output in code
+
+Every script-facing command (`symbols`, `children`, `callers`, `callees`, `search`) defaults to **minified JSON** with `--json`. Add `--pretty` only for human inspection.
+
+The agent-facing commands (`map`, `context`, `review`, `blast`) accept `--format agent` for a compact token-tuned JSON. Use `--format markdown` when the *user* needs to read it.
+
+Fields you'll get on entity JSON (from 0.4.0 onward):
+- `file`, `name`, `kind`, `line_start`, `line_end`
+- `parent` (skip when null), `sig` (when present), `meta` (when non-empty)
+- `visibility` (skip when "private" — the default)
+- `blast_radius: {direct_callers, direct_files, transitive_callers}` (skip when all zero)
+- Hash columns (`struct_hash`, `body_hash`, `sig_hash`) appear only with `--with-hashes`
+
+On `References`: `{file, caller?, name, kind, line}`. The field is `kind` (not `ref_kind`) from 0.4.0; older `.sigil/refs.jsonl` with `ref_kind` is still read via a serde alias.
+
+## Zero-config onboarding
+
+First query in a repo without `.sigil/` auto-runs `sigil index` and emits one stderr line — `sigil: no index at .../.sigil — running sigil index once`. That's not an error; it's a heads-up. Set `SIGIL_NO_AUTO_INDEX=1` to disable if you're bulk-scripting and want to control indexing manually.
+
+Once the index exists, sigil uses `.sigil/cache.json` for incremental rebuilds — only touched files re-parse on subsequent `sigil index` runs.
+
+## Full agent loop — a worked flow
+
+"Help me understand this codebase and then refactor `handle_payment`":
+
+```bash
+# 1. Orient
+sigil map --tokens 3000 --format json
+
+# 2. Find the symbol
+sigil where handle_payment
+# → {file: src/checkout.rs, line: 142, class: null, sig: "fn handle_payment(...)"}
+
+# 3. Understand its role
+sigil context handle_payment --format agent
+# → signature + callers + callees + related types + inheritance overrides
+
+# 4. Quantify impact before editing
+sigil blast handle_payment --format agent
+# → direct_callers: 14, direct_files: 6, transitive_callers: 23
+
+# 5. Edit the code.
+
+# 6. Verify no unintended fan-out
+sigil diff HEAD --json
+# → look for unexpected MODIFIED/BREAKING entries
+```
+
+Six commands, six structured answers. Every step avoids a grep+read_file chain.
+
+## Structural Diff (detailed)
+
+`sigil diff` is the lower-level primitive behind `sigil review`. Use `diff` directly for raw entity-level changes without rank/blast/cochange enrichment.
 
 ```bash
 sigil diff HEAD~1                       # what changed in the last commit
-sigil diff main..HEAD                   # what changed on this branch
-sigil diff main..HEAD --json            # structured JSON (your default)
-sigil diff abc123..def456 --verbose     # between arbitrary refs, with progress
+sigil diff main..HEAD --json            # structured (your default)
 sigil diff --files old.py new.py        # compare two files directly (no git)
 sigil diff HEAD~1 --lines               # show line numbers next to entity names
 sigil diff HEAD~1 --context 5           # wider code snippets (default 3)
-sigil diff HEAD~1 --no-context          # entity-only, no snippets
-sigil diff HEAD~1 --markdown            # GitHub-flavored markdown
-sigil diff HEAD~1 --markdown --no-emoji # ASCII-only markdown
+sigil diff HEAD~1 --markdown            # GitHub-flavored markdown (paste-ready)
 sigil diff HEAD~1 --summary --group     # one-line summary, grouped changes
 sigil diff HEAD~1 --no-callers          # skip caller analysis for breaking changes
 ```
 
-**Exit codes:** `0` on success (even when changes are present), `3` on error. Don't rely on non-zero as a signal that *something changed* — sigil distinguishes change types inside the output, not in the exit code.
-
-**Entity classifications in the output:**
+Entity classifications in the output:
 - **ADDED** / **REMOVED** — new or deleted entity
 - **MODIFIED** — signature and/or body changed (output tells you which)
 - **MOVED** — same body, different file
 - **RENAMED** — different name, same body hash (detected automatically)
-- **FORMATTING ONLY** — whitespace / comment-only changes, usually skip during review
+- **FORMATTING ONLY** — whitespace / comment-only; skip during review
 - **BREAKING** — public-entity signature changed or removed
 
-JSON output includes: entity name, file, line range, `struct_hash` / `body_hash` / `sig_hash`, and for breaking changes, the list of callers.
+**Exit codes:** `0` on success (even with changes), `3` on error. Don't branch on the exit code for "did anything change" — read the output.
 
-## Navigation Primitives
+## Navigation Primitives (less common)
 
-The script-facing layer. Use these when the agent-facing commands don't fit — e.g., answering a scripted "list every caller of X" rather than a natural-language "what does X do."
+When the one-shot commands above don't fit, these lower-level tools remain available.
 
 ### Search
 
 ```bash
-sigil search "parse_file"                    # everything — symbols, files, text
-sigil search "MyClass" --scope symbol        # symbols only
 sigil search "handler" --kind function       # filter by entity kind
-sigil search "build" --limit 50 --json       # more results, JSON
+sigil search "build" --limit 50 --json       # more results
 sigil search "config" --path "src/*.rs"      # path filter
+sigil search "parse" --scope all             # broaden — default is symbol-only
 ```
 
-Valid `--scope` values: `symbol` | `file` | `text`. Omit to search all three.
+`--scope` defaults to `symbol`. Use `file` or `all` to widen.
 
-### Symbol layout
+### Symbols + children
 
 ```bash
-sigil symbols src/main.rs                    # all symbols in a file
+sigil symbols src/main.rs                    # all entities in a file
 sigil symbols "src/*.rs"                     # glob patterns
-sigil children src/entity.rs Entity          # children of a class/module
+sigil children src/entity.rs Entity          # children under a class/module
 ```
 
-### Call graph
+### Call graph filters
 
 ```bash
-sigil callers struct_hash                              # who references this symbol?
-sigil callers process --kind call                      # calls only (skip imports, types)
-sigil callers build_index --kind import                # only import references
-sigil callees build_index                              # what does this function call?
+sigil callers process --kind call            # call-sites only (skip imports, types)
+sigil callers build_index --kind import      # only import references
+sigil callers foo --group-by file            # {file: count} aggregation
+sigil callees build_index --group-by name    # what does X call most?
 ```
 
 Valid `--kind` values: `call` | `import` | `type_annotation` | `instantiation`.
@@ -150,15 +201,12 @@ Valid `--kind` values: `call` | `import` | `type_annotation` | `instantiation`.
 
 ```bash
 sigil explore                               # project structure
-sigil explore --path src                    # filter to subtree
-sigil explore --json                        # structured output
+sigil explore --path src --json             # subtree, structured
 ```
 
 ## Advanced: Duplicates, SQL, Benchmark
 
 ### `sigil duplicates` — clone detection
-
-Groups entities by `body_hash` — literal duplicate implementations anywhere in the repo.
 
 ```bash
 sigil duplicates                            # markdown report
@@ -167,129 +215,42 @@ sigil duplicates --format json              # structured
 sigil duplicates --max-group-size 20        # drop huge groups (usually generated code)
 ```
 
-Useful when the user asks "where's this copy-pasted," "is this already implemented somewhere," or during cleanup/refactor tasks.
+Groups entities by `body_hash`. Useful when the user asks "where's this copy-pasted," "is this already implemented," or during cleanup.
 
 ### `sigil query "SQL"` — DuckDB escape hatch
 
-Ad-hoc SQL against the materialized index. Tables: `entities`, `refs`. Views: `rank`, `blast`. Shipped binaries include the DuckDB backend; no extra setup.
+Ad-hoc SQL against the materialized index. Tables: `entities`, `refs`. Views: `rank`, `blast`. Shipped binaries include DuckDB — no extra setup.
 
 ```bash
 sigil query "SELECT kind, COUNT(*) FROM entities GROUP BY 1 ORDER BY 2 DESC"
 sigil query "SELECT name, file FROM entities WHERE visibility = 'public' AND rank > 0.01"
-sigil query "SELECT * FROM refs WHERE target_name = 'parse_file' LIMIT 50" --format json
+sigil query "SELECT * FROM refs WHERE name = 'parse_file' LIMIT 50" --format json
 ```
 
-Use this when the user asks a question that doesn't fit the built-in commands — "show me every public function with no callers," "which files have the most entities," etc.
+Use when the question doesn't fit the built-in commands — "every public function with no callers," "files with the most entities."
 
 ### `sigil benchmark` — token accounting
 
-Publishes median token reduction of sigil commands vs raw alternatives (git log, git diff, ls + read).
-
 ```bash
 sigil benchmark                                 # bytes/4 proxy (fast)
-sigil benchmark --tokenizer o200k_base          # BPE-accurate (o200k / cl100k / p50k)
+sigil benchmark --tokenizer o200k_base          # BPE-accurate
 ```
 
-Useful only when the user explicitly asks about token efficiency.
-
 ### `sigil cochange` — rebuild co-change cache
-
-Reads `git log --name-only` and weights file pairs that change together. Writes to `.sigil/cochange.json`. `sigil review` consumes this automatically — you rarely need to run it yourself unless the cache is stale or the repo has new history.
 
 ```bash
 sigil cochange                              # default 500 commits
 sigil cochange --commits 2000               # wider history
 ```
 
-## Indexing
-
-sigil reads from `.sigil/` (JSONL + rank.json + optional DuckDB materialization). The index must exist before search/navigation commands work.
-
-```bash
-sigil index                                 # incremental rebuild
-sigil index -v                              # with progress
-sigil index --full                          # force full reparse
-sigil index --no-rank                       # skip PageRank + blast-radius pass
-```
-
-**Most agents don't need to invoke this directly.** When the `sigil hook` integration is installed, a git post-commit hook rebuilds `.sigil/` automatically after each commit. Check for `.sigil/entities.jsonl` before running anything that reads the index — if present, it's ready.
-
-## Agent-facing Workflows
-
-### Orienting in an unfamiliar repo
-
-```bash
-sigil map --tokens 3000 --format json       # what does this codebase look like?
-sigil context <interesting-name> --format agent  # drill into a specific piece
-```
-
-Skip the "list files, read README, read a few source files" loop — the map already encodes import-graph centrality.
-
-### Reviewing a PR
-
-```bash
-sigil review main..HEAD --format json       # your primary artifact
-# If the user wants a pasteable comment:
-sigil review main..HEAD --markdown
-# For a deep dive on a specific modified function:
-sigil blast <modified_name> --format agent
-```
-
-`review` already includes co-change misses, so entities the diff *should* have touched but didn't are surfaced for you.
-
-### Understanding a symbol
-
-```bash
-sigil context <name> --format agent         # one call, done
-# Fallback if context isn't enough or the symbol is ambiguous:
-sigil search <name> --scope symbol          # disambiguate
-sigil callers <name> --kind call --json     # raw call sites
-sigil callees <name> --kind call --json
-```
-
-### Planning a rename or refactor
-
-```bash
-sigil blast <name> --format agent           # impact scope
-sigil callers <name> --kind call --json     # exact call sites to edit
-sigil duplicates --min-lines 5              # any copies to consolidate?
-```
-
-### Verifying your own edits
-
-After you've modified code:
-
-```bash
-sigil diff HEAD --json                      # what changed (uncommitted)
-sigil diff HEAD~1 --json                    # what changed (committed)
-```
-
-Look for unexpected MODIFIED or BREAKING entries — often catches edits that rippled further than intended.
-
-## When to use sigil vs Grep/Glob/Read
-
-| Question type | Use sigil | Use Grep/Glob/Read |
-|---|---|---|
-| Codebase orientation | `sigil map` | No — too coarse |
-| Symbol impact / call graph | `sigil callers` / `blast` / `context` | No — grep misses type-only references and overcounts string hits |
-| PR review | `sigil review` / `sigil diff` | No — `git diff` is line-level noise |
-| Compare two specific files | `sigil diff --files` | No — unstructured |
-| Cross-file duplication | `sigil duplicates` | No |
-| Ad-hoc analytics ("public fns with no callers") | `sigil query` | No |
-| Symbol location | `sigil search --scope symbol` | Grep `^fn X` is also fine |
-| Free-text search in comments/strings | `sigil search` or `Grep` | Either |
-| File discovery by name | — | `Glob "**/*.go"` |
-| Read a specific file | — | `Read` |
-
-**Rule of thumb:** Any question about *relationships* (callers, callees, impact, rank, cochange) → sigil. Any question that's pure text or filename matching → Grep / Glob. Any question that's "what does this codebase look like" or "what does this symbol do" or "what does this PR do" → the agent-facing sigil command (`map` / `context` / `review`), not a collection of lower-level calls.
+Writes `.sigil/cochange.json`. `sigil review` consumes this automatically; rarely needed directly unless the cache is stale.
 
 ## Tips
 
-- **All commands accept `-r <path>` / `--root <path>`** for running against a directory that isn't `$PWD`.
-- **All agent-facing commands offer `--format agent`** — compact JSON tuned for LLM ingestion. Prefer it over `--format markdown` when you're consuming the output yourself.
-- **`sigil diff` always exits 0 on success.** Don't branch on the exit code for "did anything change"; read the output instead. Exit 3 is error-only.
-- **Entity JSON includes `rank`, `blast_radius`, `visibility`** — entities from v0.3.0+ carry these fields, so you can order results or filter by importance without a separate call.
-- **`sigil context` / `sigil blast` accept qualified names** like `file.rs::name`, `Parent::name`, `file.rs::Parent::name` when a bare name is ambiguous.
-- **`sigil review` skips co-change analysis** with `--no-cochange` if the git history is very deep and you only need the diff+blast portion.
-- **Shipped binaries include the DuckDB backend and BPE tokenizer** — no feature flags or extra installs needed. The backend auto-engages above ~5 MB of `.sigil/` JSONL (tunable via `SIGIL_AUTO_ENGAGE_THRESHOLD_MB`).
-- **`sigil` uses `.sigil/cache.json` for incremental indexing** — re-runs of `sigil index` only reparse changed files. Safe to commit `.sigil/entities.jsonl` + `refs.jsonl` + `rank.json` for teammates / CI agents; `.sigil/index.duckdb` is derived and gitignored.
+- **All commands accept `-r <path>` / `--root <path>`** — run against a directory that isn't `$PWD`.
+- **Script-facing commands default to unbounded results** (`--limit 0`). The old `--limit 100` default is gone — pass `--limit N` to cap explicitly.
+- **`sigil callers` matches qualified-tail names** — `sigil callers parse_file` finds refs stored as `crate::parser::treesitter::parse_file`, not just bare `parse_file`.
+- **`sigil context` / `sigil blast` accept qualified names** like `file.rs::name`, `Parent::name`, `file.rs::Parent::name` when the bare name is ambiguous.
+- **Empty results include stderr suggestions** — `Did you mean: X, Y, Z?` when the queried name is close to something known. Use it as the recovery path before grep.
+- **Shipped binaries are single-build** — `cargo install sigil` includes all 11 languages + DuckDB + tokenizer. No `--features` flags needed.
+- **`.sigil/entities.jsonl` + `refs.jsonl` + `rank.json` are committable** (human-readable, diffable, small). `.sigil/index.duckdb` is derived and gitignored.
