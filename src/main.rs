@@ -760,6 +760,7 @@ fn main() {
             }
         }
         Cli::Search { query: q, root, scope, kind, path, limit, json, pretty } => {
+            let original_q = q.clone();
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             // `scope` / `kind` are Vec<String> for CLI multi-arg compatibility;
@@ -862,11 +863,30 @@ fn main() {
             } else {
                 print!("{}", query::format_search_hits_owned(&results));
             }
+            if results.is_empty() {
+                let idx = query::load(&root).ok();
+                let sugg = idx
+                    .as_ref()
+                    .map(|i| query::suggest_similar(i, &original_q, 5))
+                    .unwrap_or_default();
+                if sugg.is_empty() {
+                    eprintln!(
+                        "sigil: 0 matches for `{original_q}`. Try a shorter substring (`sigil search {}`) or `sigil where <exact-name>` for a definition lookup.",
+                        first_few(&original_q, 4),
+                    );
+                } else {
+                    eprintln!(
+                        "sigil: 0 matches for `{original_q}`. Did you mean: {}?",
+                        sugg.join(", ")
+                    );
+                }
+            }
         }
         Cli::Symbols { file, root, limit, depth, json, pretty, with_hashes } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let symbols = backend.get_file_symbols(&file, None, limit as usize);
+            let was_empty_before_depth = symbols.is_empty();
             let filtered: Vec<sigil::entity::Entity> = if depth == 1 {
                 symbols.into_iter().filter(query::is_top_level_outline).collect()
             } else {
@@ -877,6 +897,17 @@ fn main() {
                 query::emit_entities_json(std::io::stdout(), &refs, pretty, with_hashes).ok();
             } else {
                 print!("{}", query::format_entities(&refs));
+            }
+            if refs.is_empty() {
+                if was_empty_before_depth {
+                    eprintln!(
+                        "sigil: no entities in `{file}`. File may not be indexed — try `sigil index` or check the path spelling."
+                    );
+                } else {
+                    eprintln!(
+                        "sigil: `{file}` has entries, but none qualify as `--depth 1` top-level items. Re-run without `--depth 1` to see nested / variable / import entries."
+                    );
+                }
             }
         }
         Cli::Children { file, parent, root, limit, json, pretty, with_hashes } => {
@@ -905,6 +936,9 @@ fn main() {
             } else {
                 print!("{}", query::format_refs(&borrowed));
             }
+            if borrowed.is_empty() {
+                emit_empty_hint(&root, &name, "callers");
+            }
         }
         Cli::Callees { caller, root, kind, limit, group_by, json, pretty } => {
             let backend = sigil::query::Backend::load(&root)
@@ -920,6 +954,9 @@ fn main() {
                 query::emit_references_json(std::io::stdout(), &borrowed, pretty).ok();
             } else {
                 print!("{}", query::format_refs(&borrowed));
+            }
+            if borrowed.is_empty() {
+                emit_empty_hint(&root, &caller, "callees");
             }
         }
         Cli::Outline { root, path, format, pretty } => {
@@ -945,6 +982,20 @@ fn main() {
                 other => {
                     eprintln!("error: unknown --format {}. expected: markdown | json", other);
                     std::process::exit(1);
+                }
+            }
+            if report.definitions.is_empty() {
+                let sugg = query::suggest_similar(&idx, &symbol, 5);
+                if sugg.is_empty() {
+                    eprintln!(
+                        "sigil: no definition of `{symbol}` found. Try `sigil search {}` with a shorter substring.",
+                        first_few(&symbol, 4),
+                    );
+                } else {
+                    eprintln!(
+                        "sigil: no definition of `{symbol}` found. Did you mean: {}?",
+                        sugg.join(", ")
+                    );
                 }
             }
         }
@@ -1306,6 +1357,36 @@ fn main() {
                 }
             }
         }
+    }
+}
+
+/// Short prefix of a query string — used in didactic hints that
+/// suggest narrowing a miss to a shorter substring.
+fn first_few(s: &str, n: usize) -> String {
+    s.chars().take(n).collect()
+}
+
+/// Emit a didactic stderr hint when `sigil callers` / `sigil callees`
+/// returns empty. Loads the index (best effort) to suggest close
+/// matches via `query::suggest_similar`. The "did you mean?" line is
+/// the key recovery point — it keeps the agent inside sigil's loop
+/// after a bad-guess query, instead of falling back to grep.
+fn emit_empty_hint(root: &std::path::Path, name: &str, verb: &str) {
+    let idx = query::load(root).ok();
+    let sugg = idx
+        .as_ref()
+        .map(|i| query::suggest_similar(i, name, 5))
+        .unwrap_or_default();
+    if sugg.is_empty() {
+        eprintln!(
+            "sigil: no {verb} for `{name}`. Try `sigil where {name}` to confirm the name exists, or `sigil search {}` with a shorter substring.",
+            first_few(name, 4),
+        );
+    } else {
+        eprintln!(
+            "sigil: no {verb} for `{name}`. Did you mean: {}?",
+            sugg.join(", ")
+        );
     }
 }
 

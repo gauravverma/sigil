@@ -610,6 +610,66 @@ pub fn emit_references_json<W: std::io::Write>(
     writeln!(w)
 }
 
+/// Tail segment of a `::`- or `.`-qualified name (the last piece).
+pub fn tail_segment(name: &str) -> &str {
+    name.rsplit(|c| c == ':' || c == '.').next().unwrap_or(name)
+}
+
+/// Levenshtein edit distance — iterative two-row impl. Used for
+/// "did-you-mean" suggestions when a sigil query returns empty.
+fn levenshtein(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    if a.is_empty() {
+        return b.len();
+    }
+    if b.is_empty() {
+        return a.len();
+    }
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    let mut curr = vec![0_usize; b.len() + 1];
+    for i in 1..=a.len() {
+        curr[0] = i;
+        for j in 1..=b.len() {
+            let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
+            curr[j] = (curr[j - 1] + 1).min(prev[j] + 1).min(prev[j - 1] + cost);
+        }
+        std::mem::swap(&mut prev, &mut curr);
+    }
+    prev[b.len()]
+}
+
+/// Suggest entity tail-segment names most similar to `query` by edit
+/// distance. Used in didactic error messages — when an agent queries a
+/// name that doesn't exist, sigil should say "try this instead" rather
+/// than return empty and let the agent fall back to grep.
+///
+/// Returns up to `limit` unique tail names, sorted by ascending edit
+/// distance. Filters out the query itself and distances larger than
+/// half the query length (anything further is rarely a typo).
+pub fn suggest_similar(idx: &Index, query: &str, limit: usize) -> Vec<String> {
+    if query.is_empty() {
+        return Vec::new();
+    }
+    let q_lower = query.to_lowercase();
+    let max_dist = (query.len() / 2).max(2);
+
+    use std::collections::BTreeSet;
+    let mut tails: BTreeSet<&str> = BTreeSet::new();
+    for e in &idx.entities {
+        tails.insert(tail_segment(&e.name));
+    }
+
+    let mut scored: Vec<(usize, String)> = tails
+        .into_iter()
+        .filter(|t| !t.eq_ignore_ascii_case(query) && !t.is_empty())
+        .map(|t| (levenshtein(&t.to_lowercase(), &q_lower), t.to_string()))
+        .filter(|(d, _)| *d <= max_dist)
+        .collect();
+    scored.sort_by_key(|(d, _)| *d);
+    scored.into_iter().take(limit).map(|(_, t)| t).collect()
+}
+
 /// Predicate used by `sigil symbols --depth 1` to keep only the file's
 /// top-level "outline" items — classes, top-level functions, structs,
 /// enums, traits, and markdown sections. Drops imports, variables,
