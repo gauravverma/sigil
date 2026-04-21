@@ -50,6 +50,33 @@ Size impact on sigil-self:
 - `sigil callers parse_file --kind call --json`: 19,352 → **14,191 bytes
   (27% smaller)**
 
+### Eval validation — sigil now wins on the external-repo task
+
+E4 "find-the-method" task against pallets/click (2.3k LOC, cloned at
+04ef3a6) — a SWE-bench-Lite-style phase-1 exploration of an unfamiliar
+codebase, where the agent must locate the method that resolves option
+default values.
+
+| Model | Arm | Median tokens_in | Pass |
+|---|---|---:|---:|
+| Sonnet 4.6 (N=3) | control | 23,270 | 3/3 |
+| Sonnet 4.6 (N=3) | **treatment** | **16,698** | 3/3 |
+| Haiku 4.5 (N=1) | control | 71,190 | 1/1 |
+| Haiku 4.5 (N=1) | **treatment** | **43,330** | 1/1 |
+
+Sonnet ratio: **1.39× (sigil wins)**. Haiku ratio: **1.64× (sigil wins)**.
+Pre-0.4.0 numbers on the same task had Sonnet at 0.49× (sigil losing
+2×) — a net 2.8× swing from the combined effect of compact entity/
+reference JSON, sharper treatment-blurb hints, `--scope symbol` as the
+search default, and the search overload-dedup + line-flatten.
+
+Also notable: Sonnet treatment seeds 1/2/3 landed at 16,908 / 16,698 /
+16,698 tokens — near-identical paths. Sigil appears to produce more
+deterministic agent behavior than pure grep on the same question.
+
+Full per-arm traces and archived pre-fix baselines under
+`evals/results/2026-04-21/{haiku-4-5,sonnet-4-6}/E4{,-preblurbfix,-prescope}/`.
+
 Upgrade note: pre-0.4.0 `.sigil/refs.jsonl` loads fine via the Rust alias,
 but the DuckDB backend's materialized table definition has a renamed
 column. Re-run `sigil index` once after the upgrade to rebuild the

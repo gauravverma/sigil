@@ -2,5 +2,5 @@
 
 | Arm | Runs | Pass | Fail | Uncaptured | Median tokens_in | Median tokens_out |
 |---|---:|---:|---:|---:|---:|---:|
-| control | 3 | 3 | 0 | 0 | 23270 | 360 |
-| treatment | 3 | 3 | 0 | 0 | 16698 | 400 |
+| control | 3 | 3 | 0 | 0 | 11595 | 426 |
+| treatment | 3 | 3 | 0 | 0 | 14301 | 406 |
