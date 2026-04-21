@@ -59,7 +59,9 @@ sigil_* tools give pre-computed structural code intelligence.
 Use them BEFORE grep for structural questions:
 
   "where is X defined?"       → sigil_where(X)
-  "list the Xs in file F"     → sigil_symbols(F, depth=1, names_only=true)
+  "list the Xs in file F"     → sigil_symbol_names(F)
+  "signatures / line ranges
+   per symbol in file F"      → sigil_symbol_details(F, depth=1)
   "who calls X?"              → sigil_callers(X)
   "what does X call?"         → sigil_callees(X)
   "how does X fit?"           → sigil_context(X)
@@ -72,11 +74,6 @@ Use grep / read_file / bash for:
     sigil_outline)
   - language syntactic patterns grep nails in one line (e.g. Rust
     `^pub mod`)
-
-ALWAYS pass names_only=true to sigil_symbols when the answer is a
-list of names (structs, fns, classes in a file). The default returns
-verbose entity records; use that ONLY when you need signatures or
-line ranges. Typical drop: ~3 KB → ~300 bytes.
 
 Empty sigil results print `Did you mean: X, Y, Z?` on stderr — retry
 with a suggested name before falling back to grep.
@@ -203,14 +200,25 @@ SIGIL_TOOLS = [
         },
     },
     {
-        "name": "sigil_symbols",
-        "description": "Entities in ONE file with parent class. CRITICAL: if the question asks 'list the structs / functions / classes in file F' (i.e. the answer is a LIST OF NAMES), ALWAYS pass names_only=true — returns a flat array of names, ~90% smaller (3 KB → 300 bytes). The default (names_only=false) returns verbose per-entity records with signatures + line ranges; use that ONLY when the task specifically asks for signatures, line ranges, or other metadata. Combine with depth=1 to restrict to top-level items (classes, top-level fns, structs, enums, traits).",
+        "name": "sigil_symbol_names",
+        "description": "Flat JSON array of names of the symbols in ONE file. The right tool for \"list the structs / functions / classes in file F\". Tiny payload (~300 bytes for a mid-sized file).",
         "input_schema": {
             "type": "object",
             "properties": {
                 "file": {"type": "string", "description": "Repo-relative file path"},
-                "depth": {"type": "integer", "description": "1 = top-level items only (skip nested methods, imports, variables); omit for the full entity dump", "default": 0},
-                "names_only": {"type": "boolean", "description": "REQUIRED for 'list the Xs' questions. Returns just a flat JSON array of tail-segment names. Omit or set false only when the answer needs signatures or line ranges per entity.", "default": False},
+                "depth": {"type": "integer", "description": "1 = top-level items only (skip nested methods, imports, variables). Usually 1.", "default": 1},
+            },
+            "required": ["file"],
+        },
+    },
+    {
+        "name": "sigil_symbol_details",
+        "description": "Full entity records for ONE file: kind, parent class, signature, line range. Use when you need sigs or line ranges per symbol; otherwise prefer sigil_symbol_names.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "file": {"type": "string", "description": "Repo-relative file path"},
+                "depth": {"type": "integer", "description": "1 = top-level items only; omit for a full entity dump.", "default": 0},
             },
             "required": ["file"],
         },
@@ -357,12 +365,18 @@ def tool_sigil_callees(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> s
     return _sigil_cmd(env, cwd, args)
 
 
-def tool_sigil_symbols(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
+def tool_sigil_symbol_names(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
+    args = ["symbols", inp["file"], "--json", "--names-only"]
+    depth = int(inp.get("depth", 1))
+    if depth == 1:
+        args += ["--depth", "1"]
+    return _sigil_cmd(env, cwd, args)
+
+
+def tool_sigil_symbol_details(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
     args = ["symbols", inp["file"], "--json"]
     if int(inp.get("depth", 0)) == 1:
         args += ["--depth", "1"]
-    if inp.get("names_only"):
-        args.append("--names-only")
     return _sigil_cmd(env, cwd, args)
 
 
@@ -389,7 +403,8 @@ DISPATCH = {
     "sigil_context": tool_sigil_context,
     "sigil_callers": tool_sigil_callers,
     "sigil_callees": tool_sigil_callees,
-    "sigil_symbols": tool_sigil_symbols,
+    "sigil_symbol_names": tool_sigil_symbol_names,
+    "sigil_symbol_details": tool_sigil_symbol_details,
     "sigil_outline": tool_sigil_outline,
     "sigil_search": tool_sigil_search,
 }
