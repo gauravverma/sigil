@@ -516,3 +516,178 @@ pub fn format_refs(refs: &[&Reference]) -> String {
     }
     out
 }
+
+/// Emit a slice of entities as JSON on `w`. Default is minified; pass
+/// `pretty=true` for indented output. When `with_hashes=false` the internal
+/// BLAKE3 columns (`struct_hash`, `body_hash`, `sig_hash`) are stripped —
+/// they rarely help downstream consumers (agents, grep pipelines) and
+/// usually just inflate the payload. Set `with_hashes=true` for scripts
+/// that want the raw JSONL view.
+pub fn emit_entities_json<W: std::io::Write>(
+    mut w: W,
+    entities: &[&Entity],
+    pretty: bool,
+    with_hashes: bool,
+) -> std::io::Result<()> {
+    let mut values: Vec<serde_json::Value> = entities
+        .iter()
+        .map(|e| serde_json::to_value(e).expect("Entity serializes infallibly"))
+        .collect();
+    if !with_hashes {
+        strip_hashes_in_place(&mut values);
+    }
+    if pretty {
+        serde_json::to_writer_pretty(&mut w, &values)?;
+    } else {
+        serde_json::to_writer(&mut w, &values)?;
+    }
+    writeln!(w)
+}
+
+/// Emit a slice of references as JSON on `w`. References carry no hash
+/// columns, so there's no `with_hashes` knob — the compact schema is the
+/// only form. `pretty=true` gives indented output.
+pub fn emit_references_json<W: std::io::Write>(
+    mut w: W,
+    refs: &[&Reference],
+    pretty: bool,
+) -> std::io::Result<()> {
+    if pretty {
+        serde_json::to_writer_pretty(&mut w, refs)?;
+    } else {
+        serde_json::to_writer(&mut w, refs)?;
+    }
+    writeln!(w)
+}
+
+fn strip_hashes_in_place(values: &mut [serde_json::Value]) {
+    for v in values {
+        if let Some(obj) = v.as_object_mut() {
+            obj.remove("struct_hash");
+            obj.remove("body_hash");
+            obj.remove("sig_hash");
+        }
+    }
+}
+
+#[cfg(test)]
+mod json_emit_tests {
+    use super::*;
+    use crate::entity::{BlastRadius, Entity};
+
+    fn sample_struct() -> Entity {
+        Entity {
+            file: "src/x.rs".into(),
+            name: "Foo".into(),
+            kind: "struct".into(),
+            line_start: 10,
+            line_end: 20,
+            parent: None,
+            sig: Some("pub struct Foo".into()),
+            meta: Some(vec!["Debug".into(), "Clone".into()]),
+            body_hash: Some("abc".into()),
+            sig_hash: Some("def".into()),
+            struct_hash: "ghi".into(),
+            visibility: Some("public".into()),
+            rank: None,
+            blast_radius: Some(BlastRadius {
+                direct_callers: 3,
+                direct_files: 1,
+                transitive_callers: 7,
+            }),
+        }
+    }
+
+    fn sample_import() -> Entity {
+        Entity {
+            file: "src/x.rs".into(),
+            name: "std::collections::HashMap".into(),
+            kind: "import".into(),
+            line_start: 1,
+            line_end: 1,
+            parent: None,
+            sig: None,
+            meta: Some(vec![]), // parser emits empty vec often
+            body_hash: None,
+            sig_hash: None,
+            struct_hash: "h".into(),
+            visibility: Some("private".into()),
+            rank: None,
+            blast_radius: Some(BlastRadius::default()), // all zeros
+        }
+    }
+
+    #[test]
+    fn compact_entity_drops_hashes_by_default() {
+        let e = sample_struct();
+        let es = vec![&e];
+        let mut buf = Vec::new();
+        emit_entities_json(&mut buf, &es, false, false).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(!s.contains("struct_hash"));
+        assert!(!s.contains("body_hash"));
+        assert!(!s.contains("sig_hash"));
+        assert!(s.contains("\"name\":\"Foo\""));
+        assert!(s.contains("\"blast_radius\""));
+    }
+
+    #[test]
+    fn compact_entity_keeps_hashes_when_requested() {
+        let e = sample_struct();
+        let es = vec![&e];
+        let mut buf = Vec::new();
+        emit_entities_json(&mut buf, &es, false, true).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("\"struct_hash\":\"ghi\""));
+        assert!(s.contains("\"body_hash\":\"abc\""));
+    }
+
+    #[test]
+    fn compact_entity_drops_noise_on_import() {
+        let e = sample_import();
+        let es = vec![&e];
+        let mut buf = Vec::new();
+        emit_entities_json(&mut buf, &es, false, false).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        // visibility "private" elided; zero blast_radius elided; empty meta
+        // elided; hashes elided. Only the positive identity fields remain.
+        assert!(!s.contains("visibility"));
+        assert!(!s.contains("blast_radius"));
+        assert!(!s.contains("meta"));
+        assert!(!s.contains("struct_hash"));
+        assert!(s.contains("\"kind\":\"import\""));
+    }
+
+    #[test]
+    fn compact_output_is_minified_by_default() {
+        let e = sample_struct();
+        let es = vec![&e];
+        let mut buf = Vec::new();
+        emit_entities_json(&mut buf, &es, false, false).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        // Minified: no indented whitespace after commas, no newlines inside
+        // the JSON payload.
+        assert!(!s.contains(",\n  "));
+        assert!(!s.contains(": "));
+    }
+
+    #[test]
+    fn reference_serializes_kind_not_ref_kind() {
+        use crate::entity::Reference;
+        let r = Reference {
+            file: "a.rs".into(),
+            caller: Some("m".into()),
+            name: "foo".into(),
+            ref_kind: "call".into(),
+            line: 7,
+        };
+        let s = serde_json::to_string(&r).unwrap();
+        assert!(s.contains("\"kind\":\"call\""));
+        assert!(!s.contains("ref_kind"));
+
+        // And the alias lets us read old-format refs.jsonl.
+        let old = r#"{"file":"a.rs","caller":"m","name":"foo","ref_kind":"call","line":7}"#;
+        let parsed: Reference = serde_json::from_str(old).unwrap();
+        assert_eq!(parsed.ref_kind, "call");
+    }
+}

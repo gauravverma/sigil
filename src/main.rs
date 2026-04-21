@@ -153,9 +153,12 @@ enum Cli {
         /// Max entries to show
         #[arg(long, default_value = "200")]
         max_entries: usize,
-        /// Output as JSON
+        /// Output as JSON (compact by default — see --pretty)
         #[arg(long)]
         json: bool,
+        /// Pretty-print JSON output (default: minified)
+        #[arg(long)]
+        pretty: bool,
     },
     /// Search across symbols, files, and texts
     Search {
@@ -176,9 +179,12 @@ enum Cli {
         /// Max results
         #[arg(long, default_value = "20")]
         limit: u32,
-        /// Output as JSON
+        /// Output as JSON (compact by default — see --pretty)
         #[arg(long)]
         json: bool,
+        /// Pretty-print JSON output (default: minified)
+        #[arg(long)]
+        pretty: bool,
     },
     /// List all symbols in a file
     Symbols {
@@ -190,9 +196,17 @@ enum Cli {
         /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
         #[arg(long, default_value = "0")]
         limit: u32,
-        /// Output as JSON
+        /// Output as JSON (compact by default — see --pretty, --with-hashes)
         #[arg(long)]
         json: bool,
+        /// Pretty-print JSON output (default: minified)
+        #[arg(long)]
+        pretty: bool,
+        /// Include BLAKE3 hash columns (struct_hash, body_hash, sig_hash) in
+        /// the JSON output. Off by default — useful for scripts that need
+        /// the raw on-disk shape.
+        #[arg(long)]
+        with_hashes: bool,
     },
     /// Get children of a class or module
     Children {
@@ -206,9 +220,15 @@ enum Cli {
         /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
         #[arg(long, default_value = "0")]
         limit: u32,
-        /// Output as JSON
+        /// Output as JSON (compact by default — see --pretty, --with-hashes)
         #[arg(long)]
         json: bool,
+        /// Pretty-print JSON output (default: minified)
+        #[arg(long)]
+        pretty: bool,
+        /// Include BLAKE3 hash columns in the JSON output.
+        #[arg(long)]
+        with_hashes: bool,
     },
     /// Find all callers/references to a symbol
     Callers {
@@ -223,9 +243,12 @@ enum Cli {
         /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
         #[arg(long, default_value = "0")]
         limit: u32,
-        /// Output as JSON
+        /// Output as JSON (compact by default — see --pretty)
         #[arg(long)]
         json: bool,
+        /// Pretty-print JSON output (default: minified)
+        #[arg(long)]
+        pretty: bool,
     },
     /// Find all symbols that a function calls
     Callees {
@@ -240,9 +263,12 @@ enum Cli {
         /// Max results (0 = unlimited, the default — script-facing commands are unbounded)
         #[arg(long, default_value = "0")]
         limit: u32,
-        /// Output as JSON
+        /// Output as JSON (compact by default — see --pretty)
         #[arg(long)]
         json: bool,
+        /// Pretty-print JSON output (default: minified)
+        #[arg(long)]
+        pretty: bool,
     },
     /// Impact summary for a symbol — blast counts + top callers by file rank.
     Blast {
@@ -641,14 +667,21 @@ fn main() {
             }
 
         }
-        Cli::Explore { root, path, max_entries, json } => {
+        Cli::Explore { root, path, max_entries, json, pretty } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             if json {
                 let files = backend.explore_files_capped(path.as_deref(), max_entries);
-                serde_json::to_writer_pretty(std::io::stdout(), &files.iter().map(|(dir, path, lang)| {
+                let values: Vec<serde_json::Value> = files.iter().map(|(dir, path, lang)| {
                     serde_json::json!({"directory": dir, "path": path, "language": lang})
-                }).collect::<Vec<_>>()).ok();
+                }).collect();
+                let stdout = std::io::stdout();
+                let mut lock = stdout.lock();
+                if pretty {
+                    serde_json::to_writer_pretty(&mut lock, &values).ok();
+                } else {
+                    serde_json::to_writer(&mut lock, &values).ok();
+                }
                 println!();
             } else {
                 let dirs = backend.explore_dir_overview(path.as_deref());
@@ -662,7 +695,7 @@ fn main() {
                 }
             }
         }
-        Cli::Search { query: q, root, scope, kind, path, limit, json } => {
+        Cli::Search { query: q, root, scope, kind, path, limit, json, pretty } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             // `scope` / `kind` are Vec<String> for CLI multi-arg compatibility;
@@ -692,56 +725,58 @@ fn main() {
                         "entity_count": f.entity_count,
                     }),
                 }).collect();
-                serde_json::to_writer_pretty(std::io::stdout(), &json_hits).ok();
+                let stdout = std::io::stdout();
+                let mut lock = stdout.lock();
+                if pretty {
+                    serde_json::to_writer_pretty(&mut lock, &json_hits).ok();
+                } else {
+                    serde_json::to_writer(&mut lock, &json_hits).ok();
+                }
                 println!();
             } else {
                 print!("{}", query::format_search_hits_owned(&results));
             }
         }
-        Cli::Symbols { file, root, limit, json } => {
+        Cli::Symbols { file, root, limit, json, pretty, with_hashes } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let symbols = backend.get_file_symbols(&file, None, limit as usize);
             let refs: Vec<&sigil::entity::Entity> = symbols.iter().collect();
             if json {
-                serde_json::to_writer_pretty(std::io::stdout(), &symbols).ok();
-                println!();
+                query::emit_entities_json(std::io::stdout(), &refs, pretty, with_hashes).ok();
             } else {
                 print!("{}", query::format_entities(&refs));
             }
         }
-        Cli::Children { file, parent, root, limit, json } => {
+        Cli::Children { file, parent, root, limit, json, pretty, with_hashes } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let children = backend.get_children(&file, &parent, None, limit as usize);
             let refs: Vec<&sigil::entity::Entity> = children.iter().collect();
             if json {
-                serde_json::to_writer_pretty(std::io::stdout(), &children).ok();
-                println!();
+                query::emit_entities_json(std::io::stdout(), &refs, pretty, with_hashes).ok();
             } else {
                 print!("{}", query::format_entities(&refs));
             }
         }
-        Cli::Callers { name, root, kind, limit, json } => {
+        Cli::Callers { name, root, kind, limit, json, pretty } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let refs = backend.get_callers(&name, kind.as_deref(), limit as usize);
             let borrowed: Vec<&sigil::entity::Reference> = refs.iter().collect();
             if json {
-                serde_json::to_writer_pretty(std::io::stdout(), &refs).ok();
-                println!();
+                query::emit_references_json(std::io::stdout(), &borrowed, pretty).ok();
             } else {
                 print!("{}", query::format_refs(&borrowed));
             }
         }
-        Cli::Callees { caller, root, kind, limit, json } => {
+        Cli::Callees { caller, root, kind, limit, json, pretty } => {
             let backend = sigil::query::Backend::load(&root)
                 .unwrap_or_else(|e| { eprintln!("error: {}", e); std::process::exit(1); });
             let refs = backend.get_callees(&caller, kind.as_deref(), limit as usize);
             let borrowed: Vec<&sigil::entity::Reference> = refs.iter().collect();
             if json {
-                serde_json::to_writer_pretty(std::io::stdout(), &refs).ok();
-                println!();
+                query::emit_references_json(std::io::stdout(), &borrowed, pretty).ok();
             } else {
                 print!("{}", query::format_refs(&borrowed));
             }

@@ -171,7 +171,7 @@ impl DuckDbBackend {
         let want_qualified = !name.contains("::");
         let like_pattern = format!("%::{}", name);
         let mut sql = String::from(
-            "SELECT file, caller, name, ref_kind, line \
+            "SELECT file, caller, name, kind, line \
              FROM refs \
              WHERE (name = ?",
         );
@@ -180,7 +180,7 @@ impl DuckDbBackend {
         }
         sql.push(')');
         if kind_filter.is_some() {
-            sql.push_str(" AND ref_kind = ?");
+            sql.push_str(" AND kind = ?");
         }
         sql.push_str(" ORDER BY file, line");
         if limit > 0 {
@@ -215,12 +215,12 @@ impl DuckDbBackend {
         limit: usize,
     ) -> Result<Vec<Reference>> {
         let mut sql = String::from(
-            "SELECT file, caller, name, ref_kind, line \
+            "SELECT file, caller, name, kind, line \
              FROM refs \
              WHERE caller = ?",
         );
         if kind_filter.is_some() {
-            sql.push_str(" AND ref_kind = ?");
+            sql.push_str(" AND kind = ?");
         }
         sql.push_str(" ORDER BY file, line");
         if limit > 0 {
@@ -734,7 +734,7 @@ fn empty_entities_table_sql() -> &'static str {
 fn empty_refs_table_sql() -> &'static str {
     "CREATE TABLE refs (
         file VARCHAR, caller VARCHAR, name VARCHAR,
-        ref_kind VARCHAR, line BIGINT
+        kind VARCHAR, line BIGINT
     );"
 }
 
@@ -770,7 +770,7 @@ const REFS_COLUMNS_SPEC: &str = "{ \
     file: 'VARCHAR', \
     caller: 'VARCHAR', \
     name: 'VARCHAR', \
-    ref_kind: 'VARCHAR', \
+    kind: 'VARCHAR', \
     line: 'BIGINT' \
 }";
 

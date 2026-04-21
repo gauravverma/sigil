@@ -4,7 +4,42 @@ All notable changes to sigil are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] — 2026-04-21
+
+### Changed — JSON output schema (breaking)
+
+Script-facing commands with `--json` now emit a **compact** schema designed
+for machine consumers. Agents re-ingest the returned JSON on every turn;
+cutting the payload directly cuts downstream token cost.
+
+- **Minified by default.** `sigil symbols / children / callers / callees /
+  search / explore --json` emit one-line JSON. Add `--pretty` for indented
+  output if a human is reading.
+- **Hash columns dropped by default.** `struct_hash`, `body_hash`, and
+  `sig_hash` are no longer included in `--json` output of `symbols` /
+  `children`. Pass `--with-hashes` for the legacy shape. The on-disk
+  `.sigil/entities.jsonl` still carries hashes — they're sigil's internal
+  content-identity columns.
+- **Default/absent fields elided.** `visibility: "private"` (the language
+  default for most items), `blast_radius` of all-zeros, and empty `meta: []`
+  arrays are now omitted from both JSON output and `.sigil/entities.jsonl`.
+  Consumers should use `.get("field", default)` patterns rather than
+  expecting every field.
+- **`Reference.ref_kind` is serialized as `kind`.** Schema parity with
+  `Entity.kind` — the two types now use the same field name for their
+  "kind-of-thing" discriminator. Old `.sigil/refs.jsonl` with `ref_kind`
+  still deserializes via a serde alias; fresh writes use `kind`. The
+  DuckDB materialized table column also renamed.
+
+Size impact on sigil-self:
+- `sigil symbols src/rank.rs --json`: 19,102 → **8,866 bytes (54% smaller)**
+- `sigil callers parse_file --kind call --json`: 19,352 → **14,191 bytes
+  (27% smaller)**
+
+Upgrade note: pre-0.4.0 `.sigil/refs.jsonl` loads fine via the Rust alias,
+but the DuckDB backend's materialized table definition has a renamed
+column. Re-run `sigil index` once after the upgrade to rebuild the
+derived DuckDB artifact.
 
 ### Fixed
 
@@ -24,6 +59,12 @@ All notable changes to sigil are documented here. Format follows
   for an already-qualified name keep their exact-match semantics.
   Combined with the `--limit` fix above, `sigil callers parse_file
   --kind call` now returns 129 refs across 12 files (grep parity).
+
+### Added
+
+- Eval harness (`evals/runner/`) and `E2_navigation` task set. First
+  end-to-end eval with a model in the loop; N=3 Sonnet numbers published
+  against sigil-self. See `evals/runner/README.md` for methodology.
 
 ## [0.3.3] — 2026-04-21
 
