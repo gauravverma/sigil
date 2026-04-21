@@ -45,34 +45,46 @@ intelligence tool (BLAKE3 + tree-sitter, no LLM inference). Sigil's \
 pre-computed index answers structural questions in one shot, without \
 multi-grep exploration.
 
-## When to reach for sigil FIRST
+## Structural questions — reach for sigil FIRST
 
-| Question shape                           | Command                          |
-|------------------------------------------|----------------------------------|
-| \"where is X defined?\"                  | `sigil where <X>`                |
-| \"how does X fit in the codebase?\"      | `sigil context <X>`              |
-| \"who calls X?\"                         | `sigil callers <X>`              |
-| \"what does X call?\"                    | `sigil callees <X>`              |
-| \"what's in this file?\"                 | `sigil symbols <file> --depth 1` |
-| \"what's in this directory?\"            | `sigil outline --path <dir>`     |
-| \"find anything matching 'foo'\"         | `sigil search foo`               |
-| \"impact of editing X?\"                 | `sigil blast <X>`                |
-| \"structural diff of this change\"       | `sigil review A..B`              |
-| \"clones / duplicated functions\"        | `sigil duplicates`               |
-| cold-start orientation                   | `sigil map --tokens N`           |
+| Question shape                           | Command                                        |
+|------------------------------------------|------------------------------------------------|
+| \"where is X defined?\"                  | `sigil where <X>`                              |
+| \"how does X fit in the codebase?\"      | `sigil context <X>`                            |
+| \"who calls X?\"                         | `sigil callers <X>` (add `--group-by file`)    |
+| \"what does X call?\"                    | `sigil callees <X>`                            |
+| \"list the Xs in file F (just names)\"   | `sigil symbols <F> --depth 1 --names-only`     |
+| \"full entities in file F\"              | `sigil symbols <F> --depth 1`                  |
+| \"structural tree under dir D\"          | `sigil outline --path <D>`                     |
+| \"find anything matching 'foo'\"         | `sigil search foo`                             |
+| \"impact of editing X?\"                 | `sigil blast <X>`                              |
+| \"structural diff of this change\"       | `sigil review A..B`                            |
+| \"clones / duplicated functions\"        | `sigil duplicates`                             |
+| cold-start orientation                   | `sigil map --tokens N`                         |
 
-All commands accept `--json` for machine-readable output; script-facing \
+All commands accept `--json` for machine-readable output. Script-facing \
 commands (`symbols`, `children`, `callers`, `callees`, `search`) default \
-to unbounded results. Pair with `sigil map`'s pre-written \
+to unbounded results, minified JSON. Pair with the pre-written \
 `.sigil/SIGIL_MAP.md` (when `sigil index` has run) and file-level \
 PageRank at `.sigil/rank.json`.
 
-## When to use grep / read_file instead
+## File-system / text questions — use grep / read_file / bash
 
-- The question is about raw text inside a known file (log messages, \
-  string literals, comments).
-- Sigil returned empty AND its stderr didn't suggest a close match.
-- You need to verify the exact line content after sigil located the region.
+| Question shape                           | Tool                             |
+|------------------------------------------|----------------------------------|
+| \"which files exist under dir D?\"       | `ls` / `find` / `bash`           |
+| \"text content X inside known file F\"   | `grep` / `read_file`             |
+| \"lines matching a regex in the repo\"   | `grep`                           |
+| language-specific syntactic pattern      | `grep` (e.g. Rust `^pub mod`)    |
+| sigil returned empty AND no \"Did you    | `grep` — confirm the name        |
+| mean?\" suggestion on stderr             | really doesn't exist textually   |
+
+Two rules of thumb:
+
+- `sigil_symbols` with `--names-only` when the answer is a LIST OF NAMES. \
+  Typical drop: ~3 KB of full entity records → ~300 bytes.
+- `sigil_outline` surfaces CLASSES AND FUNCTIONS under a path, not a \
+  plain file listing. Use `ls` / `bash` for pure file enumeration.
 
 Empty sigil results are data, not failure. Sigil prints a \
 `Did you mean: X, Y, Z?` hint on stderr when the queried name is close \
