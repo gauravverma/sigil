@@ -297,6 +297,19 @@ sigil hook install       # git post-commit + post-checkout auto-rebuild
 
 Each has a matching `uninstall`. Every installer is idempotent (rerunning with same content is a no-op), preserves user content outside sigil's marker block, and leaves sibling user hooks / rules / plugins untouched.
 
+### Upgrading after `sigil update` / `cargo install sigil`
+
+Just re-run `sigil <tool> install`. The block is scoped by sentinels — `<!-- sigil:begin -->` … `<!-- sigil:end -->` in Markdown files; a `# sigil-hint` trailer inside the hook command in JSON files — and `upsert_marker_block` / `upsert_*_hook` swap the old block out for the new one in place:
+
+- **Content outside the sentinels is preserved** — your `# My project` header, `## Build` notes, sibling `Bash`-matcher hooks, unrelated settings, etc. all stay untouched across the upgrade.
+- **Content inside the sentinels is owned by sigil** — if you hand-edited the block, those edits will be replaced on re-install. Put custom phrasing *outside* the markers if you want it preserved.
+- **Output tells you what happened**: `Created` = new file, `Updated` = block swapped, `Unchanged` = already current.
+- **If you deleted the sentinels by hand**, sigil will *append* a fresh block at the end rather than find-and-replace — safe, but you'll end up with duplicate content unless you clean the stray text.
+
+Concrete end-to-end demo: a CLAUDE.md carrying an old one-line sigil block, plus user content before and after it, plus a custom `Bash` matcher hook in `.claude/settings.json`. After `sigil claude install`: the block is replaced with the current flowchart, the old `sigil-hint` hook is replaced with the current HINT_LINE, and every other user setting / hook / paragraph survives byte-for-byte. `uninstall` does the mirror — strips only sigil's sentinel-scoped territory.
+
+Net upgrade path for users on 0.3.x moving to 0.4.x: one `sigil <tool> install`, their CLAUDE.md jumps from the old capability list to the new structural-questions flowchart + file-system routing table + `--names-only` hint + worked example, and their PreToolUse hook picks up the new didactic HINT_LINE.
+
 ---
 
 ## Benchmarks
