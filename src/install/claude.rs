@@ -21,7 +21,7 @@ use serde_json::{json, Value};
 use super::{capability_block, remove_marker_block, upsert_marker_block, UpsertResult};
 
 const HOOK_ID: &str = "sigil-hint";
-const HINT_LINE: &str = "sigil available in this repo: use `sigil map` for orientation, `sigil context <symbol>` for a focused bundle, `sigil callers/callees` for exact lookups. See .sigil/SIGIL_MAP.md if present.";
+const HINT_LINE: &str = "sigil in this repo — for structural questions reach for sigil FIRST: `sigil where X` (find definition), `sigil context X` (full bundle), `sigil callers/callees X`, `sigil symbols F --depth 1`. Empty result prints `Did you mean?` on stderr — retry with suggestion before grep.";
 
 /// Install both the markdown block and the PreToolUse hook.
 pub fn install(root: &Path) -> Result<Vec<InstallStep>> {

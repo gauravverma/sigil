@@ -21,7 +21,7 @@ use super::{capability_block, remove_marker_block, upsert_marker_block, UpsertRe
 
 const PLUGIN_REL: &str = ".opencode/plugins/sigil.js";
 const HOOK_ID: &str = "sigil-plugin";
-const HINT_LINE: &str = "sigil available in this repo: use `sigil map` for orientation, `sigil context <symbol>` for a focused bundle. See .sigil/SIGIL_MAP.md if present.";
+const HINT_LINE: &str = "sigil in this repo — for structural questions reach for sigil FIRST: `sigil where X` (find definition), `sigil context X` (full bundle), `sigil callers/callees X`, `sigil symbols F --depth 1`. Empty result prints `Did you mean?` on stderr — retry with suggestion before grep.";
 
 pub fn install(root: &Path) -> Result<Vec<InstallStep>> {
     let mut steps = Vec::new();
