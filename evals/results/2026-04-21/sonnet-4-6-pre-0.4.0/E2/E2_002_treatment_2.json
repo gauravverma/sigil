@@ -1,0 +1,15 @@
+{
+  "task_id": "E2_002",
+  "arm": "treatment",
+  "seed": 2,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 6597,
+  "tokens_out": 134,
+  "final_text": "The symbols output clearly shows exactly two top-level public functions (kind=`function`, visibility=`public`) in `src/index.rs`: `build_index` and `parse_single_file`.\n\n[\"build_index\", \"parse_single_file\"]",
+  "parsed_answer": [
+    "build_index",
+    "parse_single_file"
+  ],
+  "timestamp": "2026-04-20T21:06:20.062449+00:00"
+}

@@ -1,0 +1,14 @@
+{
+  "task_id": "E2_001",
+  "arm": "control",
+  "seed": 2,
+  "model": "claude-sonnet-4-6",
+  "turns": 3,
+  "tokens_in": 3285,
+  "tokens_out": 142,
+  "final_text": "[\"src/parser/languages.rs\"]",
+  "parsed_answer": [
+    "src/parser/languages.rs"
+  ],
+  "timestamp": "2026-04-20T21:05:25.582655+00:00"
+}

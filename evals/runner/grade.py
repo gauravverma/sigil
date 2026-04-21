@@ -23,15 +23,25 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from run import parse_answer  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TASKS_ROOT = REPO_ROOT / "evals" / "tasks" / "E2_navigation"
+TASKS_ROOT = REPO_ROOT / "evals" / "tasks"
 
 
-def load_expected() -> dict[str, list | None]:
-    out: dict[str, list | None] = {}
-    for t in TASKS_ROOT.glob("*.yaml"):
+def load_expected() -> dict[str, dict]:
+    """Load (grader_type, expected) per task across every subdirectory of
+    `evals/tasks/`. Each task YAML carries `grader.type` and
+    `grader.expected`. Tasks without expected values grade as
+    `uncaptured`.
+    """
+    out: dict[str, dict] = {}
+    for t in TASKS_ROOT.rglob("*.yaml"):
+        if "_parked" in t.parts:
+            continue
         spec = yaml.safe_load(t.read_text())
-        exp = spec.get("grader", {}).get("expected")
-        out[spec["id"]] = exp if exp else None
+        grader = spec.get("grader", {})
+        out[spec["id"]] = {
+            "type": grader.get("type", "set_match"),
+            "expected": grader.get("expected"),
+        }
     return out
 
 
@@ -43,14 +53,42 @@ def _norm(x) -> str:
     return s
 
 
-def set_match(actual: list | None, expected: list | None) -> str:
-    if expected is None:
+def set_match(actual, expected) -> str:
+    if expected is None or not expected:
         return "uncaptured"
     if actual is None:
         return "no_answer"
+    if not isinstance(actual, list):
+        return "fail"
     a = {_norm(x) for x in actual}
     e = {_norm(x) for x in expected}
     return "pass" if a == e else "fail"
+
+
+def fact_match(actual, expected) -> str:
+    """Dict equality with per-value normalization. Used by SWE-bench-like
+    tasks where the answer is a labeled tuple (e.g. {method, file, class}).
+    Extra keys in `actual` are ignored so agents may decorate answers.
+
+    Also tolerates a single-element array wrapping — models occasionally
+    reply with `[{...}]` when the system prompt mentioned "array" but the
+    task asked for an object. The answer is semantically correct; unwrap
+    before comparison.
+    """
+    if expected is None or not expected:
+        return "uncaptured"
+    if actual is None:
+        return "no_answer"
+    if isinstance(actual, list) and len(actual) == 1 and isinstance(actual[0], dict):
+        actual = actual[0]
+    if not isinstance(actual, dict):
+        return "fail"
+    for k, v in expected.items():
+        if k not in actual:
+            return "fail"
+        if _norm(actual[k]) != _norm(v):
+            return "fail"
+    return "pass"
 
 
 def main():
@@ -62,10 +100,18 @@ def main():
 
     rows: list[dict] = []
     for f in sorted(results_dir.glob("*.json")):
+        if f.name == "summary.md":
+            continue
         r = json.loads(f.read_text())
-        # Always re-parse from final_text so fixes to the parser rescue old results.
+        # Re-parse from final_text so parser fixes rescue old results.
         answer = parse_answer(r.get("final_text"))
-        verdict = set_match(answer, expected_by_task.get(r["task_id"]))
+        spec = expected_by_task.get(r["task_id"], {})
+        gtype = spec.get("type", "set_match")
+        exp = spec.get("expected")
+        if gtype == "fact_match":
+            verdict = fact_match(answer, exp)
+        else:
+            verdict = set_match(answer, exp)
         rows.append({**r, "parsed_answer": answer, "verdict": verdict})
 
     by_arm: dict[str, list[dict]] = defaultdict(list)

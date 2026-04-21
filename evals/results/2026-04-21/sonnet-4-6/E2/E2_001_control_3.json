@@ -6,9 +6,9 @@
   "turns": 4,
   "tokens_in": 4547,
   "tokens_out": 220,
-  "final_text": "The only top-level `fn detect_language` definition is in `src/parser/languages.rs`.\n\n[\"src/parser/languages.rs\"]",
+  "final_text": "`src/parser/languages.rs` contains the top-level `pub fn detect_language` definition.\n\n[\"src/parser/languages.rs\"]",
   "parsed_answer": [
     "src/parser/languages.rs"
   ],
-  "timestamp": "2026-04-20T21:15:01.992479+00:00"
+  "timestamp": "2026-04-21T06:50:49.781491+00:00"
 }

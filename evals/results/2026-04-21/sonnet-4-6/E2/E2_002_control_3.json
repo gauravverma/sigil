@@ -5,11 +5,11 @@
   "model": "claude-sonnet-4-6",
   "turns": 2,
   "tokens_in": 6951,
-  "tokens_out": 208,
-  "final_text": "The file has been fully read. The top-level `pub fn` declarations (not inside `impl`, nested `mod`, or test modules) are:\n\n- Line 16: `pub fn parse_single_file`\n- Line 93: `pub fn build_index`\n\nAll other functions (`is_import_kind`, `find_decorator_start`, `normalize_kind`, `discover_source_files`, `load_previous_entities`, `load_previous_refs`) are private (no `pub`), and the functions inside `#[cfg(test)] mod tests` are excluded.\n\n```json\n[\"build_index\", \"parse_single_file\"]\n```",
+  "tokens_out": 188,
+  "final_text": "The file has two top-level `pub fn` declarations (lines 16 and 93): `parse_single_file` and `build_index`. All other `pub` items are structs/fields, and all other functions (`is_import_kind`, `find_decorator_start`, `normalize_kind`, `discover_source_files`, `load_previous_entities`, `load_previous_refs`) are private (no `pub`). The test module functions are inside `#[cfg(test)] mod tests`.\n\n[\"build_index\", \"parse_single_file\"]",
   "parsed_answer": [
     "build_index",
     "parse_single_file"
   ],
-  "timestamp": "2026-04-20T21:11:24.625631+00:00"
+  "timestamp": "2026-04-21T06:47:56.175780+00:00"
 }

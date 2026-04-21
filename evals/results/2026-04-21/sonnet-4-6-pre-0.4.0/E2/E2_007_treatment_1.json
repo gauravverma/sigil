@@ -1,0 +1,21 @@
+{
+  "task_id": "E2_007",
+  "arm": "treatment",
+  "seed": 1,
+  "model": "claude-sonnet-4-6",
+  "turns": 2,
+  "tokens_in": 2404,
+  "tokens_out": 90,
+  "final_text": "[\"aider\", \"claude\", \"codex\", \"copilot\", \"cursor\", \"gemini\", \"githook\", \"opencode\"]",
+  "parsed_answer": [
+    "aider",
+    "claude",
+    "codex",
+    "copilot",
+    "cursor",
+    "gemini",
+    "githook",
+    "opencode"
+  ],
+  "timestamp": "2026-04-20T21:10:18.151043+00:00"
+}

@@ -36,19 +36,37 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 TASKS_ROOT = REPO_ROOT / "evals" / "tasks"
 RESULTS_ROOT = REPO_ROOT / "evals" / "results"
 
+
+def task_repo_root(task: dict) -> Path:
+    """Effective CWD for the agent's tools. Defaults to the sigil repo.
+    Tasks targeting external codebases (SWE-bench-like) set `repo:
+    evals/_workbench/<slug>` to point at a cloned tree."""
+    if "repo" in task and task["repo"]:
+        p = REPO_ROOT / task["repo"]
+        if not p.exists():
+            raise RuntimeError(f"task {task['id']} references missing repo: {p}")
+        return p.resolve()
+    return REPO_ROOT
+
 # Capability blurb injected into the treatment arm only. Mirrors the text
 # the hook installers write into CLAUDE.md etc. — capability-describing,
 # not preference-giving.
 SIGIL_BLURB = """\
 You also have `sigil` available on PATH — a deterministic structural code
 intelligence CLI. Capabilities:
-  sigil map --tokens N          ranked codebase digest (orientation)
-  sigil context <symbol>        signature + callers + callees + related types
-  sigil callers <symbol>        exact caller list (JSON-friendly)
-  sigil callees <symbol>        what a symbol calls
-  sigil symbols <file>          all entities in a file
-  sigil search <query>          substring search over symbol names + paths
-Use `--json` on most commands for machine-readable output.
+  sigil search <name>           symbols by name substring — returns file + line +
+                                kind + parent class. Empty result means "no such
+                                symbol," not "retry with more keywords."
+  sigil symbols <FILE>          every entity in ONE file with its parent class.
+                                Prefer this once you've narrowed to a file.
+  sigil callers <name>          who calls <name>: returns file + caller + line.
+  sigil callees <caller>        what <caller> calls.
+  sigil map --tokens N          ranked codebase digest (orientation).
+  sigil context <symbol>        signature + callers + callees + related types.
+
+All commands support `--json` for machine-readable output. Prefer short,
+specific substrings ("default", not "get_default_from_env") and narrow to
+a file with `sigil symbols FILE` as soon as you know which file matters.
 """
 
 SYSTEM_PROMPT_BASE = """\
@@ -56,9 +74,10 @@ You are helping answer a navigation question about a code repository at
 {repo}. You have tools: read_file, grep, glob, bash. Be efficient — aim
 for the minimum number of tool calls that gives you a confident answer.
 
-When you have the answer, reply with ONLY a JSON array as the final
-assistant message (no prose, no markdown fences). The array MUST match
-the format the question specifies.
+When you have the answer, reply with ONLY valid JSON as the final
+assistant message (no prose, no markdown fences, no extra text). The
+shape is specified by the question — it may be a JSON array, a JSON
+object, or another JSON value. Match the exact shape requested.
 """
 
 TOOLS = [
@@ -128,8 +147,8 @@ def arm_env(arm: str) -> dict[str, str]:
     return env
 
 
-def tool_read_file(inp: dict[str, Any]) -> str:
-    path = REPO_ROOT / inp["path"]
+def tool_read_file(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
+    path = cwd / inp["path"]
     offset = max(1, int(inp.get("offset", 1)))
     limit = max(1, min(int(inp.get("limit", 2000)), 5000))
     if not path.exists():
@@ -139,28 +158,28 @@ def tool_read_file(inp: dict[str, Any]) -> str:
     return "\n".join(f"{i + offset:6d}\t{line}" for i, line in enumerate(sliced))
 
 
-def tool_grep(inp: dict[str, Any], env: dict[str, str]) -> str:
+def tool_grep(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
     cmd = ["rg", "--line-number", "--no-heading", inp["pattern"]]
     if inp.get("glob"):
         cmd += ["--glob", inp["glob"]]
-    return run_subprocess(cmd, env)
+    return run_subprocess(cmd, env, cwd)
 
 
-def tool_glob(inp: dict[str, Any], env: dict[str, str]) -> str:
+def tool_glob(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
     # Use a simple `find`-less approach via python glob for reliability.
     from glob import glob
-    hits = sorted(glob(inp["pattern"], root_dir=REPO_ROOT, recursive=True))
+    hits = sorted(glob(inp["pattern"], root_dir=cwd, recursive=True))
     return "\n".join(hits) if hits else "(no matches)"
 
 
-def tool_bash(inp: dict[str, Any], env: dict[str, str]) -> str:
-    return run_subprocess(["bash", "-c", inp["command"]], env)
+def tool_bash(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
+    return run_subprocess(["bash", "-c", inp["command"]], env, cwd)
 
 
-def run_subprocess(cmd: list[str], env: dict[str, str]) -> str:
+def run_subprocess(cmd: list[str], env: dict[str, str], cwd: Path) -> str:
     try:
         proc = subprocess.run(
-            cmd, cwd=REPO_ROOT, env=env, capture_output=True, text=True, timeout=30
+            cmd, cwd=cwd, env=env, capture_output=True, text=True, timeout=30
         )
     except subprocess.TimeoutExpired:
         return "ERROR: timeout after 30s"
@@ -171,7 +190,7 @@ def run_subprocess(cmd: list[str], env: dict[str, str]) -> str:
 
 
 DISPATCH = {
-    "read_file": lambda inp, env: tool_read_file(inp),
+    "read_file": tool_read_file,
     "grep": tool_grep,
     "glob": tool_glob,
     "bash": tool_bash,
@@ -180,7 +199,8 @@ DISPATCH = {
 
 def run_one(client, task: dict, arm: str, seed: int, model: str, max_turns: int = 20) -> dict:
     env = arm_env(arm)
-    system = SYSTEM_PROMPT_BASE.format(repo=REPO_ROOT.name)
+    cwd = task_repo_root(task)
+    system = SYSTEM_PROMPT_BASE.format(repo=cwd.name)
     if arm == "treatment":
         system += "\n" + SIGIL_BLURB
 
@@ -189,6 +209,7 @@ def run_one(client, task: dict, arm: str, seed: int, model: str, max_turns: int 
     tokens_in = 0
     tokens_out = 0
     final_text = None
+    trace: list[dict] = []  # compact per-turn record: tool calls + result previews
 
     while turns < max_turns:
         resp = client.messages.create(
@@ -224,12 +245,19 @@ def run_one(client, task: dict, arm: str, seed: int, model: str, max_turns: int 
                         result = f"ERROR: unknown tool {block.name}"
                     else:
                         try:
-                            result = fn(block.input, env)
+                            result = fn(block.input, env, cwd)
                         except Exception as e:
                             result = f"ERROR: {type(e).__name__}: {e}"
                     # API rejects tool_result content that is an empty string.
                     if not result:
                         result = "(empty)"
+                    trace.append({
+                        "turn": turns,
+                        "tool": block.name,
+                        "input": block.input,
+                        "result_len": len(result),
+                        "result_preview": result[:400],
+                    })
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": block.id,
@@ -254,37 +282,43 @@ def run_one(client, task: dict, arm: str, seed: int, model: str, max_turns: int 
         "tokens_out": tokens_out,
         "final_text": final_text,
         "parsed_answer": parse_answer(final_text),
+        "trace": trace,
         "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
 
 
-def parse_answer(text: str | None) -> list[Any] | None:
-    """Extract a JSON array from free-form text.
+def parse_answer(text: str | None) -> Any | None:
+    """Extract a JSON value (array or object) from free-form text.
 
-    Strategy: scan every balanced `[...]` substring, parse each, and
-    return the last one that deserializes to a list. The "last" bias
-    matches the convention that the final assistant message closes with
-    the answer; earlier brackets are usually quoted text (e.g. the
-    prompt echoing `#[cfg(test)]`).
+    Strategy: scan every balanced `[...]` and `{...}` substring, parse
+    each, and return the last one that deserializes successfully. The
+    "last" bias matches the convention that the final assistant message
+    closes with the answer; earlier brackets are usually quoted text
+    (e.g. the prompt echoing `#[cfg(test)]` or a JSON snippet in the
+    instructions).
     """
     if not text:
         return None
-    last_valid: list | None = None
-    for candidate in _balanced_brackets(text):
+    last_valid: Any = None
+    for candidate in _balanced_groups(text):
         try:
             val = json.loads(candidate)
         except json.JSONDecodeError:
             continue
-        if isinstance(val, list):
+        if isinstance(val, (list, dict)):
             last_valid = val
     return last_valid
 
 
-def _balanced_brackets(text: str) -> list[str]:
-    """Yield every balanced `[...]` substring (handles nesting, skips strings)."""
+def _balanced_groups(text: str) -> list[str]:
+    """Yield every balanced `[...]` and `{...}` substring.
+
+    Handles nesting, skips over string literals (so `[` inside a quoted
+    string doesn't open a group). Same balancing logic for both bracket
+    kinds — useful because tasks may ask for arrays OR objects.
+    """
     out: list[str] = []
-    depth = 0
-    start = -1
+    stack: list[tuple[str, int]] = []  # (closing_char, start_index)
     i = 0
     n = len(text)
     while i < n:
@@ -299,16 +333,19 @@ def _balanced_brackets(text: str) -> list[str]:
                 i += 1
             i += 1
             continue
-        if c == "[":
-            if depth == 0:
-                start = i
-            depth += 1
-        elif c == "]":
-            if depth > 0:
-                depth -= 1
-                if depth == 0 and start != -1:
-                    out.append(text[start:i + 1])
-                    start = -1
+        if c == "[" or c == "{":
+            close = "]" if c == "[" else "}"
+            if not stack:
+                stack.append((close, i))
+            else:
+                stack.append((close, -1))  # nested — no new outer start
+        elif c in "]}":
+            if stack and stack[-1][0] == c:
+                close, start = stack.pop()
+                if not stack and start != -1:
+                    out.append(text[start : i + 1])
+            else:
+                stack.clear()  # mismatched — reset
         i += 1
     return out
 
@@ -329,8 +366,11 @@ def _model_slug(model: str) -> str:
     return model.replace("/", "-").replace(":", "-")
 
 
-def result_path(date: str, task_id: str, arm: str, seed: int, model: str) -> Path:
-    p = RESULTS_ROOT / date / _model_slug(model) / "E2" / f"{task_id}_{arm}_{seed}.json"
+def result_path(date: str, task_id: str, arm: str, seed: int, model: str, task_set: str) -> Path:
+    # task_set slug is the short tag (E2, E4, etc.) derived from the
+    # task-set dir name by taking the prefix before the first "_".
+    slug = task_set.split("_", 1)[0] if "_" in task_set else task_set
+    p = RESULTS_ROOT / date / _model_slug(model) / slug / f"{task_id}_{arm}_{seed}.json"
     p.parent.mkdir(parents=True, exist_ok=True)
     return p
 
@@ -338,7 +378,9 @@ def result_path(date: str, task_id: str, arm: str, seed: int, model: str) -> Pat
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", type=Path, help="Single task YAML")
-    ap.add_argument("--sweep", action="store_true", help="Run all E2 tasks")
+    ap.add_argument("--sweep", action="store_true", help="Run all tasks under --task-set (default: E2_navigation)")
+    ap.add_argument("--task-set", default="E2_navigation",
+                    help="Task directory under evals/tasks/ (e.g. E2_navigation, E4_swebench_like)")
     ap.add_argument("--arm", choices=["control", "treatment", "both"], default="both")
     ap.add_argument("--seed", type=int, help="Single seed (implies --seeds 1)")
     ap.add_argument("--seeds", type=int, default=3)
@@ -348,7 +390,7 @@ def main():
     args = ap.parse_args()
 
     if args.sweep:
-        tasks = sorted((TASKS_ROOT / "E2_navigation").glob("*.yaml"))
+        tasks = sorted((TASKS_ROOT / args.task_set).glob("*.yaml"))
     elif args.task:
         tasks = [args.task]
     else:
@@ -373,7 +415,7 @@ def main():
 
     for t, a, s in plan:
         task = load_task(t)
-        rp = result_path(date, task["id"], a, s, args.model)
+        rp = result_path(date, task["id"], a, s, args.model, args.task_set)
         if rp.exists():
             print(f"skip (exists): {rp}")
             continue
