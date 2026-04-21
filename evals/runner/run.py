@@ -48,36 +48,55 @@ def task_repo_root(task: dict) -> Path:
         return p.resolve()
     return REPO_ROOT
 
-# Capability blurb injected into the treatment arm only. Mirrors the text
-# the hook installers write into CLAUDE.md etc. — capability-describing,
-# not preference-giving.
+# Directive blurb for the treatment arm. Intentionally prescriptive
+# about when to use each sigil primitive vs grep/read_file — prior
+# "capability-describing only" phrasing led agents to default to grep
+# habits even with sigil on PATH. When this blurb accompanies the
+# native sigil_* tools in the manifest, the agent picks from a
+# labeled decision tree rather than improvising.
 SIGIL_BLURB = """\
-You also have `sigil` available on PATH — a deterministic structural code
-intelligence CLI. Capabilities:
-  sigil where <symbol>          single-shot locator: file + line + class +
-                                overrides + overload count. Use this for "find
-                                the definition of X" questions.
-  sigil context <symbol>        full bundle: signature + callers + callees +
-                                related types + inheritance. Prefer this over
-                                multiple search+read_file pairs.
-  sigil search <name>           symbols by name substring — returns file + line
-                                + kind + parent + signature. Empty result means
-                                "no such symbol," not "retry with more keywords."
-  sigil symbols <FILE>          entities in ONE file (pass --depth 1 for a
-                                top-level outline — classes/fns only, no nested
-                                variables). Prefer this once you've narrowed.
-  sigil callers <name>          who calls <name> (pass --group-by file for a
-                                file-count summary when you don't need line-
-                                level detail).
-  sigil callees <caller>        what <caller> calls.
-  sigil outline [--path DIR]    hierarchical top-level tree of classes + fns.
-  sigil map --tokens N          ranked codebase digest (orientation).
+The sigil_* tools (sigil_where, sigil_context, sigil_callers,
+sigil_callees, sigil_symbols, sigil_outline, sigil_search) give you
+pre-computed structural code intelligence. Use them BEFORE grep/
+read_file for these questions:
 
-All commands support `--json` for machine-readable output. Prefer short,
-specific substrings ("default", not "get_default_from_env") and narrow to
-a file with `sigil symbols FILE --depth 1` as soon as you know which file
-matters. Reach for `sigil context`/`sigil where` before chaining three
-generic searches.
+  Question type                          Tool to use FIRST
+  ─────────────────────────────────────  ─────────────────────────────
+  "where is X defined?"                  sigil_where(X)
+  "who calls X?"                         sigil_callers(X)
+  "what does X call?"                    sigil_callees(X)
+  "what's in file F?"                    sigil_symbols(F, depth=1)
+  "what's in directory D?"               sigil_outline(D)
+  "how does X fit in the codebase?"      sigil_context(X)
+  "find anything matching 'foo'"         sigil_search("foo")
+
+Use grep/read_file when:
+  - the question is about text content inside a specific file
+  - sigil returned empty AND its stderr didn't suggest a close match
+  - the answer needs line-level verification after sigil located the
+    region
+
+Empty sigil results are data, not failure. sigil prints a "Did you
+mean: X, Y, Z?" hint to stderr when the name is close to known
+entities — retry with one of the suggestions before falling back to
+grep.
+
+WORKED EXAMPLE
+
+  Q: "Find the method on class Parameter that resolves the default
+      value when a callable is passed to click.option(default=...)."
+
+  BAD path (4+ turns, grep-first):
+    grep -rn "default" src/**/*.py   → hundreds of hits
+    grep "class Parameter" ...        → narrow to file
+    read_file src/click/core.py:1-200 → wrong range
+    read_file src/click/core.py:2000-2300 → eventually find it
+
+  GOOD path (1 turn):
+    sigil_where(symbol="get_default")
+    → {"definitions":[{"parent":"Parameter","file":"src/click/core.py",
+        "line":2249,"sig":"def get_default(self, ctx, call=True)"}]}
+    Done.
 """
 
 SYSTEM_PROMPT_BASE = """\
@@ -91,7 +110,7 @@ shape is specified by the question — it may be a JSON array, a JSON
 object, or another JSON value. Match the exact shape requested.
 """
 
-TOOLS = [
+BASE_TOOLS = [
     {
         "name": "read_file",
         "description": "Read a file from the repository. Returns up to 200 lines by default; pass `limit` up to 5000 for longer spans. Prefer narrow reads — whole-file reads become context bloat on subsequent turns.",
@@ -136,6 +155,106 @@ TOOLS = [
         },
     },
 ]
+
+# Native sigil tools — only exposed to the treatment arm. The agent sees
+# them as first-class tools (same tier as read_file/grep) rather than as
+# "bash commands to remember." This mirrors the production shape where
+# sigil lives behind an MCP / hook integration.
+SIGIL_TOOLS = [
+    {
+        "name": "sigil_where",
+        "description": "FIRST choice for 'where is X defined?' questions. Returns one row per definition (file, line, class, signature, overload count). Tail-segment match: `get_default` finds `Parameter.get_default` and `Option.get_default`. Faster and more precise than grep for definition lookups.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "symbol": {"type": "string", "description": "Symbol name. Tail segment matched exactly."},
+                "include_tests": {"type": "boolean", "description": "Include test-file definitions (default false)", "default": False},
+            },
+            "required": ["symbol"],
+        },
+    },
+    {
+        "name": "sigil_context",
+        "description": "Full bundle for a symbol: signature, callers, callees, related types, and inheritance overrides. Use when you need to understand how X fits into the codebase — replaces multiple search+read_file pairs.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "symbol": {"type": "string", "description": "Symbol name. Accepts `Parent.name` or `file.rs::Parent::name` forms."},
+            },
+            "required": ["symbol"],
+        },
+    },
+    {
+        "name": "sigil_callers",
+        "description": "Who calls `name`? Returns file+caller+line for every call-site. Pass `group_by: 'file'` for a {file: count} summary when you only need distribution.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "kind": {"type": "string", "description": "Optional: call | import | type_annotation | instantiation"},
+                "group_by": {"type": "string", "description": "Optional: file | caller | name | kind"},
+            },
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "sigil_callees",
+        "description": "What does `caller` call? Returns file+target+line. Pass `group_by: 'name'` for a count-per-target summary.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "caller": {"type": "string"},
+                "kind": {"type": "string", "description": "Optional: call | import | type_annotation | instantiation"},
+                "group_by": {"type": "string", "description": "Optional: file | name | kind"},
+            },
+            "required": ["caller"],
+        },
+    },
+    {
+        "name": "sigil_symbols",
+        "description": "Every entity in ONE file with parent class. Pass `depth: 1` for a top-level outline (classes, top-level fns only — skips imports, variables, nested methods). Prefer once you've narrowed to a file.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "file": {"type": "string", "description": "Repo-relative file path"},
+                "depth": {"type": "integer", "description": "1 = top-level outline; omit for full dump", "default": 0},
+            },
+            "required": ["file"],
+        },
+    },
+    {
+        "name": "sigil_outline",
+        "description": "Hierarchical top-level tree of classes + functions grouped by file across the repo (or under --path). Answers 'what's in this directory structurally?' without needing multiple sigil_symbols calls.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Restrict to files starting with this prefix"},
+            },
+        },
+    },
+    {
+        "name": "sigil_search",
+        "description": "Substring search over symbol names across the whole codebase. Each row includes file, line, kind, parent class, and signature preview. Empty result means `no such symbol` — sigil will suggest close matches on stderr; don't abandon the tool on the first miss.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Name substring. Prefer short specific terms."},
+                "kind": {"type": "string", "description": "Optional: function | class | method | struct | enum | trait"},
+            },
+            "required": ["query"],
+        },
+    },
+]
+
+
+def tools_for_arm(arm: str) -> list:
+    """Control gets the base toolkit only. Treatment gets base + sigil
+    primitives as first-class tools (not just bash invocations). This
+    puts sigil at the same level of abstraction as grep — the agent
+    picks between them rather than choosing to shell out."""
+    if arm == "treatment":
+        return BASE_TOOLS + SIGIL_TOOLS
+    return BASE_TOOLS
 
 
 def arm_env(arm: str) -> dict[str, str]:
@@ -204,11 +323,80 @@ def run_subprocess(cmd: list[str], env: dict[str, str], cwd: Path) -> str:
     return out or "(no output)"
 
 
+def _sigil_cmd(env: dict[str, str], cwd: Path, args: list[str]) -> str:
+    """Shell out to the sigil binary in the treatment arm's env and
+    return stdout+stderr. Keeps the tool-level abstraction thin — the
+    sigil CLI stays the single source of truth; the runner only
+    translates tool_use JSON into CLI args."""
+    return run_subprocess(["sigil", *args], env, cwd)
+
+
+def tool_sigil_where(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
+    args = ["where", inp["symbol"], "--format", "json"]
+    if inp.get("include_tests"):
+        args.append("--include-tests")
+    return _sigil_cmd(env, cwd, args)
+
+
+def tool_sigil_context(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
+    return _sigil_cmd(env, cwd, ["context", inp["symbol"], "--format", "json"])
+
+
+def tool_sigil_callers(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
+    args = ["callers", inp["name"]]
+    if inp.get("kind"):
+        args += ["--kind", inp["kind"]]
+    if inp.get("group_by"):
+        args += ["--group-by", inp["group_by"]]
+    else:
+        args.append("--json")
+    return _sigil_cmd(env, cwd, args)
+
+
+def tool_sigil_callees(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
+    args = ["callees", inp["caller"]]
+    if inp.get("kind"):
+        args += ["--kind", inp["kind"]]
+    if inp.get("group_by"):
+        args += ["--group-by", inp["group_by"]]
+    else:
+        args.append("--json")
+    return _sigil_cmd(env, cwd, args)
+
+
+def tool_sigil_symbols(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
+    args = ["symbols", inp["file"], "--json"]
+    if int(inp.get("depth", 0)) == 1:
+        args += ["--depth", "1"]
+    return _sigil_cmd(env, cwd, args)
+
+
+def tool_sigil_outline(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
+    args = ["outline", "--format", "json"]
+    if inp.get("path"):
+        args += ["--path", inp["path"]]
+    return _sigil_cmd(env, cwd, args)
+
+
+def tool_sigil_search(inp: dict[str, Any], env: dict[str, str], cwd: Path) -> str:
+    args = ["search", inp["query"], "--json"]
+    if inp.get("kind"):
+        args += ["--kind", inp["kind"]]
+    return _sigil_cmd(env, cwd, args)
+
+
 DISPATCH = {
     "read_file": tool_read_file,
     "grep": tool_grep,
     "glob": tool_glob,
     "bash": tool_bash,
+    "sigil_where": tool_sigil_where,
+    "sigil_context": tool_sigil_context,
+    "sigil_callers": tool_sigil_callers,
+    "sigil_callees": tool_sigil_callees,
+    "sigil_symbols": tool_sigil_symbols,
+    "sigil_outline": tool_sigil_outline,
+    "sigil_search": tool_sigil_search,
 }
 
 
@@ -226,12 +414,13 @@ def run_one(client, task: dict, arm: str, seed: int, model: str, max_turns: int 
     final_text = None
     trace: list[dict] = []  # compact per-turn record: tool calls + result previews
 
+    tools = tools_for_arm(arm)
     while turns < max_turns:
         resp = client.messages.create(
             model=model,
             max_tokens=4096,
             system=system,
-            tools=TOOLS,
+            tools=tools,
             messages=messages,
         )
         turns += 1
